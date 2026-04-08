@@ -1,9 +1,8 @@
 import { createAuthClient } from 'better-auth/react';
-
-const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL ?? 'http://localhost:3900';
+import { gatewayUrl } from './runtime-env';
 
 export const authClient = createAuthClient({
-  baseURL: GATEWAY_URL,
+  baseURL: gatewayUrl(),
   fetchOptions: { credentials: 'include' },
 });
 

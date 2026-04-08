@@ -1,11 +1,10 @@
 import ky from 'ky';
-
-const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL ?? 'http://localhost:3900';
+import { gatewayUrl } from './runtime-env';
 
 export const http = ky.create({
-  prefixUrl: GATEWAY_URL,
+  prefixUrl: gatewayUrl(),
   credentials: 'include',
-  timeout: 120_000,
+  timeout: 300_000,
 });
 
 export type Confidence = 'low' | 'medium' | 'high';

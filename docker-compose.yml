@@ -15,6 +15,7 @@ services:
       - DATABASE_URL=file:/data/auth.db
       - ALLOW_REGISTRATION=true
       - ENVIRONMENT=production
+      - FRONTEND_ORIGIN=http://100.96.243.61:3000
     volumes:
       - ./data/auth:/data
     ports:
@@ -27,7 +28,9 @@ services:
     image: ghcr.io/blameturner/mst-ag-frontend:latest
     container_name: mst-ag-frontend
     environment:
-      - VITE_GATEWAY_URL=http://100.96.243.61:3900
+      # Read at container start by /docker-entrypoint.d/40-write-config.sh and written
+      # into /usr/share/nginx/html/config.js — nothing is baked into the Vite bundle.
+      - GATEWAY_URL=http://100.96.243.61:3900
     ports:
       - "3000:3000"
     restart: unless-stopped

@@ -1,9 +1,12 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { env } from '../env.js';
 import { requireAuth } from '../middleware/requireAuth.js';
+import { getAuthContext } from '../lib/auth-context.js';
+import { FetchTimeoutError } from '../lib/fetch-with-timeout.js';
+import { run as harnessRun } from '../services/harness/index.js';
+import type { AuthVariables } from '../types/auth.js';
 
-export const runRoute = new Hono();
+export const runRoute = new Hono<{ Variables: AuthVariables }>();
 
 runRoute.use('*', requireAuth);
 
@@ -18,15 +21,27 @@ runRoute.post('/', async (c) => {
   const parsed = runSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: 'invalid_body', issues: parsed.error.issues }, 400);
 
-  const orgId = c.get('orgId' as never) as number;
-  const payload = { ...parsed.data, org_id: orgId };
+  const { orgId } = getAuthContext(c);
+  // org_id is injected from the session — the frontend never supplies it.
+  const payload = { ...parsed.data, org_id: Number(orgId) };
 
-  const res = await fetch(`${env.HARNESS_URL}/run`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  const text = await res.text();
-  const contentType = res.headers.get('content-type') ?? 'application/json';
-  return new Response(text, { status: res.status, headers: { 'Content-Type': contentType } });
+  try {
+    const res = await harnessRun(payload);
+    const text = await res.text();
+    if (!res.ok) {
+      console.error('[run] harness error', res.status, text);
+      return c.json(
+        { error: 'harness_error', status: res.status, detail: text.slice(0, 500) },
+        502,
+      );
+    }
+    const contentType = res.headers.get('content-type') ?? 'application/json';
+    return new Response(text, { status: res.status, headers: { 'Content-Type': contentType } });
+  } catch (err) {
+    if (err instanceof FetchTimeoutError) {
+      return c.json({ error: 'harness_timeout' }, 504);
+    }
+    console.error('[run] harness unreachable', err);
+    return c.json({ error: 'harness_unreachable' }, 502);
+  }
 });

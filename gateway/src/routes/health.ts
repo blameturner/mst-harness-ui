@@ -1,12 +1,12 @@
 import { Hono } from 'hono';
-import { env } from '../env.js';
+import { health as harnessHealth } from '../services/harness/index.js';
 
 export const healthRoute = new Hono();
 
 healthRoute.get('/', async (c) => {
   let harness: 'ok' | 'error' = 'error';
   try {
-    const res = await fetch(`${env.HARNESS_URL}/health`);
+    const res = await harnessHealth();
     if (res.ok) harness = 'ok';
   } catch {}
   return c.json({ status: 'ok', harness });
