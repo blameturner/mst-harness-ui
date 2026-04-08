@@ -76,3 +76,27 @@ const schema = z.object({
 
 export const env = schema.parse(process.env);
 export type Env = typeof env;
+
+// Fail-fast configuration checks. These guard against footguns on LAN deployments:
+//   - A wildcard FRONTEND_ORIGIN combined with credentialed CORS is a CSRF hole.
+//   - Production deployments exposed over plain HTTP leak session cookies.
+if (env.FRONTEND_ORIGIN.includes('*')) {
+  throw new Error(
+    '[env] FRONTEND_ORIGIN must be an exact origin (credentialed CORS forbids wildcards).',
+  );
+}
+if (env.ENVIRONMENT === 'production') {
+  const httpGateway = env.GATEWAY_URL.startsWith('http://');
+  const httpFrontend = env.FRONTEND_ORIGIN.startsWith('http://');
+  if (httpGateway || httpFrontend) {
+    const allowInsecure = process.env.ALLOW_INSECURE_LAN === 'true';
+    const msg =
+      '[env] production mode with plain HTTP URLs — session cookies are not protected in transit.';
+    if (!allowInsecure) {
+      throw new Error(
+        `${msg} Set ALLOW_INSECURE_LAN=true to acknowledge a LAN-only deployment, or use HTTPS.`,
+      );
+    }
+    console.warn(`${msg} ALLOW_INSECURE_LAN=true set — proceeding.`);
+  }
+}

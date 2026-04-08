@@ -13,6 +13,7 @@ import { workersRoute } from './routes/workers.js';
 import { runRoute } from './routes/run.js';
 import { orgRoute } from './routes/org.js';
 import { healthRoute } from './routes/health.js';
+import { rateLimit } from './middleware/rateLimit.js';
 
 const app = new Hono<{ Variables: AuthVariables }>();
 
@@ -26,6 +27,17 @@ app.use(
     allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   }),
 );
+
+// Rate limits. Tight buckets on auth and setup endpoints to deter brute force
+// and setup-spam; a looser bucket on the rest of the API as a safety net.
+// In-memory limiter is appropriate for the single-instance LAN deployment.
+app.use(
+  '/api/auth/*',
+  rateLimit({ windowMs: 15 * 60 * 1000, max: 20, name: 'auth' }),
+);
+app.use('/api/setup/*', rateLimit({ windowMs: 60 * 60 * 1000, max: 10, name: 'setup' }));
+app.use('/api/setup', rateLimit({ windowMs: 60 * 60 * 1000, max: 10, name: 'setup' }));
+app.use('/api/*', rateLimit({ windowMs: 60 * 1000, max: 240, name: 'api' }));
 
 // Better Auth handles all /api/auth/** routes.
 app.on(['GET', 'POST'], '/api/auth/*', (c) => auth.handler(c.req.raw));

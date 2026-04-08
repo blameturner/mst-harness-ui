@@ -21,7 +21,9 @@ export async function initNocodbTables(): Promise<TableMap> {
     try {
       const res = await fetch(url, { headers: HEADERS });
       if (!res.ok) {
-        throw new Error(`Nocodb table discovery HTTP ${res.status}: ${await res.text()}`);
+        const detail = await res.text().catch(() => '');
+        console.error('[nocodb] table discovery failed', res.status, detail);
+        throw new Error(`Nocodb table discovery HTTP ${res.status}`);
       }
       const body = (await res.json()) as NocoTablesResponse;
       tableIds = Object.fromEntries(body.list.map((t) => [t.title, t.id]));
@@ -66,8 +68,9 @@ export async function request<T>(
   });
   if (!res.ok) {
     const detail = await res.text().catch(() => '');
+    console.error(`[nocodb] ${method} ${tableName ?? url} failed`, res.status, detail);
     throw new NocoError(
-      `Nocodb ${method} ${tableName ?? url} failed: ${res.status} ${detail}`,
+      `Nocodb ${method} ${tableName ?? 'request'} failed: ${res.status}`,
       res.status,
       tableName,
     );

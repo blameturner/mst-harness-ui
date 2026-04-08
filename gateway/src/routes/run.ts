@@ -30,10 +30,9 @@ runRoute.post('/', async (c) => {
     const text = await res.text();
     if (!res.ok) {
       console.error('[run] harness error', res.status, text);
-      return c.json(
-        { error: 'harness_error', status: res.status, detail: text.slice(0, 500) },
-        502,
-      );
+      // Do not forward the harness response body — it may contain stack
+      // traces, SQL fragments, or internal paths. Status only.
+      return c.json({ error: 'harness_error', status: res.status }, 502);
     }
     const contentType = res.headers.get('content-type') ?? 'application/json';
     return new Response(text, { status: res.status, headers: { 'Content-Type': contentType } });

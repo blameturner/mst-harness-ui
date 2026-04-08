@@ -23,10 +23,31 @@ function SetupPage() {
       await api.setup({ orgName, slug: slug || slugify(orgName), email, password, displayName });
       navigate({ to: '/login' });
     } catch (err: any) {
-      setError(err?.message ?? 'Setup failed');
+      setError(await toUserError(err));
     } finally {
       setBusy(false);
     }
+  }
+
+  async function toUserError(err: any): Promise<string> {
+    // Map known API error codes to friendly copy; don't render raw backend text.
+    const messages: Record<string, string> = {
+      already_configured: 'This system has already been set up. Please sign in.',
+      invalid_body: 'Please check the form fields and try again.',
+      setup_failed: 'Setup failed. Please try again.',
+      create_org_failed: 'Could not create organisation. Please try again.',
+      create_user_failed: 'Could not create user. Please try again.',
+      auth_signup_failed: 'Could not create account. Please try again.',
+      rate_limited: 'Too many attempts. Please wait and try again.',
+    };
+    try {
+      const payload = await err?.response?.json?.();
+      const code = payload?.error;
+      if (typeof code === 'string' && messages[code]) return messages[code];
+    } catch {
+      // fall through
+    }
+    return 'Setup failed. Please try again.';
   }
 
   return (

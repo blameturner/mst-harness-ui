@@ -39,6 +39,10 @@ export function createRow<T>(tableName: string, data: Record<string, unknown>): 
   return request<T>('POST', dataUrl(tableName), data, tableName);
 }
 
+export function deleteRow(tableName: string, rowId: string | number): Promise<unknown> {
+  return request<unknown>('DELETE', dataUrl(tableName, rowId), undefined, tableName);
+}
+
 export function patchRow<T>(
   tableName: string,
   rowId: string | number,

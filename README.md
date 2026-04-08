@@ -49,4 +49,8 @@ networks:
   mst-ag-01-network:
     external: true
 ```
+## Local development
 
+The frontend reads the gateway URL from `public/config.js` in dev.
+Edit that file if your gateway runs somewhere other than localhost:3900.
+This file is gitignored in production builds — do not commit real URLs.

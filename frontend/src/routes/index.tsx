@@ -10,8 +10,13 @@ export const Route = createFileRoute('/')({
         throw redirect({ to: '/setup' });
       }
     } catch (err) {
+      // TanStack router redirects/not-founds must be re-thrown unchanged.
       if ((err as any)?.routerCode) throw err;
-      // Gateway unreachable — still attempt setup flow.
+      // Genuine fetch failure (gateway unreachable, 5xx, etc). Log for ops
+      // visibility and fall through to /setup as a best-effort recovery —
+      // the setup POST will 409 if the system is already configured, so this
+      // cannot corrupt state.
+      console.error('[index] setup status check failed', err);
       throw redirect({ to: '/setup' });
     }
     const session = await authClient.getSession();

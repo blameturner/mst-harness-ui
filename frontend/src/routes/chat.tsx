@@ -14,6 +14,7 @@ function ChatPage() {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [active, setActive] = useState<Worker | null>(null);
   const [loadingWorkers, setLoadingWorkers] = useState(true);
+  const [workersError, setWorkersError] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [product, setProduct] = useState('');
@@ -25,9 +26,17 @@ function ChatPage() {
       .workers()
       .then((r) => {
         setWorkers(r.workers);
+        setWorkersError(null);
         if (r.workers.length > 0) setActive(r.workers[0]);
       })
-      .catch(() => setWorkers([]))
+      .catch((err) => {
+        // Surface the failure instead of pretending "no workers configured".
+        console.error('[chat] failed to load workers', err);
+        setWorkers([]);
+        setWorkersError(
+          (err as Error)?.message ?? 'Failed to load workers. Check gateway connectivity.',
+        );
+      })
       .finally(() => setLoadingWorkers(false));
   }, []);
 
@@ -100,6 +109,9 @@ function ChatPage() {
             onSelect={setActive}
             loading={loadingWorkers}
           />
+          {workersError && (
+            <p className="text-xs text-red-400 mt-2 px-1">{workersError}</p>
+          )}
         </div>
       </aside>
 
