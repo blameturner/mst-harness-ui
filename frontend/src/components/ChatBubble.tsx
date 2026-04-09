@@ -39,7 +39,7 @@ export function ChatBubble({ message }: Props) {
   if (message.role === 'user') {
     return (
       <div className="flex justify-end animate-fadeIn">
-        <div className="max-w-[78%] px-4 py-3 rounded-2xl rounded-br-sm text-[15px] leading-relaxed whitespace-pre-wrap bg-fg text-bg font-medium">
+        <div className="max-w-[92%] md:max-w-[78%] px-4 py-3 rounded-2xl rounded-br-sm text-[15px] leading-relaxed whitespace-pre-wrap bg-fg text-bg font-medium">
           {message.content}
         </div>
       </div>
@@ -60,7 +60,7 @@ export function ChatBubble({ message }: Props) {
     const label = message.status === 'searching' ? 'Searching the web' : 'Thinking';
     return (
       <div className="flex justify-start animate-fadeIn">
-        <div className="max-w-[78%] px-4 py-3 rounded-2xl rounded-bl-sm text-[15px] leading-relaxed bg-panel border border-border text-muted italic">
+        <div className="max-w-[92%] md:max-w-[78%] px-4 py-3 rounded-2xl rounded-bl-sm text-[15px] leading-relaxed bg-panel border border-border text-muted italic">
           {label} <ElapsedTimer startedAt={message.startedAt} />
           <span className="caret" />
         </div>
@@ -71,7 +71,7 @@ export function ChatBubble({ message }: Props) {
   if (message.status === 'error') {
     return (
       <div className="flex justify-start animate-fadeIn">
-        <div className="max-w-[78%] px-4 py-3 rounded-2xl rounded-bl-sm text-[13px] leading-relaxed bg-panel border border-red-600/40 text-red-600 font-mono">
+        <div className="max-w-[92%] md:max-w-[78%] px-4 py-3 rounded-2xl rounded-bl-sm text-[13px] leading-relaxed bg-panel border border-red-600/40 text-red-600 font-mono">
           {message.errorMessage || message.content || 'Request failed'}
         </div>
       </div>
@@ -82,7 +82,7 @@ export function ChatBubble({ message }: Props) {
 
   return (
     <div className="flex justify-start animate-fadeIn">
-      <div className="max-w-[85%] px-5 py-4 rounded-2xl rounded-bl-sm bg-panel border border-border text-fg markdown-body">
+      <div className="max-w-[94%] md:max-w-[85%] px-5 py-4 rounded-2xl rounded-bl-sm bg-panel border border-border text-fg markdown-body">
         {message.searchFailed && (
           <div className="mb-3 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.16em] font-mono text-muted px-2 py-0.5 rounded-full border border-border bg-bg">
             <span aria-hidden>·</span> Search returned no results

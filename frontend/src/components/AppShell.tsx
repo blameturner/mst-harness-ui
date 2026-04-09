@@ -33,16 +33,16 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="h-screen flex flex-col bg-bg text-fg">
-      <header className="shrink-0 h-14 border-b border-border bg-bg/90 backdrop-blur flex items-center justify-between px-6">
-        <div className="flex items-center gap-8 min-w-0">
+      <header className="shrink-0 h-14 border-b border-border bg-bg/90 backdrop-blur flex items-center justify-between px-3 sm:px-6">
+        <div className="flex items-center gap-3 sm:gap-8 min-w-0">
           <Link
             to="/chat"
-            className="font-display text-xl font-semibold tracking-tightest leading-none select-none whitespace-nowrap"
+            className="font-display text-lg sm:text-xl font-semibold tracking-tightest leading-none select-none whitespace-nowrap"
           >
             Jeff<span className="italic">GPT</span>
             <span className="inline-block w-1.5 h-1.5 bg-fg rounded-full align-middle ml-1.5" />
           </Link>
-          <nav className="flex items-center gap-1">
+          <nav className="flex items-center gap-0.5 sm:gap-1 overflow-x-auto no-scrollbar">
             {NAV.map((item) => {
               const prefix = item.matchPrefix ?? item.to;
               const isActive =
@@ -52,7 +52,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   key={item.to}
                   to={item.to}
                   className={[
-                    'px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+                    'px-2.5 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap',
                     isActive
                       ? 'bg-fg text-bg'
                       : 'text-muted hover:text-fg hover:bg-panelHi',

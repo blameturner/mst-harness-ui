@@ -98,7 +98,7 @@ export function ComposerDock({
       <div className="relative">
         {/* subtle highlight rule */}
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-fg/20 to-transparent" />
-        <div className="px-5 pt-3 pb-2 flex items-stretch gap-5 overflow-x-auto">
+        <div className="px-3 sm:px-5 pt-2 sm:pt-3 pb-2 flex items-stretch gap-3 sm:gap-5 overflow-x-auto no-scrollbar">
           {/* ——— Left slot (e.g. mode switcher for code) ——— */}
           {leftRailSlot && (
             <>
@@ -239,7 +239,7 @@ export function ComposerDock({
       </div>
 
       {/* Composer row ---------------------------------------------------------- */}
-      <div className="px-5 pt-1 pb-4">
+      <div className="px-3 sm:px-5 pt-1 pb-3 sm:pb-4">
         {attachmentPreview && <div className="mb-2">{attachmentPreview}</div>}
         <div className="flex items-end gap-3 border border-border rounded-xl bg-panel/40 focus-within:border-fg transition-colors px-4 py-3 shadow-card">
           {onAttach && (

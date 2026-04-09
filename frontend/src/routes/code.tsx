@@ -19,6 +19,7 @@ import {
 } from '../lib/api';
 import { authClient } from '../lib/auth-client';
 import { ComposerDock } from '../components/ComposerDock';
+import { Sheet, IconButton } from '../components/Sheet';
 import { styleLabel } from '../lib/styles';
 
 type Mode = 'plan' | 'execute' | 'debug';
@@ -284,6 +285,11 @@ function CodePage() {
   const [styleKey, setStyleKey] = useState<string>('');
 
   const [runOutput, setRunOutput] = useState<Record<string, string>>({});
+
+  // Mobile off-canvas state: sessions list on the left, code output rail on
+  // the right. On md+ these are permanent columns and the state is unused.
+  const [sessionsSheetOpen, setSessionsSheetOpen] = useState(false);
+  const [railSheetOpen, setRailSheetOpen] = useState(false);
 
   const streamAbortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -609,62 +615,86 @@ function CodePage() {
   const lastBlocks = lastAssistant ? parseCodeBlocks(lastAssistant.content) : [];
   const fileTargeted = lastBlocks.filter((b) => b.file);
 
+  // ——— Inline render helpers: reused by both the desktop columns AND the
+  //     mobile off-canvas Sheets so nothing drifts out of sync.
+  const sidebarBody = (opts?: { onPick?: () => void }) => (
+    <>
+      <div className="border-b border-border px-4 py-3 flex items-center justify-between">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-muted">Code sessions</p>
+        <button
+          onClick={() => {
+            newSession();
+            opts?.onPick?.();
+          }}
+          className="text-[10px] uppercase tracking-[0.14em] font-mono border border-border px-2 py-1 rounded hover:border-fg hover:text-fg"
+        >
+          New
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto p-2 space-y-1 min-h-0">
+        {sessionsLoading ? (
+          <p className="text-muted text-xs px-2 py-2">Loading…</p>
+        ) : sessions.length === 0 ? (
+          <p className="text-muted text-xs px-2 py-2">No sessions yet.</p>
+        ) : (
+          sessions.map((c) => {
+            const active = c.Id === conversationId;
+            return (
+              <div
+                key={c.Id}
+                className={`group w-full text-left px-2 py-1.5 rounded border transition truncate ${
+                  active
+                    ? 'bg-panelHi border-fg'
+                    : 'bg-panel border-border hover:border-fg/60'
+                }`}
+              >
+                <button
+                  onClick={() => {
+                    void selectSession(c);
+                    opts?.onPick?.();
+                  }}
+                  className="w-full text-left block"
+                >
+                  <div className="text-[13px] font-medium truncate">
+                    {c.title || 'Untitled'}
+                  </div>
+                  <div className="text-[9px] uppercase tracking-wider text-muted truncate flex items-center justify-between">
+                    <span className="truncate">{c.model}</span>
+                    <span className="ml-2 font-mono px-1 border border-border rounded">
+                      {c.mode ?? 'plan'}
+                    </span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => void renameSession(c)}
+                  className="mt-1 text-[9px] uppercase tracking-[0.14em] text-muted hover:text-fg md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                >
+                  Rename
+                </button>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </>
+  );
+
   return (
     <div className="h-full flex bg-bg text-fg">
-      {/* Sidebar */}
-      <aside className="w-64 shrink-0 border-r border-border flex flex-col bg-panel/20">
-        <div className="border-b border-border px-4 py-3 flex items-center justify-between">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-muted">Code sessions</p>
-          <button
-            onClick={newSession}
-            className="text-[10px] uppercase tracking-[0.14em] font-mono border border-border px-2 py-1 rounded hover:border-fg hover:text-fg"
-          >
-            New
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {sessionsLoading ? (
-            <p className="text-muted text-xs px-2 py-2">Loading…</p>
-          ) : sessions.length === 0 ? (
-            <p className="text-muted text-xs px-2 py-2">No sessions yet.</p>
-          ) : (
-            sessions.map((c) => {
-              const active = c.Id === conversationId;
-              return (
-                <div
-                  key={c.Id}
-                  className={`group w-full text-left px-2 py-1.5 rounded border transition truncate ${
-                    active
-                      ? 'bg-panelHi border-fg'
-                      : 'bg-panel border-border hover:border-fg/60'
-                  }`}
-                >
-                  <button
-                    onClick={() => void selectSession(c)}
-                    className="w-full text-left block"
-                  >
-                    <div className="text-[13px] font-medium truncate">
-                      {c.title || 'Untitled'}
-                    </div>
-                    <div className="text-[9px] uppercase tracking-wider text-muted truncate flex items-center justify-between">
-                      <span className="truncate">{c.model}</span>
-                      <span className="ml-2 font-mono px-1 border border-border rounded">
-                        {c.mode ?? 'plan'}
-                      </span>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => void renameSession(c)}
-                    className="mt-1 text-[9px] uppercase tracking-[0.14em] text-muted hover:text-fg opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    Rename
-                  </button>
-                </div>
-              );
-            })
-          )}
-        </div>
+      {/* Sidebar (desktop column) */}
+      <aside className="hidden md:flex w-64 shrink-0 border-r border-border flex-col bg-panel/20">
+        {sidebarBody()}
       </aside>
+
+      {/* Sidebar (mobile sheet) */}
+      <Sheet
+        open={sessionsSheetOpen}
+        side="left"
+        onClose={() => setSessionsSheetOpen(false)}
+        label="Code sessions"
+      >
+        {sidebarBody({ onPick: () => setSessionsSheetOpen(false) })}
+      </Sheet>
 
       {/* Transcript column */}
       <div
@@ -673,12 +703,37 @@ function CodePage() {
         onDragLeave={onDragLeave}
         onDrop={(e) => void onDrop(e)}
       >
-        <header className="border-b border-border px-6 py-4 flex items-center justify-between gap-4">
-          <div className="min-w-0">
+        <header className="border-b border-border px-3 sm:px-6 py-3 sm:py-4 flex items-center gap-3">
+          <div className="md:hidden">
+            <IconButton
+              onClick={() => setSessionsSheetOpen(true)}
+              label="Open sessions"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <line x1="4" y1="7" x2="20" y2="7" />
+                <line x1="4" y1="12" x2="20" y2="12" />
+                <line x1="4" y1="17" x2="20" y2="17" />
+              </svg>
+            </IconButton>
+          </div>
+          <div className="min-w-0 flex-1">
             <p className="text-[10px] uppercase tracking-[0.18em] text-muted">Code worker</p>
-            <h2 className="font-display text-xl font-semibold tracking-tightest">
+            <h2 className="font-display text-base sm:text-xl font-semibold tracking-tightest truncate">
               Plan / Run / Debug
             </h2>
+          </div>
+          <div className="xl:hidden shrink-0">
+            <button
+              type="button"
+              onClick={() => setRailSheetOpen(true)}
+              className="text-[11px] uppercase tracking-[0.14em] font-mono px-2 sm:px-3 py-1.5 rounded-md border border-border text-fg hover:bg-panelHi transition-colors"
+              title="Show code output"
+            >
+              <span className="hidden sm:inline">Output</span>
+              <span className="sm:hidden">
+                {lastBlocks.length > 0 ? `Output · ${lastBlocks.length}` : 'Output'}
+              </span>
+            </button>
           </div>
         </header>
 
@@ -698,7 +753,7 @@ function CodePage() {
 
         <div
           ref={scrollRef}
-          className={`flex-1 overflow-y-auto px-6 py-6 space-y-5 ${
+          className={`flex-1 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6 space-y-5 ${
             dragOver ? 'bg-panelHi/30 outline outline-2 outline-fg/40' : ''
           }`}
         >
@@ -725,7 +780,7 @@ function CodePage() {
                 >
                   <div
                     className={[
-                      'max-w-[85%] px-4 py-3 rounded-2xl text-[14px] leading-relaxed',
+                      'max-w-[94%] md:max-w-[85%] px-4 py-3 rounded-2xl text-[14px] leading-relaxed',
                       m.role === 'user'
                         ? 'bg-fg text-bg rounded-br-sm whitespace-pre-wrap'
                         : 'bg-panel border border-border text-fg rounded-bl-sm markdown-body',
@@ -861,10 +916,30 @@ function CodePage() {
         />
       </div>
 
-      {/* Right rail */}
-      <div className="w-1/2 max-w-[720px] flex flex-col bg-panel/20">
+      {/* Right rail (desktop column, xl+) */}
+      <div className="hidden xl:flex w-1/2 max-w-[720px] flex-col bg-panel/20">
+        {renderRailBody()}
+      </div>
+
+      {/* Right rail (mobile + tablet sheet, <xl) */}
+      <Sheet
+        open={railSheetOpen}
+        side="right"
+        onClose={() => setRailSheetOpen(false)}
+        widthClass="w-[94vw] max-w-[640px]"
+        mobileOnlyClass="xl:hidden"
+        label="Code output"
+      >
+        <div className="flex flex-col h-full bg-bg">{renderRailBody()}</div>
+      </Sheet>
+    </div>
+  );
+
+  function renderRailBody() {
+    return (
+      <>
         {checklist.length > 0 && (
-          <div className="border-b border-border px-6 py-4">
+          <div className="border-b border-border px-4 sm:px-6 py-4">
             <p className="text-[10px] uppercase tracking-[0.18em] text-muted mb-2">
               Plan checklist
             </p>
@@ -889,25 +964,35 @@ function CodePage() {
             </ul>
           </div>
         )}
-        <header className="border-b border-border px-6 py-4 flex items-center justify-between">
-          <div>
+        <header className="border-b border-border px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
+          <div className="min-w-0">
             <p className="text-[10px] uppercase tracking-[0.18em] text-muted">Code output</p>
-            <h3 className="font-display text-lg font-semibold tracking-tightest">
+            <h3 className="font-display text-lg font-semibold tracking-tightest truncate">
               {lastBlocks.length > 0
                 ? `${lastBlocks.length} block${lastBlocks.length === 1 ? '' : 's'}`
                 : 'No code yet'}
             </h3>
           </div>
-          {fileTargeted.length >= 2 && (
+          <div className="flex items-center gap-2 shrink-0">
+            {fileTargeted.length >= 2 && (
+              <button
+                onClick={() => applyAll(lastBlocks)}
+                className="text-[11px] uppercase tracking-[0.14em] font-mono border border-fg px-3 py-1 rounded hover:bg-fg hover:text-bg transition-colors"
+              >
+                Apply all ({fileTargeted.length})
+              </button>
+            )}
             <button
-              onClick={() => applyAll(lastBlocks)}
-              className="text-[11px] uppercase tracking-[0.14em] font-mono border border-fg px-3 py-1 rounded hover:bg-fg hover:text-bg transition-colors"
+              type="button"
+              onClick={() => setRailSheetOpen(false)}
+              className="xl:hidden text-[11px] uppercase tracking-[0.14em] font-mono px-2 py-1 rounded border border-border text-muted hover:border-fg hover:text-fg"
+              aria-label="Close output"
             >
-              Apply all ({fileTargeted.length})
+              ×
             </button>
-          )}
+          </div>
         </header>
-        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-4 min-h-0">
           {lastBlocks.length === 0 ? (
             <p className="text-muted text-sm font-mono">
               Code blocks from the latest assistant message will appear here.
@@ -916,9 +1001,9 @@ function CodePage() {
             lastBlocks.map((b) => <CodeBlockCard key={b.index} block={b} workspace={files} />)
           )}
         </div>
-      </div>
-    </div>
-  );
+      </>
+    );
+  }
 }
 
 export const Route = createFileRoute('/code')({

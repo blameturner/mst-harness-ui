@@ -12,6 +12,7 @@ import { authClient } from '../lib/auth-client';
 import { ConversationList } from '../components/ConversationList';
 import { ChatBubble, type DisplayMessage } from '../components/ChatBubble';
 import { ComposerDock, type ComposerToggle } from '../components/ComposerDock';
+import { Sheet, IconButton } from '../components/Sheet';
 import { styleLabel } from '../lib/styles';
 
 
@@ -74,6 +75,8 @@ function ChatPage() {
   const [stats, setStats] = useState<ConversationSummary | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  /** Mobile-only: off-canvas sidebar with conversation history. */
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [renameTitle, setRenameTitle] = useState('');
   const [renaming, setRenaming] = useState(false);
   const [renameError, setRenameError] = useState<string | null>(null);
@@ -533,76 +536,83 @@ function ChatPage() {
     )}
 
     <div className="h-full flex bg-bg text-fg">
-      {/* ——— Sidebar ——— */}
-      <aside className="w-80 border-r border-border bg-panel/60 flex flex-col">
-        <div className="px-6 pt-6 pb-4 border-b border-border">
-          <h1 className="font-display text-3xl font-semibold tracking-tightest leading-none">
-            Jeff<span className="italic">GPT</span>
-            <span className="inline-block w-2 h-2 bg-fg rounded-full align-middle ml-2" />
-          </h1>
-          <p className="text-[11px] uppercase tracking-[0.18em] text-muted mt-2">
-            local intelligence
-          </p>
-        </div>
-
-        <div className="px-4 pt-4 pb-2">
-          <button
-            onClick={newChat}
-            className="w-full flex items-center justify-between px-3 py-2.5 rounded-md border border-fg bg-bg text-fg text-sm font-medium hover:bg-fg hover:text-bg transition-colors"
-          >
-            <span>New conversation</span>
-            <span className="text-lg leading-none">＋</span>
-          </button>
-        </div>
-
-        <div className="px-4 pb-2">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-muted mt-3 mb-1 px-1">
-            History
-          </p>
-        </div>
-        <div className="px-3 flex-1 overflow-y-auto pb-4">
-          <ConversationList
-            conversations={conversations}
-            activeId={activeId}
-            onSelect={selectConversation}
-            loading={loadingConversations}
-          />
-        </div>
-
+      {/* ——— Sidebar (desktop column) ——— */}
+      <aside className="hidden md:flex w-80 border-r border-border bg-panel/60 flex-col">
+        <SidebarBody
+          onNewChat={() => newChat()}
+          conversations={conversations}
+          activeId={activeId}
+          onSelect={(c) => void selectConversation(c)}
+          loading={loadingConversations}
+        />
       </aside>
+
+      {/* ——— Sidebar (mobile off-canvas sheet) ——— */}
+      <Sheet
+        open={sidebarOpen}
+        side="left"
+        onClose={() => setSidebarOpen(false)}
+        label="Conversations"
+      >
+        <SidebarBody
+          onNewChat={() => {
+            newChat();
+            setSidebarOpen(false);
+          }}
+          conversations={conversations}
+          activeId={activeId}
+          onSelect={(c) => {
+            void selectConversation(c);
+            setSidebarOpen(false);
+          }}
+          loading={loadingConversations}
+        />
+      </Sheet>
 
 
       {/* ——— Main thread ——— */}
       <main className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="border-b border-border bg-bg/80 backdrop-blur px-8 py-5 flex items-center justify-between gap-6">
-          <div className="min-w-0">
+        <header className="border-b border-border bg-bg/80 backdrop-blur px-3 sm:px-6 md:px-8 py-3 md:py-5 flex items-center gap-3 md:gap-6">
+          <IconButton
+            onClick={() => setSidebarOpen(true)}
+            label="Open conversations"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="md:hidden">
+              <line x1="4" y1="7" x2="20" y2="7" />
+              <line x1="4" y1="12" x2="20" y2="12" />
+              <line x1="4" y1="17" x2="20" y2="17" />
+            </svg>
+            <span className="hidden md:inline text-[11px] uppercase tracking-[0.14em] font-mono">☰</span>
+          </IconButton>
+          <div className="min-w-0 flex-1">
             <p className="text-[10px] uppercase tracking-[0.18em] text-muted">
               {activeConversation ? 'Conversation' : 'New conversation'}
             </p>
-            <h2 className="font-display text-xl font-semibold truncate tracking-tightest">
+            <h2 className="font-display text-base sm:text-lg md:text-xl font-semibold truncate tracking-tightest">
               {activeConversation?.title || 'Untitled'}
             </h2>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2 md:gap-3 shrink-0">
             <button
               type="button"
               onClick={() => setDrawerOpen((v) => !v)}
               className={[
-                'text-[11px] uppercase tracking-[0.14em] font-mono px-3 py-1.5 rounded-md border transition-colors',
+                'text-[11px] uppercase tracking-[0.14em] font-mono px-2 sm:px-3 py-1.5 rounded-md border transition-colors',
                 drawerOpen
                   ? 'border-fg bg-fg text-bg'
                   : 'border-border text-fg hover:bg-panelHi',
               ].join(' ')}
               title="Show chat properties"
             >
-              Properties
+              <span className="hidden sm:inline">Properties</span>
+              <span className="sm:hidden">Info</span>
             </button>
           </div>
         </header>
 
         {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-10">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 sm:px-6 py-6 md:py-10">
           <div className="max-w-3xl mx-auto space-y-5">
             {loadingMessages ? (
               <p className="text-center text-muted text-sm pt-16">Loading conversation…</p>
@@ -657,9 +667,9 @@ function ChatPage() {
         </div>
 
         {error && (
-          <div className="px-6 pb-2">
+          <div className="px-3 sm:px-6 pb-2">
             <div className="max-w-3xl mx-auto">
-              <p className="text-xs text-red-600 font-mono">{error}</p>
+              <p className="text-xs text-red-600 font-mono break-words">{error}</p>
             </div>
           </div>
         )}
@@ -724,9 +734,17 @@ function ChatPage() {
         />
       </main>
 
-      {/* ——— Right rail: Properties drawer ——— */}
+      {/* ——— Right rail: Properties drawer. Column on md+, full-screen
+              overlay with backdrop on mobile.                          ——— */}
       {drawerOpen && (
-        <aside className="w-[380px] shrink-0 border-l border-border bg-panel/40 flex flex-col animate-fadeIn">
+        <>
+          <button
+            type="button"
+            aria-label="Close properties"
+            onClick={() => setDrawerOpen(false)}
+            className="md:hidden fixed inset-0 z-40 bg-fg/40 backdrop-blur-sm animate-backdrop"
+          />
+          <aside className="z-50 fixed inset-y-0 right-0 w-[92vw] max-w-[380px] md:static md:inset-auto md:w-[380px] shrink-0 border-l border-border bg-bg md:bg-panel/40 flex flex-col animate-sheet-right md:animate-fadeIn">
           <header className="shrink-0 flex items-start justify-between px-5 py-4 border-b border-border">
             <div className="min-w-0">
               <p className="text-[10px] uppercase tracking-[0.18em] text-muted">Chat</p>
@@ -1055,8 +1073,66 @@ function ChatPage() {
             )}
           </div>
         </aside>
+        </>
       )}
     </div>
+    </>
+  );
+}
+
+/**
+ * Shared sidebar body for the chat page — rendered both in the permanent
+ * desktop column (md+) and inside the mobile off-canvas Sheet. Factored out
+ * so both callers get identical markup without JSX duplication.
+ */
+function SidebarBody({
+  onNewChat,
+  conversations,
+  activeId,
+  onSelect,
+  loading,
+}: {
+  onNewChat: () => void;
+  conversations: Conversation[];
+  activeId: number | null;
+  onSelect: (c: Conversation) => void;
+  loading: boolean;
+}) {
+  return (
+    <>
+      <div className="px-6 pt-6 pb-4 border-b border-border">
+        <h1 className="font-display text-3xl font-semibold tracking-tightest leading-none">
+          Jeff<span className="italic">GPT</span>
+          <span className="inline-block w-2 h-2 bg-fg rounded-full align-middle ml-2" />
+        </h1>
+        <p className="text-[11px] uppercase tracking-[0.18em] text-muted mt-2">
+          local intelligence
+        </p>
+      </div>
+
+      <div className="px-4 pt-4 pb-2">
+        <button
+          onClick={onNewChat}
+          className="w-full flex items-center justify-between px-3 py-2.5 rounded-md border border-fg bg-bg text-fg text-sm font-medium hover:bg-fg hover:text-bg transition-colors"
+        >
+          <span>New conversation</span>
+          <span className="text-lg leading-none">＋</span>
+        </button>
+      </div>
+
+      <div className="px-4 pb-2">
+        <p className="text-[10px] uppercase tracking-[0.16em] text-muted mt-3 mb-1 px-1">
+          History
+        </p>
+      </div>
+      <div className="px-3 flex-1 overflow-y-auto pb-4 min-h-0">
+        <ConversationList
+          conversations={conversations}
+          activeId={activeId}
+          onSelect={onSelect}
+          loading={loading}
+        />
+      </div>
     </>
   );
 }

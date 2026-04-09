@@ -56,3 +56,30 @@ body {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
 }
+
+/* Utility: hide scrollbars while keeping scrolling behavior. Used by the
+ * top-nav and the composer dock control rail where chrome would be noise. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Sheet slide-in animation for mobile off-canvas panels. */
+@keyframes sheetInLeft {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+@keyframes sheetInRight {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.animate-sheet-left  { animation: sheetInLeft 220ms cubic-bezier(.22,.61,.36,1); }
+.animate-sheet-right { animation: sheetInRight 220ms cubic-bezier(.22,.61,.36,1); }
+.animate-backdrop    { animation: backdropIn 180ms ease-out; }
