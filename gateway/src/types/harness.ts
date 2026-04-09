@@ -47,4 +47,5 @@ export interface HarnessCodeRequest {
   conversation_id?: number | null;
   temperature?: number;
   max_tokens?: number;
+  codebase_collection?: string | null;
 }

@@ -1,6 +1,11 @@
 export {
   chat,
   code,
+  listCodeConversations,
+  getCodeConversation,
+  getCodeConversationMessages,
+  getCodeWorkspace,
+  updateCodeConversation,
   getConversationMessages,
   getConversationSummary,
   getGraphCoverage,

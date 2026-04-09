@@ -111,6 +111,7 @@ export type StreamEvent =
       query: string;
       reason: string;
     }
+  | { type: 'plan_checklist'; steps: string[] }
   | { type: 'error'; message: string };
 
 export interface ChatStreamRequest {
@@ -144,6 +145,34 @@ export interface CodeStreamRequest {
   conversation_id?: number | null;
   temperature?: number;
   max_tokens?: number;
+  codebase_collection?: string | null;
+}
+
+export interface CodeConversation {
+  Id: number;
+  org_id: number;
+  model: string;
+  title: string;
+  /** Current mode for this code session (stored in rag_collection column). */
+  mode?: 'plan' | 'execute' | 'debug';
+  rag_collection?: string | null;
+  CreatedAt?: string;
+  UpdatedAt?: string;
+}
+
+export interface CodeMessageRow {
+  Id: number;
+  conversation_id: number;
+  role: ChatRole;
+  content: string;
+  mode?: 'plan' | 'execute' | 'debug' | null;
+  files_json?: string | null;
+  CreatedAt?: string;
+}
+
+export interface CodeWorkspaceFile {
+  name: string;
+  content: string;
 }
 
 export interface RunStreamRequest {
@@ -396,6 +425,28 @@ export const api = {
     postSSE('api/chat', body, signal),
   codeStream: (body: CodeStreamRequest, signal?: AbortSignal) =>
     postSSE('api/code', body, signal),
+  code: {
+    conversations: () =>
+      http
+        .get('api/code/conversations')
+        .json<{ conversations: CodeConversation[] }>(),
+    conversation: (id: number) =>
+      http
+        .get(`api/code/conversations/${id}`)
+        .json<{ conversation: CodeConversation }>(),
+    messages: (id: number) =>
+      http
+        .get(`api/code/conversations/${id}/messages`)
+        .json<{ conversation: CodeConversation; messages: CodeMessageRow[] }>(),
+    workspace: (id: number) =>
+      http
+        .get(`api/code/conversations/${id}/workspace`)
+        .json<{ files: CodeWorkspaceFile[] }>(),
+    rename: (id: number, title: string) =>
+      http
+        .patch(`api/code/conversations/${id}`, { json: { title } })
+        .json<{ conversation: CodeConversation }>(),
+  },
   runStream: (body: RunStreamRequest, signal?: AbortSignal) =>
     postSSE('api/run/stream', body, signal),
 

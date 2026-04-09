@@ -38,6 +38,45 @@ export function code(payload: HarnessCodeRequest): Promise<Response> {
   return harnessClient.post('/code', payload, HARNESS_CHAT_TIMEOUT_MS);
 }
 
+export function listCodeConversations(orgId: number, limit = 50): Promise<Response> {
+  return harnessClient.get(
+    `/code/conversations?org_id=${orgId}&limit=${limit}`,
+    HARNESS_CONVERSATIONS_TIMEOUT_MS,
+  );
+}
+
+export function getCodeConversation(conversationId: number): Promise<Response> {
+  return harnessClient.get(
+    `/code/conversations/${conversationId}`,
+    HARNESS_CONVERSATIONS_TIMEOUT_MS,
+  );
+}
+
+export function getCodeConversationMessages(conversationId: number): Promise<Response> {
+  return harnessClient.get(
+    `/code/conversations/${conversationId}/messages`,
+    HARNESS_CONVERSATIONS_TIMEOUT_MS,
+  );
+}
+
+export function getCodeWorkspace(conversationId: number): Promise<Response> {
+  return harnessClient.get(
+    `/code/conversations/${conversationId}/workspace`,
+    HARNESS_CONVERSATIONS_TIMEOUT_MS,
+  );
+}
+
+export function updateCodeConversation(
+  conversationId: number,
+  body: { title?: string },
+): Promise<Response> {
+  return harnessClient.patch(
+    `/code/conversations/${conversationId}`,
+    body,
+    HARNESS_CONVERSATIONS_TIMEOUT_MS,
+  );
+}
+
 export function listAgents(orgId: number): Promise<Response> {
   return harnessClient.get(
     `/agents?org_id=${orgId}`,
