@@ -14,7 +14,7 @@ import {
   getGraphCoverage,
   getSchedulerStatus,
   triggerScheduler,
-} from '../services/harness';
+} from '../services/harness/index.js';
 import type { AuthVariables } from '../types/auth.js';
 
 export const enrichmentRoute = new Hono<{ Variables: AuthVariables }>();
