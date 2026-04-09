@@ -9,12 +9,12 @@ import {
   listPage,
   listWhere,
   patchRow,
-} from '../services/nocodb/index.js';
+} from '../services/nocodb';
 import {
   getGraphCoverage,
   getSchedulerStatus,
   triggerScheduler,
-} from '../services/harness/index.js';
+} from '../services/harness';
 import type { AuthVariables } from '../types/auth.js';
 
 export const enrichmentRoute = new Hono<{ Variables: AuthVariables }>();
@@ -227,17 +227,31 @@ enrichmentRoute.post('/sources', async (c) => {
   }
 });
 
+/**
+ * Look up a scrape_targets row by id, scoped to the caller's org. Returns
+ * `null` for both "invalid id" and "not found" — callers should validate the
+ * id param themselves before calling so they can map each case to the right
+ * HTTP status.
+ */
 async function loadOwnedSource(
   orgId: number,
-  idParam: string,
+  id: number,
 ): Promise<ScrapeTargetRow | null> {
-  const id = assertInteger(idParam, 'source_id');
   const rows = await listWhere<ScrapeTargetRow>(
     'scrape_targets',
     `(Id,eq,${id})~and(org_id,eq,${orgId})`,
     1,
   );
   return rows[0] ?? null;
+}
+
+function parseIdParam(raw: string | undefined): number | null {
+  if (raw == null) return null;
+  try {
+    return assertInteger(raw, 'source_id');
+  } catch {
+    return null;
+  }
 }
 
 enrichmentRoute.patch('/sources/:id', async (c) => {
@@ -248,7 +262,9 @@ enrichmentRoute.patch('/sources/:id', async (c) => {
   }
   const { orgId } = getAuthContext(c);
   try {
-    const existing = await loadOwnedSource(orgId, c.req.param('id'));
+    const id = parseIdParam(c.req.param('id'));
+    if (id == null) return c.json({ error: 'invalid_id' }, 400);
+    const existing = await loadOwnedSource(orgId, id);
     if (!existing) return c.json({ error: 'not_found' }, 404);
     const updated = await patchRow<ScrapeTargetRow>(
       'scrape_targets',
@@ -265,7 +281,9 @@ enrichmentRoute.patch('/sources/:id', async (c) => {
 enrichmentRoute.delete('/sources/:id', async (c) => {
   const { orgId } = getAuthContext(c);
   try {
-    const existing = await loadOwnedSource(orgId, c.req.param('id'));
+    const id = parseIdParam(c.req.param('id'));
+    if (id == null) return c.json({ error: 'invalid_id' }, 400);
+    const existing = await loadOwnedSource(orgId, id);
     if (!existing) return c.json({ error: 'not_found' }, 404);
     await patchRow('scrape_targets', existing.Id, { active: false });
     return c.json({ ok: true });
@@ -280,7 +298,9 @@ enrichmentRoute.post('/sources/:id/trigger', async (c) => {
   // We still verify ownership so a caller can't trigger from another org.
   const { orgId } = getAuthContext(c);
   try {
-    const existing = await loadOwnedSource(orgId, c.req.param('id'));
+    const id = parseIdParam(c.req.param('id'));
+    if (id == null) return c.json({ error: 'invalid_id' }, 400);
+    const existing = await loadOwnedSource(orgId, id);
     if (!existing) return c.json({ error: 'not_found' }, 404);
     const res = await triggerScheduler();
     return forward(res);
@@ -299,7 +319,9 @@ enrichmentRoute.post('/sources/:id/flush', async (c) => {
   // Python client's defaults.
   const { orgId } = getAuthContext(c);
   try {
-    const existing = await loadOwnedSource(orgId, c.req.param('id'));
+    const id = parseIdParam(c.req.param('id'));
+    if (id == null) return c.json({ error: 'invalid_id' }, 400);
+    const existing = await loadOwnedSource(orgId, id);
     if (!existing) return c.json({ error: 'not_found' }, 404);
     await patchRow('scrape_targets', existing.Id, {
       chunk_count: 0,

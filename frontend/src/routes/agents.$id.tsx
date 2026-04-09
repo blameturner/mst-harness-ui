@@ -26,13 +26,13 @@ function AgentDetailPage() {
       setLoading(true);
       setError(null);
       try {
-        const [list, runsRes, outputsRes] = await Promise.all([
-          api.agents.list(),
+        const [agentRes, runsRes, outputsRes] = await Promise.all([
+          api.agents.get(agentId),
           api.agents.runs(agentId),
           api.agents.outputs(agentId),
         ]);
         if (cancelled) return;
-        setAgent(list.agents.find((a) => a.Id === agentId) ?? null);
+        setAgent(agentRes);
         setRuns(runsRes.runs);
         setOutputs(outputsRes.outputs);
       } catch (err) {

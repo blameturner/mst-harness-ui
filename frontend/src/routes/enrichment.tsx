@@ -423,7 +423,7 @@ function SuggestionsTab() {
             <div className="flex justify-between items-start mb-2">
               <h3 className="font-display text-lg">{s.name}</h3>
               <span className="text-[10px] uppercase tracking-[0.14em] font-mono text-muted">
-                {s.confidence} · {s.confidence_score}/10
+                {s.confidence} · score {s.confidence_score}
               </span>
             </div>
             <a
@@ -499,7 +499,9 @@ function LogTab() {
   const [total, setTotal] = useState(0);
   const [selectedEvents, setSelectedEvents] = useState<EnrichmentEventType[]>([]);
   const [sourceFilter, setSourceFilter] = useState<number | ''>('');
+  const [cycleFilter, setCycleFilter] = useState<string>('');
   const [sources, setSources] = useState<ScrapeTarget[]>([]);
+  const [knownCycles, setKnownCycles] = useState<string[]>([]);
 
   useEffect(() => {
     api.enrichment.sources().then((r) => setSources(r.sources)).catch(() => undefined);
@@ -514,14 +516,22 @@ function LogTab() {
         limit,
         event_type: selectedEvents.length ? selectedEvents.join(',') : undefined,
         scrape_target_id: sourceFilter === '' ? undefined : Number(sourceFilter),
+        cycle_id: cycleFilter || undefined,
       })
       .then((r) => {
         setEntries(r.entries);
         setTotal(r.total);
+        // Remember every cycle id we've seen so the filter dropdown grows
+        // with the user's browsing, even across paginated windows.
+        setKnownCycles((prev) => {
+          const seen = new Set(prev);
+          for (const e of r.entries) if (e.cycle_id) seen.add(e.cycle_id);
+          return Array.from(seen).sort().reverse();
+        });
       })
       .catch((err) => setError((err as Error).message))
       .finally(() => setLoading(false));
-  }, [page, limit, selectedEvents, sourceFilter]);
+  }, [page, limit, selectedEvents, sourceFilter, cycleFilter]);
 
   const grouped = useMemo(() => {
     const groups = new Map<string, EnrichmentLogEntry[]>();
@@ -564,25 +574,47 @@ function LogTab() {
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-3">
-          <label className="text-[10px] uppercase tracking-[0.14em] font-mono text-muted">
-            source
-          </label>
-          <select
-            value={sourceFilter}
-            onChange={(e) => {
-              setPage(1);
-              setSourceFilter(e.target.value === '' ? '' : Number(e.target.value));
-            }}
-            className="bg-bg border border-border px-2 py-1 text-xs font-mono"
-          >
-            <option value="">all</option>
-            {sources.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3">
+            <label className="text-[10px] uppercase tracking-[0.14em] font-mono text-muted">
+              source
+            </label>
+            <select
+              value={sourceFilter}
+              onChange={(e) => {
+                setPage(1);
+                setSourceFilter(e.target.value === '' ? '' : Number(e.target.value));
+              }}
+              className="bg-bg border border-border px-2 py-1 text-xs font-mono"
+            >
+              <option value="">all</option>
+              {sources.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-[10px] uppercase tracking-[0.14em] font-mono text-muted">
+              cycle
+            </label>
+            <select
+              value={cycleFilter}
+              onChange={(e) => {
+                setPage(1);
+                setCycleFilter(e.target.value);
+              }}
+              className="bg-bg border border-border px-2 py-1 text-xs font-mono"
+            >
+              <option value="">all</option>
+              {knownCycles.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 

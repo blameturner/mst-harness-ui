@@ -4,18 +4,11 @@ import { requireAuth } from '../middleware/requireAuth.js';
 import { getAuthContext } from '../lib/auth-context.js';
 import { FetchTimeoutError } from '../lib/fetch-with-timeout.js';
 import type { AuthVariables } from '../types/auth.js';
+import type { HarnessAgent } from '../types/harness.js';
 
 export const workersRoute = new Hono<{ Variables: AuthVariables }>();
 
 workersRoute.use('*', requireAuth);
-
-interface HarnessAgent {
-  Id: number;
-  name: string;
-  display_name: string;
-  model: string;
-  status: string | null;
-}
 
 workersRoute.get('/types', async (c) => {
   try {

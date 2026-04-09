@@ -99,14 +99,22 @@ async function tryReload(): Promise<string | null> {
   }
 }
 
-async function loadOwned(orgId: number, idParam: string): Promise<ScheduleRow | null> {
-  const id = assertInteger(idParam, 'schedule_id');
+async function loadOwned(orgId: number, id: number): Promise<ScheduleRow | null> {
   const rows = await listWhere<ScheduleRow>(
     'agent_schedules',
     `(Id,eq,${id})~and(org_id,eq,${orgId})`,
     1,
   );
   return rows[0] ?? null;
+}
+
+function parseIdParam(raw: string | undefined): number | null {
+  if (raw == null) return null;
+  try {
+    return assertInteger(raw, 'schedule_id');
+  } catch {
+    return null;
+  }
 }
 
 schedulesRoute.get('/', async (c) => {
@@ -155,7 +163,9 @@ schedulesRoute.patch('/:id', async (c) => {
   }
   const { orgId } = getAuthContext(c);
   try {
-    const existing = await loadOwned(orgId, c.req.param('id'));
+    const id = parseIdParam(c.req.param('id'));
+    if (id == null) return c.json({ error: 'invalid_id' }, 400);
+    const existing = await loadOwned(orgId, id);
     if (!existing) return c.json({ error: 'not_found' }, 404);
     const updated = await patchRow<ScheduleRow>(
       'agent_schedules',
@@ -173,7 +183,9 @@ schedulesRoute.patch('/:id', async (c) => {
 schedulesRoute.delete('/:id', async (c) => {
   const { orgId } = getAuthContext(c);
   try {
-    const existing = await loadOwned(orgId, c.req.param('id'));
+    const id = parseIdParam(c.req.param('id'));
+    if (id == null) return c.json({ error: 'invalid_id' }, 400);
+    const existing = await loadOwned(orgId, id);
     if (!existing) return c.json({ error: 'not_found' }, 404);
     // Soft delete by deactivation — the harness only registers active rows,
     // so the next /scheduler/reload drops the job.

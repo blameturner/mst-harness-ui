@@ -6,22 +6,11 @@ import { FetchTimeoutError } from '../lib/fetch-with-timeout.js';
 import { listAgents } from '../services/harness/index.js';
 import { listPage } from '../services/nocodb/index.js';
 import type { AuthVariables } from '../types/auth.js';
+import type { HarnessAgent } from '../types/harness.js';
 
 export const agentsRoute = new Hono<{ Variables: AuthVariables }>();
 
 agentsRoute.use('*', requireAuth);
-
-interface HarnessAgent {
-  Id: number;
-  name: string;
-  display_name: string;
-  model: string;
-  status: string | null;
-  org_id?: number;
-  worker_type?: string;
-  product?: string;
-  task_description?: string;
-}
 
 type AgentRunRow = {
   Id: number;
@@ -72,6 +61,27 @@ agentsRoute.get('/', async (c) => {
     return c.json({ agents: body.agents });
   } catch (err) {
     return mapHarnessError(err, 'list');
+  }
+});
+
+/** Get one agent by id (harness list filtered client-side — harness has no GET /agents/:id). */
+agentsRoute.get('/:id', async (c) => {
+  const { orgId } = getAuthContext(c);
+  let agentId: number;
+  try {
+    agentId = assertInteger(c.req.param('id'), 'agent_id');
+  } catch {
+    return c.json({ error: 'invalid_id' }, 400);
+  }
+  try {
+    const res = await listAgents(Number(orgId));
+    if (!res.ok) return c.json({ error: 'harness_error', status: res.status }, 502);
+    const body = (await res.json()) as { agents: HarnessAgent[] };
+    const agent = body.agents.find((a) => a.Id === agentId);
+    if (!agent) return c.json({ error: 'not_found' }, 404);
+    return c.json(agent);
+  } catch (err) {
+    return mapHarnessError(err, 'get');
   }
 });
 

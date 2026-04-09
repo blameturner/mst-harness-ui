@@ -427,6 +427,7 @@ export const api = {
 
   agents: {
     list: () => http.get('api/agents').json<{ agents: AgentSummary[] }>(),
+    get: (id: number) => http.get(`api/agents/${id}`).json<AgentSummary>(),
     runs: (id: number) =>
       http
         .get(`api/agents/${id}/runs`)
