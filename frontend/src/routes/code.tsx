@@ -201,6 +201,64 @@ function DiffView({ before, after }: { before: string; after: string }) {
   );
 }
 
+// --- Shiki-rendered code block ---------------------------------------------
+
+import { highlightToTokens, type ShikiToken } from '../lib/shiki';
+
+/**
+ * Renders a fenced code block with Shiki syntax highlighting. Shiki returns
+ * structured token data (text + colour per token) which we render as plain
+ * React spans — no HTML injection, no sanitisation story to manage.
+ */
+function ShikiBlock({ code, lang }: { code: string; lang: string }) {
+  const [lines, setLines] = useState<ShikiToken[][] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLines(null);
+    highlightToTokens(code, lang)
+      .then((res) => {
+        if (!cancelled) setLines(res.tokens);
+      })
+      .catch(() => {
+        if (!cancelled) setLines(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [code, lang]);
+
+  if (!lines) {
+    return (
+      <pre className="font-mono text-[12px] leading-relaxed p-3 overflow-x-auto whitespace-pre bg-bg">
+        <code>{code}</code>
+      </pre>
+    );
+  }
+  return (
+    <pre className="font-mono text-[12px] leading-relaxed p-3 overflow-x-auto whitespace-pre bg-bg">
+      <code>
+        {lines.map((line, i) => (
+          <span key={i} className="block">
+            {line.length === 0 ? (
+              '\n'
+            ) : (
+              <>
+                {line.map((tok, j) => (
+                  <span key={j} style={tok.color ? { color: tok.color } : undefined}>
+                    {tok.content}
+                  </span>
+                ))}
+                {i < lines.length - 1 ? '\n' : ''}
+              </>
+            )}
+          </span>
+        ))}
+      </code>
+    </pre>
+  );
+}
+
 // --- Code block renderer ----------------------------------------------------
 
 function CodeBlockCard({
@@ -218,7 +276,7 @@ function CodeBlockCard({
   const saveName = block.file ?? `snippet.${block.lang === 'text' ? 'txt' : block.lang}`;
   return (
     <div className="border border-border rounded-md overflow-hidden">
-      <div className="px-3 py-1.5 bg-panel/60 border-b border-border text-[10px] uppercase tracking-[0.14em] font-mono text-muted flex items-center justify-between gap-2">
+      <div className="px-3 py-1.5 bg-panel/60 border-b border-border text-[10px] uppercase tracking-[0.14em] font-sans text-muted flex items-center justify-between gap-2">
         <span className="truncate">
           {block.file ? (
             <>
@@ -249,9 +307,7 @@ function CodeBlockCard({
       {existing && showDiff ? (
         <DiffView before={existingText} after={block.code} />
       ) : (
-        <pre className="font-mono text-[12px] leading-relaxed p-3 overflow-x-auto whitespace-pre bg-bg">
-          <code className={`language-${block.lang}`}>{block.code}</code>
-        </pre>
+        <ShikiBlock code={block.code} lang={block.lang} />
       )}
     </div>
   );
@@ -626,7 +682,7 @@ function CodePage() {
             newSession();
             opts?.onPick?.();
           }}
-          className="text-[10px] uppercase tracking-[0.14em] font-mono border border-border px-2 py-1 rounded hover:border-fg hover:text-fg"
+          className="text-[10px] uppercase tracking-[0.14em] font-sans border border-border px-2 py-1 rounded hover:border-fg hover:text-fg"
         >
           New
         </button>
@@ -660,7 +716,7 @@ function CodePage() {
                   </div>
                   <div className="text-[9px] uppercase tracking-wider text-muted truncate flex items-center justify-between">
                     <span className="truncate">{c.model}</span>
-                    <span className="ml-2 font-mono px-1 border border-border rounded">
+                    <span className="ml-2 font-sans px-1 border border-border rounded">
                       {c.mode ?? 'plan'}
                     </span>
                   </div>
@@ -726,7 +782,7 @@ function CodePage() {
             <button
               type="button"
               onClick={() => setRailSheetOpen(true)}
-              className="text-[11px] uppercase tracking-[0.14em] font-mono px-2 sm:px-3 py-1.5 rounded-md border border-border text-fg hover:bg-panelHi transition-colors"
+              className="text-[11px] uppercase tracking-[0.14em] font-sans px-2 sm:px-3 py-1.5 rounded-md border border-border text-fg hover:bg-panelHi transition-colors"
               title="Show code output"
             >
               <span className="hidden sm:inline">Output</span>
@@ -739,7 +795,7 @@ function CodePage() {
 
         {approvedPlan && (
           <div className="border-b border-border px-6 py-2 bg-panel/40 flex items-center justify-between">
-            <span className="text-[11px] font-mono text-muted">
+            <span className="text-[11px] font-sans text-muted">
               Plan approved — injected on execute turns
             </span>
             <button
@@ -760,12 +816,12 @@ function CodePage() {
           {messages.length === 0 ? (
             <div className="pt-16 text-center">
               <p className="font-display text-3xl font-semibold tracking-tightest">
-                Describe the task.
+                Code with Jeff.
               </p>
-              <p className="text-muted text-sm mt-3 font-mono">
-                Plan first · approve · run
+              <p className="text-muted text-sm mt-3 font-sans">
+                Plan first · approve · Knead
               </p>
-              <p className="text-muted text-[11px] mt-6 font-mono">
+              <p className="text-muted text-[11px] mt-6 font-sans">
                 Drop files anywhere to attach.
               </p>
             </div>
@@ -786,7 +842,7 @@ function CodePage() {
                         : 'bg-panel border border-border text-fg rounded-bl-sm markdown-body',
                     ].join(' ')}
                   >
-                    <div className="text-[9px] uppercase tracking-[0.16em] font-mono text-muted mb-1 flex items-center gap-2">
+                    <div className="text-[9px] uppercase tracking-[0.16em] font-sans text-muted mb-1 flex items-center gap-2">
                       <span>{m.mode}</span>
                       {m.role === 'assistant' && m.responseStyle && (
                         <span className="inline-flex items-center gap-1 text-muted">
@@ -798,7 +854,7 @@ function CodePage() {
                     {m.role === 'user' ? (
                       m.content
                     ) : m.status === 'error' ? (
-                      <span className="text-red-600 font-mono text-[12px]">
+                      <span className="text-red-600 font-sans text-[12px]">
                         {m.errorMessage || 'Request failed'}
                       </span>
                     ) : (
@@ -808,7 +864,7 @@ function CodePage() {
                           {m.mode === 'plan' && m.status === 'complete' && (
                             <button
                               onClick={() => approvePlan(m)}
-                              className="text-[11px] uppercase tracking-[0.14em] font-mono border border-fg px-3 py-1 rounded hover:bg-fg hover:text-bg transition-colors"
+                              className="text-[11px] uppercase tracking-[0.14em] font-sans border border-fg px-3 py-1 rounded hover:bg-fg hover:text-bg transition-colors"
                             >
                               Approve &amp; execute
                             </button>
@@ -818,7 +874,7 @@ function CodePage() {
                             blocks.length > 0 && (
                               <button
                                 onClick={() => void runSandbox(m, blocks[0].code)}
-                                className="text-[11px] uppercase tracking-[0.14em] font-mono border border-border px-3 py-1 rounded hover:border-fg hover:text-fg transition-colors"
+                                className="text-[11px] uppercase tracking-[0.14em] font-sans border border-border px-3 py-1 rounded hover:border-fg hover:text-fg transition-colors"
                               >
                                 Run in sandbox
                               </button>
@@ -840,7 +896,7 @@ function CodePage() {
 
         {error && (
           <div className="px-6 pb-2">
-            <p className="text-xs text-red-600 font-mono">{error}</p>
+            <p className="text-xs text-red-600 font-sans">{error}</p>
           </div>
         )}
 
@@ -876,7 +932,7 @@ function CodePage() {
             },
           ]}
           leftRailSlot={
-            <div className="flex items-center border border-border rounded overflow-hidden text-[11px] font-mono bg-panel/60">
+            <div className="flex items-center border border-border rounded overflow-hidden text-[11px] font-sans bg-panel/60">
               {(['plan', 'execute', 'debug'] as Mode[]).map((m) => (
                 <button
                   key={m}
@@ -898,7 +954,7 @@ function CodePage() {
                 {files.map((f) => (
                   <span
                     key={f.name}
-                    className="text-[11px] font-mono px-2 py-1 rounded border border-border bg-panel/60 flex items-center gap-2"
+                    className="text-[11px] font-sans px-2 py-1 rounded border border-border bg-panel/60 flex items-center gap-2"
                   >
                     {f.name}
                     <span className="text-muted">({f.size}b)</span>
@@ -956,7 +1012,7 @@ function CodePage() {
                     onClick={() => sendStepPrompt(i, step)}
                     className="flex-1 text-left hover:underline underline-offset-2"
                   >
-                    <span className="font-mono text-muted mr-1">{i + 1}.</span>
+                    <span className="font-sans text-muted mr-1">{i + 1}.</span>
                     {step}
                   </button>
                 </li>
@@ -977,7 +1033,7 @@ function CodePage() {
             {fileTargeted.length >= 2 && (
               <button
                 onClick={() => applyAll(lastBlocks)}
-                className="text-[11px] uppercase tracking-[0.14em] font-mono border border-fg px-3 py-1 rounded hover:bg-fg hover:text-bg transition-colors"
+                className="text-[11px] uppercase tracking-[0.14em] font-sans border border-fg px-3 py-1 rounded hover:bg-fg hover:text-bg transition-colors"
               >
                 Apply all ({fileTargeted.length})
               </button>
@@ -985,7 +1041,7 @@ function CodePage() {
             <button
               type="button"
               onClick={() => setRailSheetOpen(false)}
-              className="xl:hidden text-[11px] uppercase tracking-[0.14em] font-mono px-2 py-1 rounded border border-border text-muted hover:border-fg hover:text-fg"
+              className="xl:hidden text-[11px] uppercase tracking-[0.14em] font-sans px-2 py-1 rounded border border-border text-muted hover:border-fg hover:text-fg"
               aria-label="Close output"
             >
               ×
@@ -994,7 +1050,7 @@ function CodePage() {
         </header>
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-4 min-h-0">
           {lastBlocks.length === 0 ? (
-            <p className="text-muted text-sm font-mono">
+            <p className="text-muted text-sm font-sans">
               Code blocks from the latest assistant message will appear here.
             </p>
           ) : (

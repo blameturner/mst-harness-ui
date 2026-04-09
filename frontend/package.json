@@ -16,7 +16,8 @@
     "react-dom": "^18.3.1",
     "react-markdown": "^10.1.0",
     "recharts": "^2.15.0",
-    "remark-gfm": "^4.0.1"
+    "remark-gfm": "^4.0.1",
+    "shiki": "^4.0.2"
   },
   "devDependencies": {
     "@tanstack/router-plugin": "^1.87.0",

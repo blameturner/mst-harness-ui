@@ -43,7 +43,7 @@ function RunDetailPage() {
         <Link
           to="/agents/$id"
           params={{ id: String(agentId) }}
-          className="text-xs uppercase tracking-[0.2em] text-muted font-mono"
+          className="text-xs uppercase tracking-[0.2em] text-muted font-sans"
         >
           ← agent
         </Link>
@@ -51,11 +51,11 @@ function RunDetailPage() {
       </header>
 
       <main className="px-8 py-6 space-y-6">
-        {error && <div className="text-xs font-mono text-red-700">{error}</div>}
+        {error && <div className="text-xs font-sans text-red-700">{error}</div>}
         {loading ? (
           <div className="text-sm text-muted">Loading…</div>
         ) : !run ? (
-          <div className="text-sm text-muted font-mono">Run not found.</div>
+          <div className="text-sm text-muted font-sans">Run not found.</div>
         ) : (
           <>
             <section className="bg-panel border border-border p-4 grid grid-cols-3 gap-4 text-sm">
@@ -70,7 +70,7 @@ function RunDetailPage() {
               <Field label="created" value={run.CreatedAt ?? '—'} />
               {run.summary && (
                 <div className="col-span-3">
-                  <div className="text-[10px] uppercase tracking-[0.14em] font-mono text-muted mb-1">
+                  <div className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted mb-1">
                     summary
                   </div>
                   <div className="text-sm">{run.summary}</div>
@@ -81,11 +81,11 @@ function RunDetailPage() {
             <section>
               <h2 className="font-display text-lg mb-2">Outputs</h2>
               {outputs.length === 0 ? (
-                <div className="text-sm text-muted font-mono">No outputs.</div>
+                <div className="text-sm text-muted font-sans">No outputs.</div>
               ) : (
                 outputs.map((o) => (
                   <div key={o.Id} className="border border-border bg-panel p-4 mb-3">
-                    <pre className="whitespace-pre-wrap text-sm font-mono">
+                    <pre className="whitespace-pre-wrap text-sm font-sans">
                       {o.full_text ?? ''}
                     </pre>
                   </div>
@@ -102,8 +102,8 @@ function RunDetailPage() {
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-[10px] uppercase tracking-[0.14em] font-mono text-muted">{label}</div>
-      <div className="font-mono text-xs mt-0.5">{value}</div>
+      <div className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted">{label}</div>
+      <div className="font-sans text-xs mt-0.5">{value}</div>
     </div>
   );
 }

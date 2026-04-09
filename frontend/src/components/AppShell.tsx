@@ -67,7 +67,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <button
           onClick={() => void logout()}
-          className="text-[11px] uppercase tracking-[0.16em] font-mono text-muted hover:text-fg transition-colors"
+          className="text-[11px] uppercase tracking-[0.16em] font-sans text-muted hover:text-fg transition-colors"
         >
           Sign out
         </button>

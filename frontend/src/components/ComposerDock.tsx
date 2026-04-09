@@ -1,12 +1,12 @@
 import {
   useRef,
-  useState,
   type ChangeEvent,
   type KeyboardEvent,
   type ReactNode,
 } from 'react';
 import type { LlmModel, StyleOption } from '../lib/api';
 import { styleLabel } from '../lib/styles';
+import { Select } from './Select';
 
 export interface ComposerToggle {
   key: string;
@@ -53,7 +53,7 @@ interface ComposerDockProps {
  * file attach control, and the message composer. It's intentionally
  * "instrument-panel" flavoured: two stacked rows, thin dividers between
  * zones, tiny mono labels floating above each control. Cohesive with the
- * rest of the app (font-display / font-mono / border-border / panel tokens)
+ * rest of the app (font-display / font-sans / border-border / panel tokens)
  * but pushes the density and structure further than the prior inline rail.
  */
 export function ComposerDock({
@@ -75,7 +75,6 @@ export function ComposerDock({
   attachmentPreview,
 }: ComposerDockProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [styleOpen, setStyleOpen] = useState(false);
 
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -90,7 +89,6 @@ export function ComposerDock({
     e.target.value = '';
   }
 
-  const activeStyle = styles?.find((s) => s.key === styleKey);
 
   return (
     <div className="border-t border-border bg-bg/95 backdrop-blur">
@@ -109,26 +107,17 @@ export function ComposerDock({
 
           {/* ——— Model ——— */}
           <DockZone label="Model">
-            <div className="relative">
-              <select
-                value={model}
-                onChange={(e) => onModelChange(e.target.value)}
-                className="appearance-none bg-panel/60 border border-border hover:border-fg/60 focus:border-fg focus:outline-none pl-2.5 pr-7 py-1.5 rounded text-[12px] font-mono text-fg transition-colors cursor-pointer"
-              >
-                {models.length === 0 ? (
-                  <option value="">No models</option>
-                ) : (
-                  models.map((m) => (
-                    <option key={m.name} value={m.name}>
-                      {m.name}
-                    </option>
-                  ))
-                )}
-              </select>
-              <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted text-[10px]">
-                ▾
-              </span>
-            </div>
+            <Select
+              value={model}
+              onChange={(v) => onModelChange(v)}
+              placeholder="No models"
+              options={models.map((m) => ({
+                value: m.name,
+                label: m.name,
+                hint: m.role,
+                description: m.model_id,
+              }))}
+            />
           </DockZone>
 
           {/* ——— Style picker ——— */}
@@ -136,64 +125,17 @@ export function ComposerDock({
             <>
               <Divider />
               <DockZone label="Style">
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setStyleOpen((v) => !v)}
-                    title={activeStyle?.prompt ?? undefined}
-                    className="bg-panel/60 border border-border hover:border-fg/60 px-2.5 py-1.5 rounded text-[12px] font-mono text-fg transition-colors flex items-center gap-1.5"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-fg/70" />
-                    {styleLabel(styleKey) || 'Pick style'}
-                    <span className="text-muted text-[10px] ml-0.5">▾</span>
-                  </button>
-                  {styleOpen && (
-                    <>
-                      {/* click-away backdrop */}
-                      <button
-                        type="button"
-                        aria-label="Close"
-                        onClick={() => setStyleOpen(false)}
-                        className="fixed inset-0 z-40 cursor-default"
-                      />
-                      <div className="absolute z-50 bottom-full mb-2 left-0 min-w-[220px] max-h-[320px] overflow-y-auto border border-border bg-bg shadow-2xl rounded-md py-1">
-                        {styles.map((s) => {
-                          const active = s.key === styleKey;
-                          return (
-                            <button
-                              key={s.key}
-                              type="button"
-                              onClick={() => {
-                                onStyleChange?.(s.key);
-                                setStyleOpen(false);
-                              }}
-                              title={s.prompt}
-                              className={[
-                                'w-full text-left px-3 py-1.5 text-[12px] font-mono flex items-center gap-2 transition-colors',
-                                active
-                                  ? 'bg-panelHi text-fg'
-                                  : 'text-muted hover:bg-panel hover:text-fg',
-                              ].join(' ')}
-                            >
-                              <span
-                                className={[
-                                  'w-1.5 h-1.5 rounded-full',
-                                  active ? 'bg-fg' : 'bg-border',
-                                ].join(' ')}
-                              />
-                              <span className="flex-1 truncate">{styleLabel(s.key)}</span>
-                              {active && (
-                                <span className="text-[9px] uppercase tracking-[0.14em] text-muted">
-                                  active
-                                </span>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
-                </div>
+                <Select
+                  value={styleKey ?? ''}
+                  onChange={(v) => onStyleChange?.(v)}
+                  placeholder="Pick style"
+                  options={styles.map((s) => ({
+                    value: s.key,
+                    label: styleLabel(s.key),
+                    description: s.prompt,
+                  }))}
+                  leading={<span className="w-1.5 h-1.5 rounded-full bg-fg/70" />}
+                />
               </DockZone>
             </>
           )}
@@ -212,7 +154,7 @@ export function ComposerDock({
                       disabled={t.disabled}
                       title={t.title}
                       className={[
-                        'text-[11px] font-mono px-2.5 py-1.5 rounded border transition-colors flex items-center gap-1.5',
+                        'text-[11px] font-sans px-2.5 py-1.5 rounded border transition-colors flex items-center gap-1.5',
                         t.disabled
                           ? 'border-border text-muted opacity-50 cursor-not-allowed'
                           : t.active
@@ -247,7 +189,7 @@ export function ComposerDock({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="shrink-0 w-9 h-9 rounded-md border border-border text-muted hover:border-fg hover:text-fg transition-colors flex items-center justify-center font-mono text-[13px]"
+                className="shrink-0 w-9 h-9 rounded-md border border-border text-muted hover:border-fg hover:text-fg transition-colors flex items-center justify-center font-sans text-[13px]"
                 title="Attach files"
               >
                 +
@@ -279,10 +221,11 @@ export function ComposerDock({
             {sending ? '…' : 'Send'}
           </button>
         </div>
-        <p className="text-[10px] uppercase tracking-[0.14em] text-muted font-mono mt-2">
+        <p className="text-[10px] uppercase tracking-[0.14em] text-muted font-sans mt-2">
           Enter to send · Shift+Enter for newline
         </p>
       </div>
+
     </div>
   );
 }
@@ -291,7 +234,7 @@ export function ComposerDock({
 function DockZone({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1 shrink-0">
-      <span className="text-[9px] uppercase tracking-[0.18em] text-muted font-mono pl-0.5">
+      <span className="text-[9px] uppercase tracking-[0.18em] text-muted font-sans pl-0.5">
         {label}
       </span>
       <div>{children}</div>

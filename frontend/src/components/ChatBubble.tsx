@@ -49,7 +49,7 @@ export function ChatBubble({ message }: Props) {
   if (message.role === 'system' || message.status === 'system') {
     return (
       <div className="flex justify-center animate-fadeIn">
-        <div className="text-[10px] uppercase tracking-[0.16em] font-mono text-muted px-3 py-1 rounded-full border border-border bg-panel/40">
+        <div className="text-[10px] uppercase tracking-[0.16em] font-sans text-muted px-3 py-1 rounded-full border border-border bg-panel/40">
           {message.content}
         </div>
       </div>
@@ -71,7 +71,7 @@ export function ChatBubble({ message }: Props) {
   if (message.status === 'error') {
     return (
       <div className="flex justify-start animate-fadeIn">
-        <div className="max-w-[92%] md:max-w-[78%] px-4 py-3 rounded-2xl rounded-bl-sm text-[13px] leading-relaxed bg-panel border border-red-600/40 text-red-600 font-mono">
+        <div className="max-w-[92%] md:max-w-[78%] px-4 py-3 rounded-2xl rounded-bl-sm text-[13px] leading-relaxed bg-panel border border-red-600/40 text-red-600 font-sans">
           {message.errorMessage || message.content || 'Request failed'}
         </div>
       </div>
@@ -84,7 +84,7 @@ export function ChatBubble({ message }: Props) {
     <div className="flex justify-start animate-fadeIn">
       <div className="max-w-[94%] md:max-w-[85%] px-5 py-4 rounded-2xl rounded-bl-sm bg-panel border border-border text-fg markdown-body">
         {message.searchFailed && (
-          <div className="mb-3 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.16em] font-mono text-muted px-2 py-0.5 rounded-full border border-border bg-bg">
+          <div className="mb-3 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.16em] font-sans text-muted px-2 py-0.5 rounded-full border border-border bg-bg">
             <span aria-hidden>·</span> Search returned no results
           </div>
         )}
@@ -92,7 +92,7 @@ export function ChatBubble({ message }: Props) {
         {isStreaming && <span className="caret" />}
         {message.sources && message.sources.length > 0 && (
           <div className="mt-4 pt-3 border-t border-border">
-            <p className="text-[10px] uppercase tracking-[0.16em] font-mono text-muted mb-1.5">
+            <p className="text-[10px] uppercase tracking-[0.16em] font-sans text-muted mb-1.5">
               Sources
             </p>
             <ul className="space-y-1">
@@ -102,7 +102,7 @@ export function ChatBubble({ message }: Props) {
                 const url = match ? match[2] : '';
                 return (
                   <li key={i} className="text-[12px] leading-snug">
-                    <span className="font-mono text-muted mr-1">[{i + 1}]</span>
+                    <span className="font-sans text-muted mr-1">[{i + 1}]</span>
                     {url ? (
                       <a
                         href={url}
@@ -136,7 +136,7 @@ function ElapsedTimer({ startedAt }: { startedAt?: number }) {
   }, [startedAt]);
   if (!startedAt) return null;
   const s = Math.max(0, Math.floor((now - startedAt) / 1000));
-  return <span className="not-italic font-mono text-[11px]">· {s}s</span>;
+  return <span className="not-italic font-sans text-[11px]">· {s}s</span>;
 }
 
 /**
@@ -206,7 +206,7 @@ const MarkdownBody = memo(function MarkdownBody({ content }: { content: string }
         th: (props) => (
           <th
             {...props}
-            className="text-left font-semibold font-mono text-[11px] uppercase tracking-[0.12em] px-3 py-1.5 text-fg"
+            className="text-left font-semibold font-sans text-[11px] uppercase tracking-[0.12em] px-3 py-1.5 text-fg"
           />
         ),
         td: (props) => (

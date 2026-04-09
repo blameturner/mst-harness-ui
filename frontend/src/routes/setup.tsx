@@ -53,14 +53,14 @@ function SetupPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-6 bg-bg">
       <div className="w-full max-w-md">
-        <p className="text-[10px] uppercase tracking-[0.22em] text-muted mb-3 font-mono">
+        <p className="text-[10px] uppercase tracking-[0.22em] text-muted mb-3 font-sans">
           · First run ·
         </p>
         <h1 className="font-display text-5xl font-semibold tracking-tightest leading-none mb-3">
           Jeff<span className="italic">GPT</span>
         </h1>
         <p className="text-muted mb-1">Create your organisation to get started.</p>
-        <p className="text-muted text-xs mb-8 font-mono">
+        <p className="text-muted text-xs mb-8 font-sans">
           Already have an account?{' '}
           <Link to="/login" className="text-fg hover:underline underline-offset-4">
             Sign in
@@ -108,7 +108,7 @@ function SetupPage() {
             required
           />
 
-          {error && <p className="text-red-600 text-xs font-mono">{error}</p>}
+          {error && <p className="text-red-600 text-xs font-sans">{error}</p>}
 
           <button
             type="submit"

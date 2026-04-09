@@ -20,8 +20,11 @@ export default {
       fontFamily: {
         // Distinctive editorial pairing — no Inter, no system defaults.
         display: ['"Fraunces"', 'Georgia', 'serif'],
-        sans: ['"IBM Plex Sans"', 'system-ui', 'sans-serif'],
-        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+        sans: ['"Instrument Sans"', 'system-ui', '-apple-system', 'sans-serif'],
+        // Real monospace only — used for code blocks, diff views, run output.
+        // Intentionally the system stack so UI chrome never looks like a
+        // generic "AI dev tool" caption.
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Consolas', 'monospace'],
       },
       letterSpacing: {
         tightest: '-0.04em',

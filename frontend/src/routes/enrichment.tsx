@@ -23,6 +23,7 @@ import {
   type SuggestedScrapeTarget,
 } from '../lib/api';
 import { authClient } from '../lib/auth-client';
+import { Select } from '../components/Select';
 
 type Tab = 'sources' | 'suggestions' | 'log' | 'graph';
 
@@ -89,7 +90,7 @@ function EnrichmentPage() {
     <div className="min-h-full bg-bg text-fg font-sans">
       <header className="border-b border-border px-8 py-5 flex items-center justify-between">
         <div className="flex items-baseline gap-6">
-          <Link to="/chat" className="text-xs uppercase tracking-[0.2em] text-muted font-mono">
+          <Link to="/chat" className="text-xs uppercase tracking-[0.2em] text-muted font-sans">
             ← back
           </Link>
           <h1 className="font-display text-2xl tracking-tightest">Enrichment</h1>
@@ -99,7 +100,7 @@ function EnrichmentPage() {
           <button
             onClick={triggerCycle}
             disabled={triggering}
-            className="text-[11px] uppercase tracking-[0.18em] font-mono border border-fg px-3 py-2 hover:bg-fg hover:text-bg transition-colors disabled:opacity-50"
+            className="text-[11px] uppercase tracking-[0.18em] font-sans border border-fg px-3 py-2 hover:bg-fg hover:text-bg transition-colors disabled:opacity-50"
           >
             {triggering ? 'triggering…' : 'run cycle now'}
           </button>
@@ -107,7 +108,7 @@ function EnrichmentPage() {
       </header>
 
       {banner && (
-        <div className="px-8 py-3 bg-panel border-b border-border text-sm text-muted font-mono">
+        <div className="px-8 py-3 bg-panel border-b border-border text-sm text-muted font-sans">
           {banner}
         </div>
       )}
@@ -118,7 +119,7 @@ function EnrichmentPage() {
             key={t.id}
             onClick={() => setTab(t.id)}
             className={[
-              'px-4 py-3 text-[11px] uppercase tracking-[0.18em] font-mono border-b-2 -mb-px transition-colors',
+              'px-4 py-3 text-[11px] uppercase tracking-[0.18em] font-sans border-b-2 -mb-px transition-colors',
               tab === t.id ? 'border-fg text-fg' : 'border-transparent text-muted hover:text-fg',
             ].join(' ')}
           >
@@ -140,13 +141,13 @@ function EnrichmentPage() {
 function StatusBadge({ status }: { status: SchedulerStatus | null }) {
   if (!status) {
     return (
-      <span className="text-[10px] uppercase tracking-[0.18em] font-mono text-muted">
+      <span className="text-[10px] uppercase tracking-[0.18em] font-sans text-muted">
         scheduler: unknown
       </span>
     );
   }
   return (
-    <span className="text-[10px] uppercase tracking-[0.18em] font-mono text-muted">
+    <span className="text-[10px] uppercase tracking-[0.18em] font-sans text-muted">
       <span className={status.running ? 'text-fg' : 'text-muted'}>
         {status.running ? '● running' : '○ idle'}
       </span>
@@ -248,7 +249,7 @@ function SourcesTab() {
         <h2 className="font-display text-xl">Sources</h2>
         <button
           onClick={() => setShowForm((v) => !v)}
-          className="text-[11px] uppercase tracking-[0.18em] font-mono border border-fg px-3 py-2 hover:bg-fg hover:text-bg transition-colors"
+          className="text-[11px] uppercase tracking-[0.18em] font-sans border border-fg px-3 py-2 hover:bg-fg hover:text-bg transition-colors"
         >
           {showForm ? 'cancel' : '+ add source'}
         </button>
@@ -288,7 +289,7 @@ function SourcesTab() {
           <div className="col-span-2 flex justify-end">
             <button
               type="submit"
-              className="text-[11px] uppercase tracking-[0.18em] font-mono border border-fg px-4 py-2 hover:bg-fg hover:text-bg"
+              className="text-[11px] uppercase tracking-[0.18em] font-sans border border-fg px-4 py-2 hover:bg-fg hover:text-bg"
             >
               create
             </button>
@@ -296,15 +297,15 @@ function SourcesTab() {
         </form>
       )}
 
-      {error && <div className="text-xs font-mono text-red-700 mb-3">{error}</div>}
+      {error && <div className="text-xs font-sans text-red-700 mb-3">{error}</div>}
       {loading ? (
         <div className="text-sm text-muted">Loading…</div>
       ) : sources.length === 0 ? (
-        <div className="text-sm text-muted font-mono">No sources yet.</div>
+        <div className="text-sm text-muted font-sans">No sources yet.</div>
       ) : (
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-[10px] uppercase tracking-[0.16em] text-muted font-mono border-b border-border">
+            <tr className="text-[10px] uppercase tracking-[0.16em] text-muted font-sans border-b border-border">
               <th className="text-left py-2">name</th>
               <th className="text-left py-2">url</th>
               <th className="text-left py-2">category</th>
@@ -319,21 +320,21 @@ function SourcesTab() {
             {sources.map((s) => (
               <tr key={s.id} className="border-b border-border hover:bg-panelHi">
                 <td className="py-2">{s.name}</td>
-                <td className="py-2 font-mono text-xs truncate max-w-[260px]">
+                <td className="py-2 font-sans text-xs truncate max-w-[260px]">
                   <a href={s.url} target="_blank" rel="noreferrer" className="underline">
                     {s.url}
                   </a>
                 </td>
-                <td className="py-2 font-mono text-xs">{s.category}</td>
-                <td className="py-2 font-mono text-xs">{s.frequency_hours}h</td>
+                <td className="py-2 font-sans text-xs">{s.category}</td>
+                <td className="py-2 font-sans text-xs">{s.frequency_hours}h</td>
                 <td className="py-2 text-xs text-muted">{relTime(s.last_scraped_at)}</td>
                 <td className="py-2 text-xs">
                   {s.status ?? '—'}
                   {!s.active && <span className="text-muted"> (inactive)</span>}
                 </td>
-                <td className="py-2 text-right font-mono text-xs">{s.chunk_count}</td>
+                <td className="py-2 text-right font-sans text-xs">{s.chunk_count}</td>
                 <td className="py-2 text-right">
-                  <div className="flex gap-2 justify-end text-[10px] uppercase tracking-[0.14em] font-mono">
+                  <div className="flex gap-2 justify-end text-[10px] uppercase tracking-[0.14em] font-sans">
                     <button onClick={() => toggleActive(s)} className="hover:text-fg text-muted">
                       {s.active ? 'disable' : 'enable'}
                     </button>
@@ -402,9 +403,9 @@ function SuggestionsTab() {
   }
 
   if (loading) return <div className="text-sm text-muted">Loading…</div>;
-  if (error) return <div className="text-xs font-mono text-red-700">{error}</div>;
+  if (error) return <div className="text-xs font-sans text-red-700">{error}</div>;
   if (items.length === 0)
-    return <div className="text-sm text-muted font-mono">No pending suggestions.</div>;
+    return <div className="text-sm text-muted font-sans">No pending suggestions.</div>;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -422,7 +423,7 @@ function SuggestionsTab() {
           >
             <div className="flex justify-between items-start mb-2">
               <h3 className="font-display text-lg">{s.name}</h3>
-              <span className="text-[10px] uppercase tracking-[0.14em] font-mono text-muted">
+              <span className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted">
                 {s.confidence} · score {s.confidence_score}
               </span>
             </div>
@@ -430,34 +431,34 @@ function SuggestionsTab() {
               href={s.url}
               target="_blank"
               rel="noreferrer"
-              className="text-xs font-mono text-muted underline break-all"
+              className="text-xs font-sans text-muted underline break-all"
             >
               {s.url}
             </a>
-            <div className="text-[10px] uppercase tracking-[0.14em] font-mono text-muted mt-2">
+            <div className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted mt-2">
               {s.category} · seen {s.times_suggested}×
             </div>
             {s.reason && <p className="text-sm text-fg mt-3">{s.reason}</p>}
             {reviewing === s.id ? (
               <div className="mt-4 flex items-center gap-2">
-                <label className="text-[10px] uppercase tracking-[0.14em] font-mono text-muted">
+                <label className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted">
                   freq
                 </label>
                 <input
                   type="number"
                   value={freq}
                   onChange={(e) => setFreq(Number(e.target.value) || 24)}
-                  className="w-16 bg-bg border border-border px-2 py-1 text-xs font-mono"
+                  className="w-16 bg-bg border border-border px-2 py-1 text-xs font-sans"
                 />
                 <button
                   onClick={() => approve(s.id)}
-                  className="text-[10px] uppercase tracking-[0.14em] font-mono border border-fg px-3 py-1 hover:bg-fg hover:text-bg"
+                  className="text-[10px] uppercase tracking-[0.14em] font-sans border border-fg px-3 py-1 hover:bg-fg hover:text-bg"
                 >
                   confirm
                 </button>
                 <button
                   onClick={() => setReviewing(null)}
-                  className="text-[10px] uppercase tracking-[0.14em] font-mono text-muted"
+                  className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted"
                 >
                   cancel
                 </button>
@@ -469,13 +470,13 @@ function SuggestionsTab() {
                     setReviewing(s.id);
                     setFreq(24);
                   }}
-                  className="text-[10px] uppercase tracking-[0.14em] font-mono border border-fg px-3 py-1 hover:bg-fg hover:text-bg"
+                  className="text-[10px] uppercase tracking-[0.14em] font-sans border border-fg px-3 py-1 hover:bg-fg hover:text-bg"
                 >
                   approve
                 </button>
                 <button
                   onClick={() => reject(s.id)}
-                  className="text-[10px] uppercase tracking-[0.14em] font-mono border border-border px-3 py-1 hover:border-red-700 hover:text-red-700"
+                  className="text-[10px] uppercase tracking-[0.14em] font-sans border border-border px-3 py-1 hover:border-red-700 hover:text-red-700"
                 >
                   reject
                 </button>
@@ -555,7 +556,7 @@ function LogTab() {
   return (
     <div>
       <div className="bg-panel border border-border p-4 mb-4">
-        <div className="text-[10px] uppercase tracking-[0.14em] font-mono text-muted mb-2">
+        <div className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted mb-2">
           event type
         </div>
         <div className="flex flex-wrap gap-2 mb-4">
@@ -564,7 +565,7 @@ function LogTab() {
               key={ev}
               onClick={() => toggleEvent(ev)}
               className={[
-                'text-[10px] uppercase tracking-[0.14em] font-mono px-2 py-1 border',
+                'text-[10px] uppercase tracking-[0.14em] font-sans px-2 py-1 border',
                 selectedEvents.includes(ev)
                   ? 'border-fg bg-fg text-bg'
                   : 'border-border text-muted hover:text-fg',
@@ -576,53 +577,49 @@ function LogTab() {
         </div>
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-3">
-            <label className="text-[10px] uppercase tracking-[0.14em] font-mono text-muted">
+            <label className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted">
               source
             </label>
-            <select
-              value={sourceFilter}
-              onChange={(e) => {
+            <Select
+              value={sourceFilter === '' ? '' : String(sourceFilter)}
+              onChange={(v) => {
                 setPage(1);
-                setSourceFilter(e.target.value === '' ? '' : Number(e.target.value));
+                setSourceFilter(v === '' ? '' : Number(v));
               }}
-              className="bg-bg border border-border px-2 py-1 text-xs font-mono"
-            >
-              <option value="">all</option>
-              {sources.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+              placeholder="all"
+              options={[
+                { value: '', label: 'all' },
+                ...sources.map((s) => ({ value: String(s.id), label: s.name })),
+              ]}
+              position="below"
+            />
           </div>
           <div className="flex items-center gap-3">
-            <label className="text-[10px] uppercase tracking-[0.14em] font-mono text-muted">
+            <label className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted">
               cycle
             </label>
-            <select
+            <Select
               value={cycleFilter}
-              onChange={(e) => {
+              onChange={(v) => {
                 setPage(1);
-                setCycleFilter(e.target.value);
+                setCycleFilter(v);
               }}
-              className="bg-bg border border-border px-2 py-1 text-xs font-mono"
-            >
-              <option value="">all</option>
-              {knownCycles.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+              placeholder="all"
+              options={[
+                { value: '', label: 'all' },
+                ...knownCycles.map((c) => ({ value: c, label: c })),
+              ]}
+              position="below"
+            />
           </div>
         </div>
       </div>
 
-      {error && <div className="text-xs font-mono text-red-700 mb-3">{error}</div>}
+      {error && <div className="text-xs font-sans text-red-700 mb-3">{error}</div>}
       {loading ? (
         <div className="text-sm text-muted">Loading…</div>
       ) : grouped.length === 0 ? (
-        <div className="text-sm text-muted font-mono">No log entries.</div>
+        <div className="text-sm text-muted font-sans">No log entries.</div>
       ) : (
         <div className="space-y-6">
           {grouped.map(([cycleId, rows]) => {
@@ -632,8 +629,8 @@ function LogTab() {
             return (
               <div key={cycleId}>
                 <div className="border-b border-fg pb-2 mb-2 flex justify-between items-baseline">
-                  <span className="font-mono text-xs text-fg">cycle {cycleId}</span>
-                  <span className="text-[10px] uppercase tracking-[0.14em] font-mono text-muted">
+                  <span className="font-sans text-xs text-fg">cycle {cycleId}</span>
+                  <span className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted">
                     {tokens.toLocaleString()} tokens ·{' '}
                     {Object.entries(counts)
                       .map(([k, v]) => `${k}:${v}`)
@@ -651,7 +648,7 @@ function LogTab() {
         </div>
       )}
 
-      <div className="flex justify-between items-center mt-6 text-[10px] uppercase tracking-[0.14em] font-mono text-muted">
+      <div className="flex justify-between items-center mt-6 text-[10px] uppercase tracking-[0.14em] font-sans text-muted">
         <span>
           page {page} / {maxPage} · {total} entries
         </span>
@@ -685,17 +682,17 @@ function LogRow({ row }: { row: EnrichmentLogEntry }) {
         : '';
   return (
     <div className={`py-2 flex items-start gap-3 text-xs ${highlight}`}>
-      <span className="font-mono text-muted w-40 shrink-0">
+      <span className="font-sans text-muted w-40 shrink-0">
         {row.event_type}
       </span>
-      <span className="font-mono text-muted w-48 shrink-0 truncate">
+      <span className="font-sans text-muted w-48 shrink-0 truncate">
         {row.source_url ?? '—'}
       </span>
       <span className="flex-1 text-fg">{row.message ?? ''}</span>
-      <span className="font-mono text-muted w-20 text-right shrink-0">
+      <span className="font-sans text-muted w-20 text-right shrink-0">
         {row.tokens_used != null ? `${row.tokens_used}t` : ''}
       </span>
-      <span className="font-mono text-muted w-16 text-right shrink-0">
+      <span className="font-sans text-muted w-16 text-right shrink-0">
         {row.duration_seconds != null ? `${row.duration_seconds.toFixed(1)}s` : ''}
       </span>
     </div>
@@ -721,10 +718,10 @@ function GraphCoverageTab() {
   }, []);
 
   if (loading) return <div className="text-sm text-muted">Loading…</div>;
-  if (error) return <div className="text-xs font-mono text-red-700">{error}</div>;
+  if (error) return <div className="text-xs font-sans text-red-700">{error}</div>;
   if (nodes.length === 0)
     return (
-      <div className="text-sm text-muted font-mono">
+      <div className="text-sm text-muted font-sans">
         No concept nodes yet — run an enrichment cycle first.
       </div>
     );
@@ -779,7 +776,7 @@ function LabeledInput({
 }) {
   return (
     <label className="block">
-      <span className="block text-[10px] uppercase tracking-[0.16em] text-muted mb-1.5 font-mono">
+      <span className="block text-[10px] uppercase tracking-[0.16em] text-muted mb-1.5 font-sans">
         {label}
       </span>
       <input
@@ -805,22 +802,17 @@ function LabeledSelect({
   options: string[];
 }) {
   return (
-    <label className="block">
-      <span className="block text-[10px] uppercase tracking-[0.16em] text-muted mb-1.5 font-mono">
+    <div className="block">
+      <span className="block text-[10px] uppercase tracking-[0.16em] text-muted mb-1.5 font-sans">
         {label}
       </span>
-      <select
+      <Select
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-bg border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:border-fg"
-      >
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-      </select>
-    </label>
+        onChange={(v) => onChange(v)}
+        options={options.map((o) => ({ value: o, label: o }))}
+        position="below"
+      />
+    </div>
   );
 }
 

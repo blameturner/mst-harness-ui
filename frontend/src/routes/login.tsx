@@ -32,7 +32,7 @@ function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-6 bg-bg">
       <div className="w-full max-w-sm">
-        <p className="text-[10px] uppercase tracking-[0.22em] text-muted mb-3 font-mono">
+        <p className="text-[10px] uppercase tracking-[0.22em] text-muted mb-3 font-sans">
           · Sign in ·
         </p>
         <h1 className="font-display text-5xl font-semibold tracking-tightest leading-none mb-10">
@@ -53,7 +53,7 @@ function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-          {error && <p className="text-red-600 text-xs font-mono">{error}</p>}
+          {error && <p className="text-red-600 text-xs font-sans">{error}</p>}
           <button
             type="submit"
             disabled={busy}

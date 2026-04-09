@@ -499,7 +499,7 @@ function ChatPage() {
       <div className="fixed inset-0 z-50 bg-fg/30 backdrop-blur-sm flex items-center justify-center px-6 animate-fadeIn">
         <div className="w-full max-w-md bg-bg border border-border rounded-xl shadow-card overflow-hidden">
           <div className="px-6 pt-6 pb-4 border-b border-border">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-muted font-mono mb-1">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-muted font-sans mb-1">
               Allow web search?
             </p>
             <h3 className="font-display text-2xl font-semibold tracking-tightest leading-tight">
@@ -509,24 +509,24 @@ function ChatPage() {
           <div className="px-6 py-5 space-y-4">
             <p className="text-[13px] leading-relaxed text-muted">{consentRequest.reason}</p>
             <div className="border border-border rounded-md px-3 py-2 bg-panel/60">
-              <p className="text-[10px] uppercase tracking-[0.16em] text-muted font-mono mb-0.5">
+              <p className="text-[10px] uppercase tracking-[0.16em] text-muted font-sans mb-0.5">
                 Query
               </p>
-              <p className="text-[13px] font-mono break-words">{consentRequest.query}</p>
+              <p className="text-[13px] font-sans break-words">{consentRequest.query}</p>
             </div>
           </div>
           <div className="px-6 pb-5 flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={() => void resolveConsent(false)}
-              className="text-[11px] uppercase tracking-[0.14em] font-mono px-4 py-2 rounded-md border border-border text-fg hover:bg-panelHi transition-colors"
+              className="text-[11px] uppercase tracking-[0.14em] font-sans px-4 py-2 rounded-md border border-border text-fg hover:bg-panelHi transition-colors"
             >
               Deny
             </button>
             <button
               type="button"
               onClick={() => void resolveConsent(true)}
-              className="text-[11px] uppercase tracking-[0.14em] font-mono px-4 py-2 rounded-md bg-fg text-bg hover:bg-fg/85 transition-colors"
+              className="text-[11px] uppercase tracking-[0.14em] font-sans px-4 py-2 rounded-md bg-fg text-bg hover:bg-fg/85 transition-colors"
             >
               Allow
             </button>
@@ -574,20 +574,21 @@ function ChatPage() {
       <main className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <header className="border-b border-border bg-bg/80 backdrop-blur px-3 sm:px-6 md:px-8 py-3 md:py-5 flex items-center gap-3 md:gap-6">
-          <IconButton
-            onClick={() => setSidebarOpen(true)}
-            label="Open conversations"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="md:hidden">
-              <line x1="4" y1="7" x2="20" y2="7" />
-              <line x1="4" y1="12" x2="20" y2="12" />
-              <line x1="4" y1="17" x2="20" y2="17" />
-            </svg>
-            <span className="hidden md:inline text-[11px] uppercase tracking-[0.14em] font-mono">☰</span>
-          </IconButton>
+          <div className="md:hidden">
+            <IconButton
+              onClick={() => setSidebarOpen(true)}
+              label="Open conversations"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <line x1="4" y1="7" x2="20" y2="7" />
+                <line x1="4" y1="12" x2="20" y2="12" />
+                <line x1="4" y1="17" x2="20" y2="17" />
+              </svg>
+            </IconButton>
+          </div>
           <div className="min-w-0 flex-1">
             <p className="text-[10px] uppercase tracking-[0.18em] text-muted">
-              {activeConversation ? 'Conversation' : 'New conversation'}
+              {activeConversation ? 'Conversation' : 'Chat with Jeff'}
             </p>
             <h2 className="font-display text-base sm:text-lg md:text-xl font-semibold truncate tracking-tightest">
               {activeConversation?.title || 'Untitled'}
@@ -598,12 +599,12 @@ function ChatPage() {
               type="button"
               onClick={() => setDrawerOpen((v) => !v)}
               className={[
-                'text-[11px] uppercase tracking-[0.14em] font-mono px-2 sm:px-3 py-1.5 rounded-md border transition-colors',
+                'text-[11px] uppercase tracking-[0.14em] font-sans px-2 sm:px-3 py-1.5 rounded-md border transition-colors',
                 drawerOpen
                   ? 'border-fg bg-fg text-bg'
                   : 'border-border text-fg hover:bg-panelHi',
               ].join(' ')}
-              title="Show chat properties"
+              title="Show Jeff properties"
             >
               <span className="hidden sm:inline">Properties</span>
               <span className="sm:hidden">Info</span>
@@ -621,7 +622,7 @@ function ChatPage() {
                 <p className="font-display text-4xl font-semibold tracking-tightest leading-tight">
                   Ask Jeffy anything.
                 </p>
-                <p className="text-muted text-sm mt-3 font-mono">
+                <p className="text-muted text-sm mt-3 font-sans">
                   {model ? `Model · ${model}` : 'Select a Jeff to begin'}
                 </p>
               </div>
@@ -631,7 +632,7 @@ function ChatPage() {
                   <ChatBubble message={m} />
                   {m.role === 'assistant' && m.status === 'complete' && m.responseStyle && (
                     <div className="flex justify-start">
-                      <span className="text-[9px] font-mono uppercase tracking-[0.14em] text-muted pl-5 inline-flex items-center gap-1">
+                      <span className="text-[9px] font-sans uppercase tracking-[0.14em] text-muted pl-5 inline-flex items-center gap-1">
                         <span className="w-1 h-1 rounded-full bg-fg/50" />
                         {styleLabel(m.responseStyle)}
                       </span>
@@ -639,7 +640,7 @@ function ChatPage() {
                   )}
                   {m.role === 'assistant' && m.status === 'complete' && m.contextChars != null && (
                     <div className="flex justify-start">
-                      <span className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted pl-5">
+                      <span className="text-[10px] font-sans uppercase tracking-[0.14em] text-muted pl-5">
                         Memory · {m.contextChars.toLocaleString()} chars of context
                         {m.tokensOut != null && (
                           <span className="ml-2">· {m.tokensOut.toLocaleString()} tok out</span>
@@ -652,7 +653,7 @@ function ChatPage() {
                     m.contextChars == null &&
                     m.tokensOut != null && (
                       <div className="flex justify-start">
-                        <span className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted pl-5">
+                        <span className="text-[10px] font-sans uppercase tracking-[0.14em] text-muted pl-5">
                           {m.tokensOut.toLocaleString()} tok out
                           {m.tokensIn != null && (
                             <span className="ml-2">· {m.tokensIn.toLocaleString()} in</span>
@@ -669,7 +670,7 @@ function ChatPage() {
         {error && (
           <div className="px-3 sm:px-6 pb-2">
             <div className="max-w-3xl mx-auto">
-              <p className="text-xs text-red-600 font-mono break-words">{error}</p>
+              <p className="text-xs text-red-600 font-sans break-words">{error}</p>
             </div>
           </div>
         )}
@@ -681,7 +682,7 @@ function ChatPage() {
           onSend={() => void send()}
           sending={sending}
           disabled={!model}
-          placeholder={model ? 'Message JeffGPT…' : 'Load a model to start'}
+          placeholder={model ? 'Message JeffGPT…' : 'Load a Jeff to start'}
           models={models}
           model={model}
           onModelChange={setModel}
@@ -781,7 +782,7 @@ function ChatPage() {
                 className="w-full bg-bg border border-border rounded-md px-3 py-2 text-[14px] focus:outline-none focus:border-fg disabled:opacity-50"
               />
               <div className="flex items-center justify-between mt-2">
-                <p className="text-[10px] font-mono text-muted">
+                <p className="text-[10px] font-sans text-muted">
                   {renameError ? (
                     <span className="text-red-600">{renameError}</span>
                   ) : (
@@ -797,7 +798,7 @@ function ChatPage() {
                     !renameTitle.trim() ||
                     renameTitle.trim() === (activeConversation?.title ?? '')
                   }
-                  className="text-[10px] uppercase tracking-[0.14em] font-mono px-3 py-1 rounded border border-fg text-fg hover:bg-fg hover:text-bg transition-colors disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-fg disabled:cursor-not-allowed"
+                  className="text-[10px] uppercase tracking-[0.14em] font-sans px-3 py-1 rounded border border-fg text-fg hover:bg-fg hover:text-bg transition-colors disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-fg disabled:cursor-not-allowed"
                 >
                   {renaming ? '…' : 'Save'}
                 </button>
@@ -809,8 +810,8 @@ function ChatPage() {
               <h4 className="text-[10px] uppercase tracking-[0.18em] text-muted mb-2">
                 Settings
               </h4>
-              <dl className="grid grid-cols-2 gap-y-1.5 text-[12px] font-mono">
-                <dt className="text-muted">Model</dt>
+              <dl className="grid grid-cols-2 gap-y-1.5 text-[12px] font-sans">
+                <dt className="text-muted">Type of Jeff</dt>
                 <dd className="text-right truncate">{model || '—'}</dd>
                 <dt className="text-muted">Memory</dt>
                 <dd className="text-right">
@@ -835,12 +836,12 @@ function ChatPage() {
                       : 'off'}
                 </dd>
               </dl>
-              <p className="text-[10px] font-mono text-muted mt-2 leading-relaxed">
+              <p className="text-[10px] font-sans text-muted mt-2 leading-relaxed">
                 Memory / Knowledge are captured when the chat is first created.
                 Search is per-turn. Toggle in the composer below.
               </p>
 
-              <label className="mt-3 flex items-center justify-between gap-2 text-[11px] font-mono text-fg cursor-pointer select-none">
+              <label className="mt-3 flex items-center justify-between gap-2 text-[11px] font-sans text-fg cursor-pointer select-none">
                 <span>
                   <span className="text-muted uppercase tracking-[0.14em] text-[10px] block">
                     Always allow web search
@@ -874,19 +875,19 @@ function ChatPage() {
                 <button
                   onClick={() => void refreshStats()}
                   disabled={activeId == null || loadingStats}
-                  className="text-[10px] uppercase tracking-[0.14em] font-mono text-fg hover:underline underline-offset-4 disabled:opacity-40"
+                  className="text-[10px] uppercase tracking-[0.14em] font-sans text-fg hover:underline underline-offset-4 disabled:opacity-40"
                 >
                   {loadingStats ? '…' : 'Refresh'}
                 </button>
               </div>
 
               {activeId == null ? (
-                <p className="text-[11px] text-muted font-mono">Select a conversation.</p>
+                <p className="text-[11px] text-muted font-sans">Select a conversation.</p>
               ) : stats == null ? (
-                <p className="text-[11px] text-muted font-mono">Tap refresh to load.</p>
+                <p className="text-[11px] text-muted font-sans">Tap refresh to load.</p>
               ) : (
                 <>
-                  <dl className="grid grid-cols-2 gap-y-1 text-[11px] font-mono">
+                  <dl className="grid grid-cols-2 gap-y-1 text-[11px] font-sans">
                     <dt className="text-muted">messages</dt>
                     <dd className="text-right">{stats.message_count}</dd>
                     <dt className="text-muted">runs</dt>
@@ -926,7 +927,7 @@ function ChatPage() {
                         {stats.models_used.map((m) => (
                           <span
                             key={m}
-                            className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-border bg-bg"
+                            className="text-[10px] font-sans px-1.5 py-0.5 rounded border border-border bg-bg"
                           >
                             {m}
                           </span>
@@ -944,7 +945,7 @@ function ChatPage() {
                         {stats.themes.map((t) => (
                           <span
                             key={t}
-                            className="text-[10px] font-mono px-1.5 py-0.5 rounded-full border border-border bg-bg"
+                            className="text-[10px] font-sans px-1.5 py-0.5 rounded-full border border-border bg-bg"
                           >
                             {t}
                             {stats.theme_counts[t] != null && (
@@ -984,11 +985,11 @@ function ChatPage() {
                       </div>
                       <p className="text-[11px] text-muted leading-relaxed">{o.content}</p>
                       <div className="flex flex-wrap gap-1 mt-2">
-                        <span className="text-[10px] font-mono text-muted">
+                        <span className="text-[10px] font-sans text-muted">
                           {o.type} · {o.domain}
                         </span>
                         {o.agent_name && (
-                          <span className="text-[10px] font-mono text-muted">
+                          <span className="text-[10px] font-sans text-muted">
                             · {o.agent_name}
                           </span>
                         )}
@@ -1010,14 +1011,14 @@ function ChatPage() {
                     <li key={r.Id} className="border border-border rounded-md p-3 bg-bg">
                       <div className="flex items-start justify-between gap-2 mb-1">
                         <p className="font-medium text-[13px]">{r.agent_name}</p>
-                        <span className="text-[10px] font-mono text-muted">{r.status}</span>
+                        <span className="text-[10px] font-sans text-muted">{r.status}</span>
                       </div>
                       {r.summary && (
                         <p className="text-[11px] text-muted mb-2 leading-relaxed">
                           {r.summary}
                         </p>
                       )}
-                      <dl className="grid grid-cols-3 gap-x-3 gap-y-0.5 text-[10px] font-mono text-muted">
+                      <dl className="grid grid-cols-3 gap-x-3 gap-y-0.5 text-[10px] font-sans text-muted">
                         <dt>in</dt>
                         <dd className="col-span-2 text-fg">
                           {(r.tokens_input ?? 0).toLocaleString()}

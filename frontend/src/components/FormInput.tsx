@@ -7,7 +7,7 @@ interface FormInputProps extends InputHTMLAttributes<HTMLInputElement> {
 export function FormInput({ label, className, ...inputProps }: FormInputProps) {
   return (
     <label className="block">
-      <span className="block text-[10px] uppercase tracking-[0.16em] text-muted mb-1.5 font-mono">
+      <span className="block text-[10px] uppercase tracking-[0.16em] text-muted mb-1.5 font-sans">
         {label}
       </span>
       <input

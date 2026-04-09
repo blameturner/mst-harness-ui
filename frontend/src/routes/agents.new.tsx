@@ -59,7 +59,7 @@ function AgentsNewPage() {
   return (
     <div className="min-h-full bg-bg text-fg font-sans">
       <header className="border-b border-border px-8 py-5 flex items-baseline gap-6">
-        <Link to="/agents" className="text-xs uppercase tracking-[0.2em] text-muted font-mono">
+        <Link to="/agents" className="text-xs uppercase tracking-[0.2em] text-muted font-sans">
           ← agents
         </Link>
         <h1 className="font-display text-2xl tracking-tightest">New scheduled agent</h1>
@@ -68,7 +68,7 @@ function AgentsNewPage() {
       <main className="px-8 py-6 max-w-2xl">
         <form onSubmit={submit} className="space-y-5">
           <div>
-            <label className="block text-[10px] uppercase tracking-[0.16em] text-muted mb-1.5 font-mono">
+            <label className="block text-[10px] uppercase tracking-[0.16em] text-muted mb-1.5 font-sans">
               Agent (worker type)
             </label>
             <input
@@ -76,7 +76,7 @@ function AgentsNewPage() {
               value={form.agent_name}
               onChange={(e) => setForm({ ...form, agent_name: e.target.value })}
               required
-              className="w-full bg-bg border border-border rounded-md px-3 py-2 text-sm font-mono focus:outline-none focus:border-fg"
+              className="w-full bg-bg border border-border rounded-md px-3 py-2 text-sm font-sans focus:outline-none focus:border-fg"
             />
             <datalist id="worker-types">
               {workerTypes.map((t) => (
@@ -88,7 +88,7 @@ function AgentsNewPage() {
           </div>
 
           <div>
-            <label className="block text-[10px] uppercase tracking-[0.16em] text-muted mb-1.5 font-mono">
+            <label className="block text-[10px] uppercase tracking-[0.16em] text-muted mb-1.5 font-sans">
               Task description
             </label>
             <textarea
@@ -101,7 +101,7 @@ function AgentsNewPage() {
           </div>
 
           <div>
-            <label className="block text-[10px] uppercase tracking-[0.16em] text-muted mb-1.5 font-mono">
+            <label className="block text-[10px] uppercase tracking-[0.16em] text-muted mb-1.5 font-sans">
               Product
             </label>
             <input
@@ -113,31 +113,31 @@ function AgentsNewPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-[10px] uppercase tracking-[0.16em] text-muted mb-1.5 font-mono">
+              <label className="block text-[10px] uppercase tracking-[0.16em] text-muted mb-1.5 font-sans">
                 Cron (5-field)
               </label>
               <input
                 value={form.cron_expression}
                 onChange={(e) => setForm({ ...form, cron_expression: e.target.value })}
                 required
-                className="w-full bg-bg border border-border rounded-md px-3 py-2 text-sm font-mono focus:outline-none focus:border-fg"
+                className="w-full bg-bg border border-border rounded-md px-3 py-2 text-sm font-sans focus:outline-none focus:border-fg"
               />
-              <div className="text-[10px] font-mono text-muted mt-1">
+              <div className="text-[10px] font-sans text-muted mt-1">
                 {humaniseCron(form.cron_expression)} · no seconds, no aliases
               </div>
             </div>
 
             <div>
-              <label className="block text-[10px] uppercase tracking-[0.16em] text-muted mb-1.5 font-mono">
+              <label className="block text-[10px] uppercase tracking-[0.16em] text-muted mb-1.5 font-sans">
                 Timezone (IANA)
               </label>
               <input
                 value={form.timezone}
                 onChange={(e) => setForm({ ...form, timezone: e.target.value })}
                 required
-                className="w-full bg-bg border border-border rounded-md px-3 py-2 text-sm font-mono focus:outline-none focus:border-fg"
+                className="w-full bg-bg border border-border rounded-md px-3 py-2 text-sm font-sans focus:outline-none focus:border-fg"
               />
-              <div className="text-[10px] font-mono text-muted mt-1">
+              <div className="text-[10px] font-sans text-muted mt-1">
                 e.g. Australia/Sydney — AEST/AEDT won't work
               </div>
             </div>
@@ -149,24 +149,24 @@ function AgentsNewPage() {
               checked={form.active}
               onChange={(e) => setForm({ ...form, active: e.target.checked })}
             />
-            <span className="text-[11px] uppercase tracking-[0.14em] font-mono text-muted">
+            <span className="text-[11px] uppercase tracking-[0.14em] font-sans text-muted">
               active
             </span>
           </label>
 
-          {error && <div className="text-xs font-mono text-red-700">{error}</div>}
+          {error && <div className="text-xs font-sans text-red-700">{error}</div>}
 
           <div className="flex gap-3">
             <button
               type="submit"
               disabled={submitting}
-              className="text-[11px] uppercase tracking-[0.18em] font-mono border border-fg px-4 py-2 hover:bg-fg hover:text-bg disabled:opacity-50"
+              className="text-[11px] uppercase tracking-[0.18em] font-sans border border-fg px-4 py-2 hover:bg-fg hover:text-bg disabled:opacity-50"
             >
               {submitting ? 'creating…' : 'create'}
             </button>
             <Link
               to="/agents"
-              className="text-[11px] uppercase tracking-[0.18em] font-mono text-muted px-4 py-2"
+              className="text-[11px] uppercase tracking-[0.18em] font-sans text-muted px-4 py-2"
             >
               cancel
             </Link>
