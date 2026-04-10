@@ -12,9 +12,6 @@ const NAV: NavItem[] = [
   { to: '/chat', label: 'Chat' },
   { to: '/code', label: 'Code' },
   { to: '/agents', label: 'Agents', matchPrefix: '/agents' },
-  { to: '/enrichment', label: 'Enrichment' },
-  { to: '/logs', label: 'Logs' },
-  { to: '/architecture', label: 'How it works' },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -60,12 +57,25 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
         </div>
 
-        <button
-          onClick={() => void logout()}
-          className="text-[11px] uppercase tracking-[0.16em] font-sans text-muted hover:text-fg transition-colors"
-        >
-          Sign out
-        </button>
+        <div className="flex items-center gap-4">
+          <Link
+            to="/harness"
+            className={[
+              'px-2.5 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap',
+              pathname === '/harness' || pathname.startsWith('/harness/')
+                ? 'bg-fg text-bg'
+                : 'text-muted hover:text-fg hover:bg-panelHi',
+            ].join(' ')}
+          >
+            Harness
+          </Link>
+          <button
+            onClick={() => void logout()}
+            className="text-[11px] uppercase tracking-[0.16em] font-sans text-muted hover:text-fg transition-colors"
+          >
+            Sign out
+          </button>
+        </div>
       </header>
 
       <div className="flex-1 min-h-0">{children}</div>

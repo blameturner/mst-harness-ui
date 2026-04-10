@@ -49,7 +49,6 @@ function ChatPage() {
   // RAG/knowledge flags only apply on the first turn of a new conversation; harness ignores them afterwards
   const [ragEnabled, setRagEnabled] = useState(false);
   const [knowledgeEnabled, setKnowledgeEnabled] = useState(false);
-  const [searchEnabled, setSearchEnabled] = useState(false);
   const streamAbortRef = useRef<AbortController | null>(null);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -172,6 +171,7 @@ function ChatPage() {
     setLoadingMessages(true);
     setError(null);
     setStats(null);
+    setConsentRequest(null);
     setRenameTitle(c.title || '');
     try {
       const saved = window.localStorage.getItem(`chatStyle:${c.Id}`);
@@ -216,7 +216,7 @@ function ChatPage() {
     setRenameTitle('');
     setRagEnabled(false);
     setKnowledgeEnabled(false);
-    setSearchEnabled(false);
+    setConsentRequest(null);
   }
 
 
@@ -243,24 +243,19 @@ function ChatPage() {
           continue;
         }
         if (ev.type === 'search_complete') {
-          const sources = ev.sources;
-          if (ev.ok === false) {
-            setMessages((ms) =>
-              ms.map((x) =>
-                x.id === pendingId
-                  ? { ...x, status: 'pending', sources, searchFailed: true }
-                  : x,
-              ),
-            );
-          } else {
-            setMessages((ms) =>
-              ms.map((x) =>
-                x.id === pendingId
-                  ? { ...x, status: 'pending', sources, searchFailed: false }
-                  : x,
-              ),
-            );
-          }
+          setMessages((ms) =>
+            ms.map((x) =>
+              x.id === pendingId
+                ? {
+                    ...x,
+                    status: 'pending',
+                    sources: ev.sources,
+                    searchConfidence: ev.confidence,
+                    searchFailed: !ev.ok,
+                  }
+                : x,
+            ),
+          );
           continue;
         }
         if (ev.type === 'search_consent_required') {
@@ -401,7 +396,6 @@ function ChatPage() {
     setError(null);
 
     const isFirstMessage = activeId == null;
-    const searchForThisTurn = searchEnabled || alwaysAllowSearch;
 
     try {
       await runChatStream(
@@ -411,7 +405,7 @@ function ChatPage() {
           conversation_id: activeId ?? undefined,
           ...(isFirstMessage && ragEnabled ? { rag_enabled: true } : {}),
           ...(isFirstMessage && knowledgeEnabled ? { knowledge_enabled: true } : {}),
-          ...(searchForThisTurn ? { search_enabled: true } : {}),
+          ...(alwaysAllowSearch ? { search_enabled: true } : {}),
           ...(styleKey ? { response_style: styleKey } : {}),
         },
         pendingId,
@@ -419,7 +413,6 @@ function ChatPage() {
       );
     } finally {
       setSending(false);
-      setSearchEnabled(false);
     }
   }
 
@@ -445,13 +438,13 @@ function ChatPage() {
           message: pendingUserText,
           conversation_id: activeId ?? undefined,
           ...(allow ? { search_enabled: true } : { search_consent_declined: true }),
+          ...(styleKey ? { response_style: styleKey } : {}),
         },
         pendingAssistantId,
         pendingUserText,
       );
     } finally {
       setSending(false);
-      setSearchEnabled(false);
     }
   }
 
@@ -490,47 +483,6 @@ function ChatPage() {
 
   return (
     <>
-    {/* ——— Search consent modal ——— */}
-    {consentRequest && (
-      <div className="fixed inset-0 z-50 bg-fg/30 backdrop-blur-sm flex items-center justify-center px-6 animate-fadeIn">
-        <div className="w-full max-w-md bg-bg border border-border rounded-xl shadow-card overflow-hidden">
-          <div className="px-6 pt-6 pb-4 border-b border-border">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-muted font-sans mb-1">
-              Allow web search?
-            </p>
-            <h3 className="font-display text-2xl font-semibold tracking-tightest leading-tight">
-              This question looks like it needs live info.
-            </h3>
-          </div>
-          <div className="px-6 py-5 space-y-4">
-            <p className="text-[13px] leading-relaxed text-muted">{consentRequest.reason}</p>
-            <div className="border border-border rounded-md px-3 py-2 bg-panel/60">
-              <p className="text-[10px] uppercase tracking-[0.16em] text-muted font-sans mb-0.5">
-                Query
-              </p>
-              <p className="text-[13px] font-sans break-words">{consentRequest.query}</p>
-            </div>
-          </div>
-          <div className="px-6 pb-5 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => void resolveConsent(false)}
-              className="text-[11px] uppercase tracking-[0.14em] font-sans px-4 py-2 rounded-md border border-border text-fg hover:bg-panelHi transition-colors"
-            >
-              Deny
-            </button>
-            <button
-              type="button"
-              onClick={() => void resolveConsent(true)}
-              className="text-[11px] uppercase tracking-[0.14em] font-sans px-4 py-2 rounded-md bg-fg text-bg hover:bg-fg/85 transition-colors"
-            >
-              Allow
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
-
     <div className="h-full flex bg-bg text-fg">
       {/* ——— Sidebar (desktop column) ——— */}
       <aside className="hidden md:flex w-80 border-r border-border bg-panel/60 flex-col">
@@ -677,6 +629,29 @@ function ChatPage() {
           </div>
         </div>
 
+        {/* ——— Inline search consent prompt ——— */}
+        {consentRequest && (
+          <div className="px-3 sm:px-6 pb-2">
+            <div className="max-w-3xl mx-auto flex items-center gap-3 text-[13px] font-sans text-muted bg-panel border border-border rounded-lg px-4 py-2.5">
+              <span className="flex-1">This might benefit from a web search</span>
+              <button
+                type="button"
+                onClick={() => void resolveConsent(true)}
+                className="text-[11px] uppercase tracking-[0.14em] font-sans px-3 py-1.5 rounded-md bg-fg text-bg hover:bg-fg/85 transition-colors"
+              >
+                Search
+              </button>
+              <button
+                type="button"
+                onClick={() => void resolveConsent(false)}
+                className="text-[11px] uppercase tracking-[0.14em] font-sans px-3 py-1.5 rounded-md border border-border text-fg hover:bg-panelHi transition-colors"
+              >
+                Skip
+              </button>
+            </div>
+          </div>
+        )}
+
         {error && (
           <div className="px-3 sm:px-6 pb-2">
             <div className="max-w-3xl mx-auto">
@@ -729,14 +704,6 @@ function ChatPage() {
                     ? 'Knowledge graph is set when a conversation is first created'
                     : 'Extract entities and write concept edges to the knowledge graph',
                 onToggle: () => setKnowledgeEnabled((v) => !v),
-              },
-              {
-                key: 'search',
-                label: 'Search',
-                active: searchEnabled,
-                disabled: sending,
-                title: 'Run a web search for this message',
-                onToggle: () => setSearchEnabled((v) => !v),
               },
             ] satisfies ComposerToggle[]
           }
@@ -837,16 +804,12 @@ function ChatPage() {
                 </dd>
                 <dt className="text-muted">Search</dt>
                 <dd className="text-right">
-                  {alwaysAllowSearch
-                    ? 'always on'
-                    : searchEnabled
-                      ? 'on (next turn)'
-                      : 'off'}
+                  {alwaysAllowSearch ? 'always on' : 'auto-detected'}
                 </dd>
               </dl>
               <p className="text-[10px] font-sans text-muted mt-2 leading-relaxed">
                 Memory / Knowledge are captured when the chat is first created.
-                Search is per-turn. Toggle in the composer below.
+                Search is auto-detected by the harness.
               </p>
 
               <label className="mt-3 flex items-center justify-between gap-2 text-[11px] font-sans text-fg cursor-pointer select-none">

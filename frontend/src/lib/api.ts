@@ -86,6 +86,27 @@ export interface StylesResponse {
   code?: StyleSurface;
 }
 
+export type SearchSourceRelevance = 'high' | 'medium' | 'low' | 'unknown';
+export type SearchSourceType =
+  | 'official_docs'
+  | 'news_article'
+  | 'blog_post'
+  | 'research_paper'
+  | 'forum'
+  | 'product_page'
+  | 'government'
+  | 'unknown';
+export type SearchConfidence = 'high' | 'medium' | 'low' | 'none';
+
+export interface SearchSource {
+  index: number;
+  title: string;
+  url: string;
+  relevance: SearchSourceRelevance;
+  source_type: SearchSourceType;
+  snippet: string;
+}
+
 export type StreamEvent =
   | { type: 'chunk'; text: string }
   | { type: 'meta'; conversation_id?: number; mode?: 'plan' | 'execute' | 'debug' }
@@ -108,8 +129,9 @@ export type StreamEvent =
   | {
       type: 'search_complete';
       source_count: number;
-      sources: string[];
-      ok?: boolean;
+      ok: boolean;
+      confidence: SearchConfidence;
+      sources: SearchSource[];
     }
   | {
       type: 'search_consent_required';
@@ -623,6 +645,33 @@ export const api = {
       http
         .get('api/workers/types')
         .json<{ types: { id: string; name: string; description: string }[] }>(),
+  },
+
+  harness: {
+    stats: (period: '7d' | '30d' | 'all' = '7d') =>
+      http.get('api/harness/stats/usage', { searchParams: { period } }).json<{
+        total_requests: number;
+        total_tokens_input: number;
+        total_tokens_output: number;
+        period_start: string;
+        period_end: string;
+        by_model: { model_name: string; requests: number; tokens_input: number; tokens_output: number; avg_tokens_per_request: number; avg_duration_seconds: number }[];
+        by_day: { date: string; requests: number; tokens_input: number; tokens_output: number }[];
+        by_style: { style: string; requests: number }[];
+        enrichment: { total_cycles: number; total_sources_scraped: number; total_tokens_used: number; suggestions_generated: number; suggestions_approved: number };
+      }>(),
+    graphSnapshot: (limit = 20) =>
+      http.get('api/harness/graph/snapshot', { searchParams: { limit: String(limit) } }).json<{
+        nodes: { id: string; label: string; type: string; degree: number }[];
+        edges: { source: string; target: string; relation: string }[];
+        summary: { total_nodes: number; total_edges: number; node_types: Record<string, number> };
+      }>(),
+    chromaSnapshot: () =>
+      http.get('api/harness/chroma/snapshot').json<{
+        collections: { name: string; count: number }[];
+        total_documents: number;
+        total_collections: number;
+      }>(),
   },
 
   logs: {

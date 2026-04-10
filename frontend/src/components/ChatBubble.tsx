@@ -1,9 +1,10 @@
-import { memo, useEffect, useState } from 'react';
+import { memo, useEffect, useState, useCallback, type ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import type { SearchSource, SearchConfidence } from '../lib/api';
 
 export type MessageStatus = 'complete' | 'pending' | 'streaming' | 'error' | 'system' | 'searching';
 
@@ -17,7 +18,8 @@ export interface DisplayMessage {
   tokensOut?: number;
   contextChars?: number;
   errorMessage?: string;
-  sources?: string[];
+  sources?: SearchSource[];
+  searchConfidence?: SearchConfidence;
   searchFailed?: boolean;
   responseStyle?: string | null;
   sourceUserText?: string;
@@ -87,48 +89,116 @@ export function ChatBubble({ message, onRetry }: Props) {
   return (
     <div className="flex justify-start animate-fadeIn">
       <div className="max-w-[94%] md:max-w-[85%] px-5 py-4 rounded-2xl rounded-bl-sm bg-panel border border-border text-fg markdown-body">
+        <ConfidenceBanner confidence={message.searchConfidence} />
         {message.searchFailed && (
           <div className="mb-3 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.16em] font-sans text-muted px-2 py-0.5 rounded-full border border-border bg-bg">
             <span aria-hidden>·</span> Search returned no results
           </div>
         )}
-        <MarkdownBody content={message.content} />
+        <MarkdownBody content={message.content} sources={message.sources} />
         {isStreaming && <span className="caret" />}
         {message.sources && message.sources.length > 0 && (
           <div className="mt-4 pt-3 border-t border-border">
-            <p className="text-[10px] uppercase tracking-[0.16em] font-sans text-muted mb-1.5">
+            <p className="text-[10px] uppercase tracking-[0.16em] font-sans text-muted mb-2">
               Sources
             </p>
-            <ul className="space-y-1">
-              {message.sources.map((src, i) => {
-                const match = src.match(/^(.*?):\s*(https?:\/\/\S+)$/);
-                const title = match ? match[1] : src;
-                const url = match ? match[2] : '';
-                return (
-                  <li key={i} className="text-[12px] leading-snug">
-                    <span className="font-sans text-muted mr-1">[{i + 1}]</span>
-                    {url ? (
-                      <a
-                        href={url}
-                        target="_blank"
-                        rel="noreferrer noopener"
-                        className="text-fg underline underline-offset-2 decoration-border hover:decoration-fg"
-                      >
-                        {title}
-                      </a>
-                    ) : (
-                      <span>{title}</span>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="space-y-2">
+              {sortedByRelevance(message.sources).map((src) => (
+                <SourceCard key={src.index} source={src} />
+              ))}
+            </div>
           </div>
         )}
       </div>
     </div>
   );
 }
+
+/* —— Confidence banner —— */
+
+function ConfidenceBanner({ confidence }: { confidence?: SearchConfidence }) {
+  if (!confidence || confidence === 'high') return null;
+
+  const labels: Record<Exclude<SearchConfidence, 'high'>, string> = {
+    medium: 'Some related sources found — results may not fully cover this topic',
+    low: 'Limited relevant sources — answer may rely on general knowledge',
+    none: 'No search results found',
+  };
+
+  const styles: Record<Exclude<SearchConfidence, 'high'>, string> = {
+    medium: 'border-amber-500/40 text-amber-600',
+    low: 'border-amber-600/50 text-amber-600',
+    none: 'border-border text-muted',
+  };
+
+  return (
+    <div
+      className={`mb-3 text-[11px] font-sans px-3 py-1.5 rounded-md border ${styles[confidence]}`}
+    >
+      {labels[confidence]}
+    </div>
+  );
+}
+
+/* —— Source reference card —— */
+
+const RELEVANCE_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2, unknown: 3 };
+
+function sortedByRelevance(sources: SearchSource[]): SearchSource[] {
+  return [...sources].sort(
+    (a, b) => (RELEVANCE_ORDER[a.relevance] ?? 3) - (RELEVANCE_ORDER[b.relevance] ?? 3),
+  );
+}
+
+const RELEVANCE_COLORS: Record<string, string> = {
+  high: 'bg-green-600/15 text-green-700 border-green-600/30',
+  medium: 'bg-amber-500/15 text-amber-700 border-amber-500/30',
+  low: 'bg-border/60 text-muted border-border',
+  unknown: 'bg-border/60 text-muted border-border',
+};
+
+function SourceCard({ source }: { source: SearchSource }) {
+  const relClass = RELEVANCE_COLORS[source.relevance] ?? RELEVANCE_COLORS.unknown;
+  const typeLabel = source.source_type.replace(/_/g, ' ');
+
+  return (
+    <a
+      id={`source-${source.index}`}
+      href={source.url}
+      target="_blank"
+      rel="noreferrer noopener"
+      className="block rounded-lg border border-border bg-bg/60 px-3 py-2 hover:border-fg/40 transition-colors group"
+    >
+      <div className="flex items-start gap-2">
+        <span className="shrink-0 w-5 h-5 rounded-full border border-border bg-panel flex items-center justify-center text-[10px] font-sans text-muted">
+          {source.index}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-medium leading-snug truncate group-hover:underline underline-offset-2 decoration-border">
+            {source.title}
+          </p>
+          {source.snippet && (
+            <p className="text-[11px] text-muted leading-relaxed mt-0.5 line-clamp-2">
+              {source.snippet}
+            </p>
+          )}
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <span
+              className={`text-[9px] uppercase tracking-[0.12em] font-sans px-1.5 py-0.5 rounded border ${relClass}`}
+            >
+              {source.relevance}
+            </span>
+            <span className="text-[9px] uppercase tracking-[0.12em] font-sans px-1.5 py-0.5 rounded border border-border text-muted">
+              {typeLabel}
+            </span>
+          </div>
+        </div>
+      </div>
+    </a>
+  );
+}
+
+/* —— Thinking labels —— */
 
 const THINKING_LABELS = [
   'Knocking things off the desk',
@@ -180,8 +250,69 @@ function ElapsedTimer({ startedAt }: { startedAt?: number }) {
   return <span className="not-italic font-sans text-[11px]">· {s}s</span>;
 }
 
-// Memoised on content so elapsed-timer ticks don't re-parse the markdown AST
-const MarkdownBody = memo(function MarkdownBody({ content }: { content: string }) {
+/* —— Inline citation parsing —— */
+
+const CITATION_RE = /\[(\d+)\]/g;
+
+/** Split text into literal segments and citation references. */
+function parseCitations(
+  text: string,
+  sources?: SearchSource[],
+): ReactNode[] {
+  if (!sources || sources.length === 0) return [text];
+
+  const parts: ReactNode[] = [];
+  let lastIndex = 0;
+
+  // Reset regex state for each call
+  CITATION_RE.lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = CITATION_RE.exec(text)) !== null) {
+    const idx = parseInt(match[1], 10);
+    const src = sources.find((s) => s.index === idx);
+    if (!src) continue;
+
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    parts.push(
+      <a
+        key={`cite-${match.index}`}
+        href={`#source-${idx}`}
+        title={`${src.title} — ${src.url}`}
+        onClick={(e) => {
+          e.preventDefault();
+          document.getElementById(`source-${idx}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }}
+        className="inline-flex items-center justify-center text-[10px] font-sans font-medium bg-panelHi border border-border rounded px-1 py-px ml-0.5 -translate-y-0.5 hover:border-fg hover:text-fg transition-colors cursor-pointer no-underline"
+      >
+        {idx}
+      </a>,
+    );
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : [text];
+}
+
+// Memoised on content + sources so elapsed-timer ticks don't re-parse the markdown AST
+const MarkdownBody = memo(function MarkdownBody({
+  content,
+  sources,
+}: {
+  content: string;
+  sources?: SearchSource[];
+}) {
+  const renderCitations = useCallback(
+    (text: string) => parseCitations(text, sources),
+    [sources],
+  );
+
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm, remarkMath]}
@@ -211,8 +342,10 @@ const MarkdownBody = memo(function MarkdownBody({ content }: { content: string }
             className="font-sans text-[13px] uppercase tracking-[0.14em] text-muted mt-3 mb-1 first:mt-0"
           />
         ),
-        p: (props) => (
-          <p {...props} className="text-[15px] leading-relaxed my-2 first:mt-0 last:mb-0" />
+        p: ({ children, ...rest }) => (
+          <p {...rest} className="text-[15px] leading-relaxed my-2 first:mt-0 last:mb-0">
+            {typeof children === 'string' ? renderCitations(children) : children}
+          </p>
         ),
         a: (props) => (
           <a
@@ -231,9 +364,15 @@ const MarkdownBody = memo(function MarkdownBody({ content }: { content: string }
         ol: (props) => (
           <ol {...props} className="list-decimal pl-5 my-2 space-y-1 marker:text-muted" />
         ),
-        li: (props) => <li {...props} className="text-[15px] leading-relaxed" />,
-        blockquote: (props) => (
-          <blockquote {...props} className="border-l-2 border-fg pl-4 my-3 italic text-muted" />
+        li: ({ children, ...rest }) => (
+          <li {...rest} className="text-[15px] leading-relaxed">
+            {typeof children === 'string' ? renderCitations(children) : children}
+          </li>
+        ),
+        blockquote: ({ children, ...rest }) => (
+          <blockquote {...rest} className="border-l-2 border-fg pl-4 my-3 italic text-muted">
+            {typeof children === 'string' ? renderCitations(children) : children}
+          </blockquote>
         ),
         hr: (props) => <hr {...props} className="border-border my-4" />,
         table: (props) => (
@@ -248,8 +387,10 @@ const MarkdownBody = memo(function MarkdownBody({ content }: { content: string }
             className="text-left font-semibold font-sans text-[11px] uppercase tracking-[0.12em] px-3 py-1.5 text-fg"
           />
         ),
-        td: (props) => (
-          <td {...props} className="px-3 py-1.5 border-b border-border align-top" />
+        td: ({ children, ...rest }) => (
+          <td {...rest} className="px-3 py-1.5 border-b border-border align-top">
+            {typeof children === 'string' ? renderCitations(children) : children}
+          </td>
         ),
         code: ({ className, children, ...rest }) => {
           const isBlock = /language-/.test(className ?? '');

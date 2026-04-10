@@ -228,6 +228,20 @@ export function rejectEnrichmentSuggestion(suggestionId: number): Promise<Respon
   return harnessClient.post(`/enrichment/suggestions/${suggestionId}/reject`, {}, HARNESS_ENRICHMENT_TIMEOUT_MS);
 }
 
+// --- Stats / snapshots -------------------------------------------------------
+
+export function getUsageStats(orgId: number, period: string): Promise<Response> {
+  return harnessClient.get(`/stats/usage?org_id=${orgId}&period=${period}`, HARNESS_ENRICHMENT_TIMEOUT_MS);
+}
+
+export function getGraphSnapshot(orgId: number, limit = 20): Promise<Response> {
+  return harnessClient.get(`/graph/snapshot?org_id=${orgId}&limit=${limit}`, HARNESS_ENRICHMENT_TIMEOUT_MS);
+}
+
+export function getChromaSnapshot(orgId: number): Promise<Response> {
+  return harnessClient.get(`/chroma/snapshot?org_id=${orgId}`, HARNESS_ENRICHMENT_TIMEOUT_MS);
+}
+
 // --- Codebases ---------------------------------------------------------------
 
 export function listCodebases(orgId: number): Promise<Response> {

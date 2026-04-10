@@ -42,4 +42,7 @@ export {
   patchEnrichmentSuggestion,
   approveEnrichmentSuggestion,
   rejectEnrichmentSuggestion,
+  getUsageStats,
+  getGraphSnapshot,
+  getChromaSnapshot,
 } from './endpoints.js';
