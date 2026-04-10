@@ -593,6 +593,8 @@ async function* streamJob(
 
   let cursor = 0;
   let done = false;
+  let emptyRetries = 0;
+  const MAX_EMPTY_RETRIES = 8;
 
   while (!done) {
     if (signal?.aborted) return;
@@ -652,9 +654,17 @@ async function* streamJob(
 
     for (const ev of events) yield ev;
 
-    // If not done, wait before reconnecting
     if (!done) {
-      await new Promise((r) => setTimeout(r, 500));
+      if (events.length === 0) {
+        emptyRetries++;
+        if (emptyRetries >= MAX_EMPTY_RETRIES) {
+          yield { type: 'error', message: 'Stream connection lost' };
+          return;
+        }
+      } else {
+        emptyRetries = 0;
+      }
+      await new Promise((r) => setTimeout(r, 500 * Math.min(emptyRetries + 1, 4)));
     }
   }
 }

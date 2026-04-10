@@ -1,7 +1,6 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { env } from '../env.js';
-import { HARNESS_STREAM_TIMEOUT_MS } from '../constants/timeouts.js';
 import type { AuthVariables } from '../types/auth.js';
 
 export const streamRoute = new Hono<{ Variables: AuthVariables }>();
@@ -12,14 +11,10 @@ streamRoute.get('/:jobId', async (c) => {
   const jobId = c.req.param('jobId');
   const cursor = c.req.query('cursor') ?? '0';
 
-  const controller = new AbortController();
   const url = `${env.HARNESS_URL}/stream/${encodeURIComponent(jobId)}?cursor=${encodeURIComponent(cursor)}`;
 
   try {
-    const res = await fetch(url, {
-      method: 'GET',
-      signal: controller.signal,
-    });
+    const res = await fetch(url, { method: 'GET' });
 
     if (!res.ok || !res.body) {
       const text = await res.text().catch(() => '');

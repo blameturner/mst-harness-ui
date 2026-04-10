@@ -43,7 +43,12 @@ chatRoute.post('/', async (c) => {
         502,
       );
     }
-    const data = await res.json();
+    let data: unknown;
+    try {
+      data = await res.json();
+    } catch {
+      return c.json({ error: 'harness_error', detail: 'non-JSON response' }, 502);
+    }
     return c.json(data);
   } catch (err) {
     if (err instanceof FetchTimeoutError) {
