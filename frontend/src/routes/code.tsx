@@ -406,7 +406,6 @@ function CodePage() {
     void refreshSessions();
   }, [refreshSessions]);
 
-  useEffect(() => () => streamAbortRef.current?.abort(), []);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -414,7 +413,6 @@ function CodePage() {
   }, [messages]);
 
   async function selectSession(c: CodeConversation) {
-    streamAbortRef.current?.abort();
     setConversationId(c.Id);
     setMessages([]);
     setFiles([]);
@@ -456,7 +454,6 @@ function CodePage() {
   }
 
   function newSession() {
-    streamAbortRef.current?.abort();
     setConversationId(null);
     setMessages([]);
     setFiles([]);

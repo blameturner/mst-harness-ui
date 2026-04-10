@@ -65,11 +65,13 @@ function LogsPage() {
     const url = api.logs.streamUrl({ since: 120, tail: 200 });
     let es: EventSource | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let failCount = 0;
 
     function connect() {
       es = new EventSource(url, { withCredentials: true });
 
       es.onopen = () => {
+        failCount = 0;
         setConnected(true);
         setError(null);
       };
@@ -97,6 +99,11 @@ function LogsPage() {
       es.onerror = () => {
         setConnected(false);
         es?.close();
+        failCount++;
+        if (failCount >= 5) {
+          setError('Cannot connect to log stream. Is the Docker socket mounted?');
+          return;
+        }
         reconnectTimer = setTimeout(connect, 3000);
       };
     }

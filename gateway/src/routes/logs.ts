@@ -19,15 +19,20 @@ interface ContainerInfo {
 }
 
 logsRoute.get('/containers', async (c) => {
-  const containers = await docker.listContainers({ all: true });
-  const list: ContainerInfo[] = containers.map((ci) => ({
-    id: ci.Id.slice(0, 12),
-    name: (ci.Names[0] ?? '').replace(/^\//, ''),
-    image: ci.Image,
-    state: ci.State,
-    status: ci.Status,
-  }));
-  return c.json({ containers: list });
+  try {
+    const containers = await docker.listContainers({ all: true });
+    const list: ContainerInfo[] = containers.map((ci) => ({
+      id: ci.Id.slice(0, 12),
+      name: (ci.Names[0] ?? '').replace(/^\//, ''),
+      image: ci.Image,
+      state: ci.State,
+      status: ci.Status,
+    }));
+    return c.json({ containers: list });
+  } catch (err) {
+    console.error('[logs] docker connect failed — is /var/run/docker.sock mounted?', err);
+    return c.json({ error: 'docker_unavailable', detail: 'Cannot connect to Docker daemon' }, 503);
+  }
 });
 
 // Demux Docker's multiplexed stream header (8-byte prefix per frame).
@@ -77,7 +82,13 @@ logsRoute.get('/stream', async (c) => {
   const sinceSeconds = parseInt(sinceParam, 10) || 60;
   const tail = parseInt(tailParam, 10) || 200;
 
-  const containers = await docker.listContainers({ all: false });
+  let containers: Awaited<ReturnType<typeof docker.listContainers>>;
+  try {
+    containers = await docker.listContainers({ all: false });
+  } catch (err) {
+    console.error('[logs] docker connect failed — is /var/run/docker.sock mounted?', err);
+    return c.json({ error: 'docker_unavailable', detail: 'Cannot connect to Docker daemon' }, 503);
+  }
   if (containers.length === 0) {
     return c.json({ error: 'no running containers' }, 404);
   }

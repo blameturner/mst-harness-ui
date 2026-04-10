@@ -562,6 +562,7 @@ export const api = {
 };
 
 // POST to start a job, then open an EventSource to stream events.
+// Uses a push queue so events yield immediately as they arrive rather than batching.
 // Reconnects with cursor on disconnect so no events are lost.
 async function* streamJob(
   path: string,
@@ -591,80 +592,84 @@ async function* streamJob(
     return;
   }
 
+  // Push queue: EventSource callbacks push, the generator pulls
+  const queue: Array<StreamEvent | { __done: true } | { __reconnect: true }> = [];
+  let waiting: ((v: void) => void) | null = null;
+  function push(item: (typeof queue)[number]) {
+    queue.push(item);
+    if (waiting) { waiting(); waiting = null; }
+  }
+  async function pull() {
+    while (queue.length === 0) {
+      await new Promise<void>((r) => { waiting = r; });
+    }
+    return queue.shift()!;
+  }
+
   let cursor = 0;
-  let done = false;
   let emptyRetries = 0;
   const MAX_EMPTY_RETRIES = 8;
 
-  while (!done) {
-    if (signal?.aborted) return;
+  function connect() {
+    const streamUrl = `${gatewayUrl()}/api/stream/${encodeURIComponent(job_id)}?cursor=${cursor}`;
+    const es = new EventSource(streamUrl, { withCredentials: true });
 
-    const events = await new Promise<StreamEvent[]>((resolve, reject) => {
-      const batch: StreamEvent[] = [];
-      const streamUrl = `${gatewayUrl()}/api/stream/${encodeURIComponent(job_id)}?cursor=${cursor}`;
-      const es = new EventSource(streamUrl, { withCredentials: true });
+    es.onopen = () => { emptyRetries = 0; };
 
-      const cleanup = () => {
+    es.onmessage = (e) => {
+      if (e.data === '[DONE]') {
         es.close();
-        signal?.removeEventListener('abort', onAbort);
-        visCleanup();
-      };
+        push({ __done: true });
+        return;
+      }
+      if (e.lastEventId) cursor = parseInt(e.lastEventId, 10) + 1;
+      try {
+        push(JSON.parse(e.data) as StreamEvent);
+      } catch {}
+    };
 
-      const onAbort = () => {
-        cleanup();
-        reject(new DOMException('Aborted', 'AbortError'));
-      };
+    es.onerror = () => {
+      es.close();
+      push({ __reconnect: true });
+    };
 
-      // Reconnect on tab resume in case the connection silently died
-      let visHandler: (() => void) | null = null;
-      const visCleanup = () => {
-        if (visHandler) {
-          document.removeEventListener('visibilitychange', visHandler);
-          visHandler = null;
-        }
-      };
-      visHandler = () => {
-        if (document.visibilityState === 'visible') {
-          cleanup();
-          resolve(batch);
-        }
-      };
-      document.addEventListener('visibilitychange', visHandler);
+    return es;
+  }
 
-      signal?.addEventListener('abort', onAbort);
+  let es = connect();
 
-      es.onmessage = (e) => {
-        if (e.data === '[DONE]') {
-          done = true;
-          cleanup();
-          resolve(batch);
-          return;
-        }
-        if (e.lastEventId) cursor = parseInt(e.lastEventId, 10) + 1;
-        try {
-          batch.push(JSON.parse(e.data) as StreamEvent);
-        } catch {}
-      };
+  // Reconnect on tab resume
+  const onVisibility = () => {
+    if (document.visibilityState === 'visible') {
+      es.close();
+      es = connect();
+    }
+  };
+  document.addEventListener('visibilitychange', onVisibility);
 
-      es.onerror = () => {
-        cleanup();
-        resolve(batch);
-      };
-    });
+  try {
+    while (true) {
+      if (signal?.aborted) return;
 
-    for (const ev of events) yield ev;
+      const item = await pull();
 
-    if (!done) {
-      if (events.length === 0) {
+      if ('__done' in item) return;
+
+      if ('__reconnect' in item) {
         emptyRetries++;
         if (emptyRetries >= MAX_EMPTY_RETRIES) {
           yield { type: 'error', message: 'Stream connection lost' };
           return;
         }
-      } else {
-        emptyRetries = 0;
+        await new Promise((r) => setTimeout(r, 500 * Math.min(emptyRetries + 1, 4)));
+        es = connect();
+        continue;
       }
-      await new Promise((r) => setTimeout(r, 500 * Math.min(emptyRetries + 1, 4)));
+
+      yield item;
     }
+  } finally {
+    es.close();
+    document.removeEventListener('visibilitychange', onVisibility);
   }
 }

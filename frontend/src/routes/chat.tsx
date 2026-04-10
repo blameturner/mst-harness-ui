@@ -165,8 +165,6 @@ function ChatPage() {
   }
 
   function newChat() {
-    streamAbortRef.current?.abort();
-    streamAbortRef.current = null;
     setActiveId(null);
     setMessages([]);
     setError(null);
@@ -177,11 +175,6 @@ function ChatPage() {
     setSearchEnabled(false);
   }
 
-  useEffect(() => {
-    return () => {
-      streamAbortRef.current?.abort();
-    };
-  }, []);
 
   async function runChatStream(
     body: Parameters<typeof api.chatStream>[0],
@@ -254,7 +247,13 @@ function ChatPage() {
             return copy;
           });
         } else if (ev.type === 'meta') {
-          if (ev.conversation_id != null) newConversationId = ev.conversation_id;
+          if (ev.conversation_id != null && newConversationId == null) {
+            newConversationId = ev.conversation_id;
+            if (isFirstMessage) {
+              setActiveId(newConversationId);
+              api.conversations().then((r) => setConversations(r.conversations)).catch(() => {});
+            }
+          }
         } else if (ev.type === 'done') {
           if (ev.conversation_id != null) newConversationId = ev.conversation_id;
           if (ev.awaiting === 'search_consent') {
@@ -296,13 +295,8 @@ function ChatPage() {
         }
       }
 
-      // Only persist the id once past any consent pause — harness hasn't committed the user row until then
       if (isFirstMessage && newConversationId != null && !consentNeeded) {
         setActiveId(newConversationId);
-        try {
-          const convRes = await api.conversations();
-          setConversations(convRes.conversations);
-        } catch {}
       }
     } catch (err) {
       const aborted = (err as Error)?.name === 'AbortError';
