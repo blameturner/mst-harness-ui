@@ -421,15 +421,14 @@ function ChatPage() {
     setRenaming(true);
     setRenameError(null);
     try {
-      const res = await api.renameConversation(activeId, title);
-      const next = res.conversation;
+      await api.renameConversation(activeId, title);
       setConversations((cs) =>
-        cs.map((c) => (c.Id === next.Id ? { ...c, title: next.title } : c)),
+        cs.map((c) => (c.Id === activeId ? { ...c, title } : c)),
       );
-      if (stats && stats.conversation.Id === next.Id) {
-        setStats({ ...stats, conversation: { ...stats.conversation, title: next.title } });
+      if (stats && stats.conversation.Id === activeId) {
+        setStats({ ...stats, conversation: { ...stats.conversation, title } });
       }
-      setRenameTitle(next.title);
+      setRenameTitle(title);
     } catch (err) {
       setRenameError((err as Error)?.message ?? 'Rename failed');
     } finally {
