@@ -135,13 +135,6 @@ export function getSchedulerStatus(): Promise<Response> {
   return harnessClient.get('/scheduler/status', HARNESS_SCHEDULER_TIMEOUT_MS);
 }
 
-export function getGraphCoverage(orgId: number): Promise<Response> {
-  return harnessClient.get(
-    `/graph/coverage?org_id=${orgId}`,
-    HARNESS_ENRICHMENT_TIMEOUT_MS,
-  );
-}
-
 export function listEnrichmentAgents(orgId: number): Promise<Response> {
   return harnessClient.get(`/enrichment/agents?org_id=${orgId}`, HARNESS_ENRICHMENT_TIMEOUT_MS);
 }
@@ -228,18 +221,18 @@ export function rejectEnrichmentSuggestion(suggestionId: number): Promise<Respon
   return harnessClient.post(`/enrichment/suggestions/${suggestionId}/reject`, {}, HARNESS_ENRICHMENT_TIMEOUT_MS);
 }
 
+export function approveEnrichmentSuggestionsByParent(body: unknown): Promise<Response> {
+  return harnessClient.post('/enrichment/suggestions/approve-by-parent', body, HARNESS_ENRICHMENT_TIMEOUT_MS);
+}
+
+export function rejectEnrichmentSuggestionsByParent(body: unknown): Promise<Response> {
+  return harnessClient.post('/enrichment/suggestions/reject-by-parent', body, HARNESS_ENRICHMENT_TIMEOUT_MS);
+}
+
 // --- Stats / snapshots -------------------------------------------------------
 
 export function getUsageStats(orgId: number, period: string): Promise<Response> {
   return harnessClient.get(`/stats/usage?org_id=${orgId}&period=${period}`, HARNESS_ENRICHMENT_TIMEOUT_MS);
-}
-
-export function getGraphSnapshot(orgId: number, limit = 20): Promise<Response> {
-  return harnessClient.get(`/graph/snapshot?org_id=${orgId}&limit=${limit}`, HARNESS_ENRICHMENT_TIMEOUT_MS);
-}
-
-export function getChromaSnapshot(orgId: number): Promise<Response> {
-  return harnessClient.get(`/chroma/snapshot?org_id=${orgId}`, HARNESS_ENRICHMENT_TIMEOUT_MS);
 }
 
 // --- Codebases ---------------------------------------------------------------

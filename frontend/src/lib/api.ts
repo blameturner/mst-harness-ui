@@ -59,6 +59,8 @@ export interface Conversation {
 
 export type ChatRole = 'user' | 'assistant' | 'system';
 
+export type SearchStatus = 'not_used' | 'used' | 'no_results' | 'error' | 'consent_required' | 'declined';
+
 export interface ChatMessageRow {
   Id: number;
   conversation_id: number;
@@ -68,6 +70,12 @@ export interface ChatMessageRow {
   tokens_input?: number;
   tokens_output?: number;
   response_style?: string | null;
+  search_used?: boolean;
+  search_status?: SearchStatus;
+  search_confidence?: SearchConfidence;
+  search_source_count?: number;
+  search_context_text?: string;
+  search_sources?: SearchSource[];
   CreatedAt?: string;
 }
 
@@ -95,16 +103,23 @@ export type SearchSourceType =
   | 'forum'
   | 'product_page'
   | 'government'
+  | 'social_media'
   | 'unknown';
 export type SearchConfidence = 'high' | 'medium' | 'low' | 'none';
 
+/** SSE shape uses `index` (1-based); persisted REST shape uses `source_index` (0-based). */
 export interface SearchSource {
-  index: number;
+  index?: number;
+  source_index?: number;
   title: string;
   url: string;
   relevance: SearchSourceRelevance;
   source_type: SearchSourceType;
   snippet: string;
+  used_in_answer?: boolean | number;
+  message_id?: number;
+  conversation_id?: number;
+  org_id?: number;
 }
 
 export type StreamEvent =
@@ -122,6 +137,10 @@ export type StreamEvent =
       mode?: 'plan' | 'execute' | 'debug';
       output?: string;
       awaiting?: 'search_consent';
+      search_used?: boolean;
+      search_status?: SearchStatus;
+      search_confidence?: SearchConfidence;
+      search_source_count?: number;
     }
   | { type: 'summarised'; removed: number; summary_chars: number }
   | { type: 'parsed'; output: AgentOutput | null }
@@ -323,6 +342,7 @@ export interface ScrapeTarget {
   enrichment_agent_id: number | null;
   use_playwright: boolean;
   playwright_fallback: boolean;
+  parent_target: number | null;
 }
 
 export interface EnrichmentLogEntry {
@@ -355,6 +375,7 @@ export interface SuggestedScrapeTarget {
   status: 'pending' | 'approved' | 'rejected' | 'already_exists';
   reviewed_by_user_id: number | null;
   reviewed_at: string | null;
+  parent_target: number | null;
 }
 
 export interface SchedulerLastRun {
@@ -399,11 +420,6 @@ export interface EnrichmentAgentCreateBody {
   cron_expression: string;
   timezone?: string;
   active?: boolean;
-}
-
-export interface GraphCoverageNode {
-  name: string;
-  degree: number;
 }
 
 export interface AgentSummary {
@@ -607,15 +623,15 @@ export const api = {
       http.post(`api/enrichment/suggestions/${id}/approve`, { json: body ?? {} }).json<{ ok: true }>(),
     rejectSuggestion: (id: number) =>
       http.post(`api/enrichment/suggestions/${id}/reject`).json<{ ok: true }>(),
+    approveByParent: (parentTarget: number, body: { enrichment_agent_id?: number }) =>
+      http.post('api/enrichment/suggestions/approve-by-parent', { json: { parent_target: parentTarget, ...body } }).json<{ ok: true }>(),
+    rejectByParent: (parentTarget: number) =>
+      http.post('api/enrichment/suggestions/reject-by-parent', { json: { parent_target: parentTarget } }).json<{ ok: true }>(),
 
     // Scheduler
     status: () => http.get('api/enrichment/status').json<SchedulerStatus>(),
     triggerCycle: () =>
       http.post('api/enrichment/trigger').json<{ status: string }>(),
-    graphCoverage: () =>
-      http
-        .get('api/enrichment/graph/coverage')
-        .json<GraphCoverageNode[] | { nodes: GraphCoverageNode[] }>(),
 
     // Agents
     agents: () =>
@@ -653,24 +669,48 @@ export const api = {
         total_requests: number;
         total_tokens_input: number;
         total_tokens_output: number;
+        total_conversations: number;
+        total_errors: number;
         period_start: string;
         period_end: string;
-        by_model: { model_name: string; requests: number; tokens_input: number; tokens_output: number; avg_tokens_per_request: number; avg_duration_seconds: number }[];
-        by_day: { date: string; requests: number; tokens_input: number; tokens_output: number }[];
+        by_model: {
+          model_name: string;
+          requests: number;
+          tokens_input: number;
+          tokens_output: number;
+          avg_tokens_per_request: number;
+          avg_duration_seconds: number;
+          p50_duration_seconds: number;
+          p95_duration_seconds: number;
+          p99_duration_seconds: number;
+          time_to_first_token_ms: number;
+          error_count: number;
+          error_rate: number;
+        }[];
+        by_day: { date: string; requests: number; tokens_input: number; tokens_output: number; errors: number }[];
+        by_hour: { hour: number; day_of_week: number; requests: number }[];
         by_style: { style: string; requests: number }[];
-        enrichment: { total_cycles: number; total_sources_scraped: number; total_tokens_used: number; suggestions_generated: number; suggestions_approved: number };
-      }>(),
-    graphSnapshot: (limit = 20) =>
-      http.get('api/harness/graph/snapshot', { searchParams: { limit: String(limit) } }).json<{
-        nodes: { id: string; label: string; type: string; degree: number }[];
-        edges: { source: string; target: string; relation: string }[];
-        summary: { total_nodes: number; total_edges: number; node_types: Record<string, number> };
-      }>(),
-    chromaSnapshot: () =>
-      http.get('api/harness/chroma/snapshot').json<{
-        collections: { name: string; count: number }[];
-        total_documents: number;
-        total_collections: number;
+        top_conversations: {
+          conversation_id: number;
+          title: string;
+          message_count: number;
+          total_tokens: number;
+          last_active: string;
+        }[];
+        agent_runs: {
+          total_runs: number;
+          successful: number;
+          failed: number;
+          avg_steps: number;
+          by_agent: { agent_name: string; runs: number; success_rate: number; avg_steps: number }[];
+        };
+        enrichment: {
+          total_cycles: number;
+          total_sources_scraped: number;
+          total_tokens_used: number;
+          suggestions_generated: number;
+          suggestions_approved: number;
+        };
       }>(),
   },
 

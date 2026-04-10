@@ -4,7 +4,16 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import type { SearchSource, SearchConfidence } from '../lib/api';
+import type { SearchSource, SearchConfidence, AgentOutput } from '../lib/api';
+
+/** Return the 1-based citation number.
+ *  SSE sources have `index` (already 1-based).
+ *  Persisted sources have `source_index` (0-based in DB). */
+function citationIndex(src: SearchSource): number {
+  if (src.index != null) return src.index;
+  if (src.source_index != null) return src.source_index + 1;
+  return 0;
+}
 
 export type MessageStatus = 'complete' | 'pending' | 'streaming' | 'error' | 'system' | 'searching';
 
@@ -23,6 +32,7 @@ export interface DisplayMessage {
   searchFailed?: boolean;
   responseStyle?: string | null;
   sourceUserText?: string;
+  parsedOutput?: unknown;
 }
 
 interface Props {
@@ -86,6 +96,53 @@ export function ChatBubble({ message, onRetry }: Props) {
 
   const isStreaming = message.status === 'streaming';
 
+  // If we have structured parsed output, render it with rich formatting
+  if (message.parsedOutput && typeof message.parsedOutput === 'object') {
+    const output = message.parsedOutput as unknown as AgentOutput;
+    const confidenceColor: Record<string, string> = {
+      high: 'bg-emerald-500/15 text-emerald-400 border-emerald-600/40',
+      medium: 'bg-amber-500/15 text-amber-400 border-amber-600/40',
+      low: 'bg-red-500/15 text-red-400 border-red-600/40',
+    };
+
+    return (
+      <div className="flex justify-start animate-fadeIn">
+        <div className="max-w-[94%] md:max-w-[85%] bg-panel border border-border rounded-2xl rounded-bl-sm p-5 space-y-4">
+          <header className="flex items-start justify-between gap-4">
+            <h2 className="font-display text-xl font-semibold leading-tight">{output.title}</h2>
+            <span
+              className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border ${
+                confidenceColor[output.confidence] ?? confidenceColor.medium
+              }`}
+            >
+              {output.confidence}
+            </span>
+          </header>
+
+          {output.summary && <p className="text-fg leading-relaxed">{output.summary}</p>}
+
+          <OutputSection title="Key points" items={output.key_points} />
+          <OutputSection title="Recommendations" items={output.recommendations} tone="accent" />
+          <OutputSection title="Next steps" items={output.next_steps} />
+          <OutputSection title="Observations" items={output.observations} muted />
+
+          {output.tags?.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {output.tags.map((t) => (
+                <span
+                  key={t}
+                  className="text-[11px] px-2 py-0.5 rounded-full bg-panelHi border border-border text-muted"
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex justify-start animate-fadeIn">
       <div className="max-w-[94%] md:max-w-[85%] px-5 py-4 rounded-2xl rounded-bl-sm bg-panel border border-border text-fg markdown-body">
@@ -104,7 +161,7 @@ export function ChatBubble({ message, onRetry }: Props) {
             </p>
             <div className="space-y-2">
               {sortedByRelevance(message.sources).map((src) => (
-                <SourceCard key={src.index} source={src} />
+                <SourceCard key={citationIndex(src)} source={src} />
               ))}
             </div>
           </div>
@@ -160,10 +217,11 @@ const RELEVANCE_COLORS: Record<string, string> = {
 function SourceCard({ source }: { source: SearchSource }) {
   const relClass = RELEVANCE_COLORS[source.relevance] ?? RELEVANCE_COLORS.unknown;
   const typeLabel = source.source_type.replace(/_/g, ' ');
+  const idx = citationIndex(source);
 
   return (
     <a
-      id={`source-${source.index}`}
+      id={`source-${idx}`}
       href={source.url}
       target="_blank"
       rel="noreferrer noopener"
@@ -171,7 +229,7 @@ function SourceCard({ source }: { source: SearchSource }) {
     >
       <div className="flex items-start gap-2">
         <span className="shrink-0 w-5 h-5 rounded-full border border-border bg-panel flex items-center justify-center text-[10px] font-sans text-muted">
-          {source.index}
+          {idx}
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-[13px] font-medium leading-snug truncate group-hover:underline underline-offset-2 decoration-border">
@@ -250,6 +308,40 @@ function ElapsedTimer({ startedAt }: { startedAt?: number }) {
   return <span className="not-italic font-sans text-[11px]">· {s}s</span>;
 }
 
+/* —— Structured output section —— */
+
+function OutputSection({
+  title,
+  items,
+  tone,
+  muted,
+}: {
+  title: string;
+  items?: string[];
+  tone?: 'accent';
+  muted?: boolean;
+}) {
+  if (!items || items.length === 0) return null;
+  return (
+    <div>
+      <p className="text-xs uppercase tracking-wider text-muted mb-1.5">{title}</p>
+      <ul className="space-y-1">
+        {items.map((item, i) => (
+          <li
+            key={i}
+            className={`flex gap-2 text-sm leading-relaxed ${
+              muted ? 'text-muted' : tone === 'accent' ? 'text-accent' : 'text-fg'
+            }`}
+          >
+            <span className="text-muted select-none">›</span>
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /* —— Inline citation parsing —— */
 
 const CITATION_RE = /\[(\d+)\]/g;
@@ -270,7 +362,7 @@ function parseCitations(
 
   while ((match = CITATION_RE.exec(text)) !== null) {
     const idx = parseInt(match[1], 10);
-    const src = sources.find((s) => s.index === idx);
+    const src = sources.find((s) => citationIndex(s) === idx);
     if (!src) continue;
 
     if (match.index > lastIndex) {

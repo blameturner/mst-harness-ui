@@ -8,7 +8,6 @@ export {
   updateCodeConversation,
   getConversationMessages,
   getConversationSummary,
-  getGraphCoverage,
   getSchedulerStatus,
   health,
   listAgents,
@@ -42,7 +41,7 @@ export {
   patchEnrichmentSuggestion,
   approveEnrichmentSuggestion,
   rejectEnrichmentSuggestion,
+  approveEnrichmentSuggestionsByParent,
+  rejectEnrichmentSuggestionsByParent,
   getUsageStats,
-  getGraphSnapshot,
-  getChromaSnapshot,
 } from './endpoints.js';

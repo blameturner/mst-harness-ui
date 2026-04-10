@@ -161,6 +161,9 @@ function ChatPage() {
         tokensIn: m.tokens_input,
         tokensOut: m.tokens_output,
         responseStyle: m.response_style ?? null,
+        sources: m.search_sources?.length ? m.search_sources : undefined,
+        searchConfidence: m.search_confidence ?? undefined,
+        searchFailed: m.search_status === 'error' || m.search_status === 'no_results',
       }));
   }
 
@@ -285,6 +288,16 @@ function ChatPage() {
             copy.splice(idx, 0, notice);
             return copy;
           });
+        } else if (ev.type === 'parsed') {
+          if (ev.output != null) {
+            setMessages((ms) =>
+              ms.map((x) =>
+                x.id === pendingId
+                  ? { ...x, parsedOutput: ev.output }
+                  : x,
+              ),
+            );
+          }
         } else if (ev.type === 'meta') {
           if (ev.conversation_id != null && newConversationId == null) {
             newConversationId = ev.conversation_id;

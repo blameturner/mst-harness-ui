@@ -386,9 +386,8 @@ function inferGroup(c: DockerContainer): string {
   ) return 'Models';
   if (
     name.includes('redis') || name.includes('postgres') || name.includes('nocodb') ||
-    name.includes('falkor') || name.includes('mysql') || name.includes('mongo') ||
-    image.includes('redis') || image.includes('postgres') || image.includes('nocodb') ||
-    image.includes('falkor')
+    name.includes('mysql') || name.includes('mongo') ||
+    image.includes('redis') || image.includes('postgres') || image.includes('nocodb')
   ) return 'Data';
   if (
     name.includes('nginx') || name.includes('proxy') || name.includes('traefik') ||

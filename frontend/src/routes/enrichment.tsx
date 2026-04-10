@@ -1,16 +1,6 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  BarChart,
-  Bar,
-  CartesianGrid,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
-import {
   api,
   ENRICHMENT_CATEGORIES,
   ENRICHMENT_EVENT_TYPES,
@@ -19,7 +9,6 @@ import {
   type EnrichmentCategory,
   type EnrichmentEventType,
   type EnrichmentLogEntry,
-  type GraphCoverageNode,
   type ScrapeTarget,
   type SchedulerStatus,
   type SuggestedScrapeTarget,
@@ -27,7 +16,7 @@ import {
 import { authClient } from '../lib/auth-client';
 import { Select } from '../components/Select';
 
-type Tab = 'sources' | 'suggestions' | 'log' | 'graph' | 'agents';
+type Tab = 'sources' | 'suggestions' | 'log' | 'agents';
 
 function relTime(value: string | number | null): string {
   if (value == null) return '—';
@@ -65,7 +54,8 @@ function relTime(value: string | number | null): string {
   return `${d}d ago`;
 }
 
-function EnrichmentPage() {
+/** Exported so the harness page can embed it inline */
+export function EnrichmentContent() {
   const [tab, setTab] = useState<Tab>('sources');
   const [status, setStatus] = useState<SchedulerStatus | null>(null);
   const [triggering, setTriggering] = useState(false);
@@ -107,37 +97,30 @@ function EnrichmentPage() {
     { id: 'agents', label: 'Agents' },
     { id: 'suggestions', label: 'Suggestions' },
     { id: 'log', label: 'Log' },
-    { id: 'graph', label: 'Graph coverage' },
   ];
 
   return (
-    <div className="min-h-full bg-bg text-fg font-sans">
-      <header className="border-b border-border px-8 py-5 flex items-center justify-between">
-        <div className="flex items-baseline gap-6">
-          <Link to="/chat" className="text-xs uppercase tracking-[0.2em] text-muted font-sans">
-            ← back
-          </Link>
-          <h1 className="font-display text-2xl tracking-tightest">Enrichment</h1>
-        </div>
+    <div className="h-full flex flex-col">
+      <div className="shrink-0 border-b border-border px-8 py-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <StatusBadge status={status} />
-          <button
-            onClick={triggerCycle}
-            disabled={triggering}
-            className="text-[11px] uppercase tracking-[0.18em] font-sans border border-fg px-3 py-2 hover:bg-fg hover:text-bg transition-colors disabled:opacity-50"
-          >
-            {triggering ? 'triggering…' : 'run cycle now'}
-          </button>
         </div>
-      </header>
+        <button
+          onClick={triggerCycle}
+          disabled={triggering}
+          className="text-[11px] uppercase tracking-[0.18em] font-sans border border-fg px-3 py-2 hover:bg-fg hover:text-bg transition-colors disabled:opacity-50"
+        >
+          {triggering ? 'triggering…' : 'run cycle now'}
+        </button>
+      </div>
 
       {banner && (
-        <div className="px-8 py-3 bg-panel border-b border-border text-sm text-muted font-sans">
+        <div className="shrink-0 px-8 py-3 bg-panel border-b border-border text-sm text-muted font-sans">
           {banner}
         </div>
       )}
 
-      <nav className="border-b border-border px-8 flex gap-1">
+      <nav className="shrink-0 border-b border-border px-8 flex gap-1">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -152,13 +135,28 @@ function EnrichmentPage() {
         ))}
       </nav>
 
-      <main className="px-8 py-6">
+      <main className="flex-1 min-h-0 overflow-y-auto px-8 py-6">
         {tab === 'sources' && <SourcesTab />}
         {tab === 'agents' && <AgentsTab />}
         {tab === 'suggestions' && <SuggestionsTab />}
         {tab === 'log' && <LogTab />}
-        {tab === 'graph' && <GraphCoverageTab />}
       </main>
+    </div>
+  );
+}
+
+function EnrichmentPage() {
+  return (
+    <div className="min-h-full bg-bg text-fg font-sans">
+      <header className="border-b border-border px-8 py-5 flex items-center justify-between">
+        <div className="flex items-baseline gap-6">
+          <Link to="/chat" className="text-xs uppercase tracking-[0.2em] text-muted font-sans">
+            ← back
+          </Link>
+          <h1 className="font-display text-2xl tracking-tightest">Enrichment</h1>
+        </div>
+      </header>
+      <EnrichmentContent />
     </div>
   );
 }
@@ -181,6 +179,160 @@ function StatusBadge({ status }: { status: SchedulerStatus | null }) {
       {status.next_run && ` · next ${relTime(status.next_run)}`}
       {status.last_run && ` · last ${relTime(status.last_run.finished_at)}`}
     </span>
+  );
+}
+
+function SourceRow({
+  source,
+  indent,
+  agentName,
+  onSelect,
+  onToggleActive,
+  onTrigger,
+  onFlush,
+  onRemove,
+}: {
+  source: ScrapeTarget;
+  indent: boolean;
+  agentName: (id: number | null) => string | null;
+  onSelect: (s: ScrapeTarget) => void;
+  onToggleActive: (s: ScrapeTarget) => void;
+  onTrigger: (id: number) => void;
+  onFlush: (id: number) => void;
+  onRemove: (id: number) => void;
+}) {
+  return (
+    <tr className="border-b border-border hover:bg-panelHi">
+      <td className={`py-2 ${indent ? 'pl-6' : ''}`}>
+        {indent && <span className="text-muted mr-1">└</span>}
+        <button
+          onClick={() => onSelect(source)}
+          className="underline hover:text-fg text-left"
+        >
+          {source.name}
+        </button>
+      </td>
+      <td className="py-2 font-sans text-xs truncate max-w-[220px]">
+        <a href={source.url} target="_blank" rel="noreferrer" className="underline">
+          {source.url}
+        </a>
+      </td>
+      <td className="py-2 font-sans text-xs">{source.category}</td>
+      <td className="py-2 font-sans text-xs text-muted">
+        {agentName(source.enrichment_agent_id) ?? '—'}
+      </td>
+      <td className="py-2 font-sans text-xs">{source.frequency_hours}h</td>
+      <td className="py-2 font-sans text-xs text-muted">
+        {source.use_playwright ? 'PW' : source.playwright_fallback ? 'PW-fb' : ''}
+      </td>
+      <td className="py-2 text-xs text-muted">{relTime(source.last_scraped_at)}</td>
+      <td className="py-2 text-xs">
+        {source.status ?? '—'}
+        {!source.active && <span className="text-muted"> (inactive)</span>}
+      </td>
+      <td className="py-2 text-right font-sans text-xs">{source.chunk_count}</td>
+      <td className="py-2 text-right">
+        <div className="flex gap-2 justify-end text-[10px] uppercase tracking-[0.14em] font-sans">
+          <button onClick={() => onToggleActive(source)} className="hover:text-fg text-muted">
+            {source.active ? 'disable' : 'enable'}
+          </button>
+          <button onClick={() => onTrigger(source.id)} className="hover:text-fg text-muted">
+            scrape
+          </button>
+          <button onClick={() => onFlush(source.id)} className="hover:text-fg text-muted">
+            flush
+          </button>
+          <button onClick={() => onRemove(source.id)} className="hover:text-red-700 text-muted">
+            delete
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function SourcesTree({
+  sources,
+  agentName,
+  onSelect,
+  onToggleActive,
+  onTrigger,
+  onFlush,
+  onRemove,
+}: {
+  sources: ScrapeTarget[];
+  agentName: (id: number | null) => string | null;
+  onSelect: (s: ScrapeTarget) => void;
+  onToggleActive: (s: ScrapeTarget) => void;
+  onTrigger: (id: number) => void;
+  onFlush: (id: number) => void;
+  onRemove: (id: number) => void;
+}) {
+  // Build a map of parent_id -> children
+  const childrenByParent = new Map<number, ScrapeTarget[]>();
+  const rootSources: ScrapeTarget[] = [];
+
+  for (const s of sources) {
+    if (s.parent_target != null) {
+      const list = childrenByParent.get(s.parent_target);
+      if (list) list.push(s);
+      else childrenByParent.set(s.parent_target, [s]);
+    } else {
+      rootSources.push(s);
+    }
+  }
+
+  const rows: { source: ScrapeTarget; indent: boolean }[] = [];
+  for (const root of rootSources) {
+    rows.push({ source: root, indent: false });
+    const children = childrenByParent.get(root.id);
+    if (children) {
+      for (const child of children) {
+        rows.push({ source: child, indent: true });
+      }
+    }
+  }
+  // Orphan children whose parent isn't in the list
+  for (const s of sources) {
+    if (s.parent_target != null && !rootSources.some((r) => r.id === s.parent_target)) {
+      if (!rows.some((r) => r.source.id === s.id)) {
+        rows.push({ source: s, indent: true });
+      }
+    }
+  }
+
+  return (
+    <table className="w-full text-sm">
+      <thead>
+        <tr className="text-[10px] uppercase tracking-[0.16em] text-muted font-sans border-b border-border">
+          <th className="text-left py-2">name</th>
+          <th className="text-left py-2">url</th>
+          <th className="text-left py-2">category</th>
+          <th className="text-left py-2">agent</th>
+          <th className="text-left py-2">freq</th>
+          <th className="text-left py-2">pw</th>
+          <th className="text-left py-2">last scraped</th>
+          <th className="text-left py-2">status</th>
+          <th className="text-right py-2">chunks</th>
+          <th className="text-right py-2">actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(({ source, indent }) => (
+          <SourceRow
+            key={source.id}
+            source={source}
+            indent={indent}
+            agentName={agentName}
+            onSelect={onSelect}
+            onToggleActive={onToggleActive}
+            onTrigger={onTrigger}
+            onFlush={onFlush}
+            onRemove={onRemove}
+          />
+        ))}
+      </tbody>
+    </table>
   );
 }
 
@@ -410,71 +562,15 @@ function SourcesTab() {
       ) : sources.length === 0 ? (
         <div className="text-sm text-muted font-sans">No sources yet.</div>
       ) : (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-[10px] uppercase tracking-[0.16em] text-muted font-sans border-b border-border">
-              <th className="text-left py-2">name</th>
-              <th className="text-left py-2">url</th>
-              <th className="text-left py-2">category</th>
-              <th className="text-left py-2">agent</th>
-              <th className="text-left py-2">freq</th>
-              <th className="text-left py-2">pw</th>
-              <th className="text-left py-2">last scraped</th>
-              <th className="text-left py-2">status</th>
-              <th className="text-right py-2">chunks</th>
-              <th className="text-right py-2">actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sources.map((s) => (
-              <tr key={s.id} className="border-b border-border hover:bg-panelHi">
-                <td className="py-2">
-                  <button
-                    onClick={() => setSelected(s)}
-                    className="underline hover:text-fg text-left"
-                  >
-                    {s.name}
-                  </button>
-                </td>
-                <td className="py-2 font-sans text-xs truncate max-w-[220px]">
-                  <a href={s.url} target="_blank" rel="noreferrer" className="underline">
-                    {s.url}
-                  </a>
-                </td>
-                <td className="py-2 font-sans text-xs">{s.category}</td>
-                <td className="py-2 font-sans text-xs text-muted">
-                  {agentName(s.enrichment_agent_id) ?? '—'}
-                </td>
-                <td className="py-2 font-sans text-xs">{s.frequency_hours}h</td>
-                <td className="py-2 font-sans text-xs text-muted">
-                  {s.use_playwright ? 'PW' : s.playwright_fallback ? 'PW-fb' : ''}
-                </td>
-                <td className="py-2 text-xs text-muted">{relTime(s.last_scraped_at)}</td>
-                <td className="py-2 text-xs">
-                  {s.status ?? '—'}
-                  {!s.active && <span className="text-muted"> (inactive)</span>}
-                </td>
-                <td className="py-2 text-right font-sans text-xs">{s.chunk_count}</td>
-                <td className="py-2 text-right">
-                  <div className="flex gap-2 justify-end text-[10px] uppercase tracking-[0.14em] font-sans">
-                    <button onClick={() => toggleActive(s)} className="hover:text-fg text-muted">
-                      {s.active ? 'disable' : 'enable'}
-                    </button>
-                    <button onClick={() => triggerNow(s.id)} className="hover:text-fg text-muted">
-                      scrape
-                    </button>
-                    <button onClick={() => flushChunks(s.id)} className="hover:text-fg text-muted">
-                      flush
-                    </button>
-                    <button onClick={() => remove(s.id)} className="hover:text-red-700 text-muted">
-                      delete
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <SourcesTree
+          sources={sources}
+          agentName={agentName}
+          onSelect={setSelected}
+          onToggleActive={toggleActive}
+          onTrigger={triggerNow}
+          onFlush={flushChunks}
+          onRemove={remove}
+        />
       )}
     </div>
   );
@@ -643,25 +739,70 @@ function SourceDetail({
   );
 }
 
+interface SuggestionGroup {
+  parentId: number | null;
+  parentName: string | null;
+  parentUrl: string | null;
+  items: SuggestedScrapeTarget[];
+}
+
+function groupSuggestions(
+  items: SuggestedScrapeTarget[],
+  sources: ScrapeTarget[],
+): SuggestionGroup[] {
+  const byParent = new Map<number | null, SuggestedScrapeTarget[]>();
+  for (const s of items) {
+    const key = s.parent_target;
+    const list = byParent.get(key);
+    if (list) list.push(s);
+    else byParent.set(key, [s]);
+  }
+
+  const groups: SuggestionGroup[] = [];
+  // Standalone / external first
+  const standalone = byParent.get(null);
+  if (standalone) {
+    groups.push({ parentId: null, parentName: null, parentUrl: null, items: standalone });
+    byParent.delete(null);
+  }
+  // Grouped by parent
+  for (const [parentId, children] of byParent) {
+    const parent = sources.find((src) => src.id === parentId);
+    groups.push({
+      parentId,
+      parentName: parent?.name ?? `Source #${parentId}`,
+      parentUrl: parent?.url ?? null,
+      items: children,
+    });
+  }
+  return groups;
+}
+
 function SuggestionsTab() {
   const [items, setItems] = useState<SuggestedScrapeTarget[]>([]);
+  const [sources, setSources] = useState<ScrapeTarget[]>([]);
   const [agents, setAgents] = useState<EnrichmentAgent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [reviewing, setReviewing] = useState<number | null>(null);
   const [approveAgentId, setApproveAgentId] = useState<string>('');
+  const [bulkReviewing, setBulkReviewing] = useState<number | null>(null);
+  const [bulkAgentId, setBulkAgentId] = useState<string>('');
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<number>>(new Set());
 
   async function load() {
     setLoading(true);
     setError(null);
     try {
-      const [sugRes, agRes] = await Promise.all([
+      const [sugRes, agRes, srcRes] = await Promise.all([
         api.enrichment.suggestions(statusFilter),
         api.enrichment.agents(),
+        api.enrichment.sources(),
       ]);
       setItems(sugRes.suggestions);
       setAgents(agRes.agents ?? []);
+      setSources(srcRes.sources ?? []);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -695,6 +836,39 @@ function SuggestionsTab() {
     }
   }
 
+  async function bulkApprove(parentTarget: number) {
+    try {
+      const body: { enrichment_agent_id?: number } = {};
+      if (bulkAgentId) body.enrichment_agent_id = Number(bulkAgentId);
+      await api.enrichment.approveByParent(parentTarget, body);
+      setBulkReviewing(null);
+      setBulkAgentId('');
+      load();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
+  async function bulkReject(parentTarget: number) {
+    try {
+      await api.enrichment.rejectByParent(parentTarget);
+      load();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
+  function toggleGroupCollapsed(parentId: number) {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(parentId)) next.delete(parentId);
+      else next.add(parentId);
+      return next;
+    });
+  }
+
+  const groups = useMemo(() => groupSuggestions(items, sources), [items, sources]);
+
   const statusTabs: { id: 'pending' | 'approved' | 'rejected'; label: string }[] = [
     { id: 'pending', label: 'Pending' },
     { id: 'approved', label: 'Approved' },
@@ -726,98 +900,183 @@ function SuggestionsTab() {
       ) : items.length === 0 ? (
         <div className="text-sm text-muted font-sans">No {statusFilter} suggestions.</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {items.map((s) => {
-            const borderColor =
-              s.confidence === 'high'
-                ? 'border-green-600'
-                : s.confidence === 'medium'
-                  ? 'border-amber-600'
-                  : 'border-red-600';
-            return (
-              <div
-                key={s.id}
-                className={`bg-panel border-l-4 ${borderColor} border-t border-r border-b border-border p-4`}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-display text-lg">{s.name}</h3>
-                  <span className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted">
-                    {s.confidence} · score {s.confidence_score}
+        <div className="space-y-6">
+          {groups.map((group) => (
+            <div key={group.parentId ?? 'standalone'}>
+              {/* Group header for parent-grouped suggestions */}
+              {group.parentId != null && (
+                <div className="flex items-center gap-3 mb-3">
+                  <button
+                    onClick={() => toggleGroupCollapsed(group.parentId!)}
+                    className="text-[10px] font-sans text-muted hover:text-fg"
+                  >
+                    {collapsedGroups.has(group.parentId) ? '▶' : '▼'}
+                  </button>
+                  <h3 className="font-display text-base">
+                    {group.parentName}
+                  </h3>
+                  <span className="text-[10px] uppercase tracking-[0.14em] font-sans bg-panel border border-border px-2 py-0.5">
+                    {group.items.length} sub-page{group.items.length !== 1 ? 's' : ''} pending
                   </span>
-                </div>
-                <a
-                  href={s.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-xs font-sans text-muted underline break-all"
-                >
-                  {s.url}
-                </a>
-                <div className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted mt-2">
-                  {s.category} · seen {s.times_suggested}×
-                  {s.suggested_by_url && (
-                    <span> · from {s.suggested_by_url}</span>
+                  {group.parentUrl && (
+                    <a
+                      href={group.parentUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs font-sans text-muted underline truncate max-w-[300px]"
+                    >
+                      {group.parentUrl}
+                    </a>
                   )}
-                </div>
-                {s.reason && <p className="text-sm text-fg mt-3">{s.reason}</p>}
-                {statusFilter === 'pending' && (
-                  <>
-                    {reviewing === s.id ? (
-                      <div className="mt-4 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted">
-                            agent
-                          </span>
+                  {statusFilter === 'pending' && (
+                    <>
+                      {bulkReviewing === group.parentId ? (
+                        <div className="flex items-center gap-2 ml-auto">
                           <Select
-                            value={approveAgentId}
-                            onChange={setApproveAgentId}
-                            placeholder="none"
+                            value={bulkAgentId}
+                            onChange={setBulkAgentId}
+                            placeholder="agent"
                             options={[
                               { value: '', label: 'None' },
                               ...agents.map((a) => ({ value: String(a.Id), label: a.name })),
                             ]}
                             position="below"
                           />
-                        </div>
-                        <div className="flex items-center gap-2">
                           <button
-                            onClick={() => approve(s.id)}
+                            onClick={() => bulkApprove(group.parentId!)}
                             className="text-[10px] uppercase tracking-[0.14em] font-sans border border-fg px-3 py-1 hover:bg-fg hover:text-bg"
                           >
-                            confirm
+                            confirm all
                           </button>
                           <button
-                            onClick={() => { setReviewing(null); setApproveAgentId(''); }}
+                            onClick={() => { setBulkReviewing(null); setBulkAgentId(''); }}
                             className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted"
                           >
                             cancel
                           </button>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="mt-4 flex gap-2">
-                        <button
-                          onClick={() => {
-                            setReviewing(s.id);
-                            setApproveAgentId('');
-                          }}
-                          className="text-[10px] uppercase tracking-[0.14em] font-sans border border-fg px-3 py-1 hover:bg-fg hover:text-bg"
+                      ) : (
+                        <div className="flex items-center gap-2 ml-auto">
+                          <button
+                            onClick={() => { setBulkReviewing(group.parentId!); setBulkAgentId(''); }}
+                            className="text-[10px] uppercase tracking-[0.14em] font-sans border border-fg px-3 py-1 hover:bg-fg hover:text-bg"
+                          >
+                            approve all
+                          </button>
+                          <button
+                            onClick={() => bulkReject(group.parentId!)}
+                            className="text-[10px] uppercase tracking-[0.14em] font-sans border border-border px-3 py-1 hover:border-red-700 hover:text-red-700"
+                          >
+                            reject all
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+              {group.parentId == null && groups.length > 1 && (
+                <h3 className="font-display text-base mb-3">Standalone</h3>
+              )}
+
+              {/* Suggestion cards — hidden when group is collapsed */}
+              {(group.parentId == null || !collapsedGroups.has(group.parentId)) && (
+                <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 ${group.parentId != null ? 'ml-5' : ''}`}>
+                  {group.items.map((s) => {
+                    const borderColor =
+                      s.confidence === 'high'
+                        ? 'border-green-600'
+                        : s.confidence === 'medium'
+                          ? 'border-amber-600'
+                          : 'border-red-600';
+                    return (
+                      <div
+                        key={s.id}
+                        className={`bg-panel border-l-4 ${borderColor} border-t border-r border-b border-border p-4`}
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="font-display text-lg">{s.name}</h3>
+                          <span className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted">
+                            {s.confidence} · score {s.confidence_score}
+                          </span>
+                        </div>
+                        <a
+                          href={s.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs font-sans text-muted underline break-all"
                         >
-                          approve
-                        </button>
-                        <button
-                          onClick={() => reject(s.id)}
-                          className="text-[10px] uppercase tracking-[0.14em] font-sans border border-border px-3 py-1 hover:border-red-700 hover:text-red-700"
-                        >
-                          reject
-                        </button>
+                          {s.url}
+                        </a>
+                        <div className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted mt-2">
+                          {s.category} · seen {s.times_suggested}×
+                          {s.suggested_by_url && (
+                            <span> · from {s.suggested_by_url}</span>
+                          )}
+                        </div>
+                        {s.reason && <p className="text-sm text-fg mt-3">{s.reason}</p>}
+                        {statusFilter === 'pending' && (
+                          <>
+                            {reviewing === s.id ? (
+                              <div className="mt-4 space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted">
+                                    agent
+                                  </span>
+                                  <Select
+                                    value={approveAgentId}
+                                    onChange={setApproveAgentId}
+                                    placeholder="none"
+                                    options={[
+                                      { value: '', label: 'None' },
+                                      ...agents.map((a) => ({ value: String(a.Id), label: a.name })),
+                                    ]}
+                                    position="below"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => approve(s.id)}
+                                    className="text-[10px] uppercase tracking-[0.14em] font-sans border border-fg px-3 py-1 hover:bg-fg hover:text-bg"
+                                  >
+                                    confirm
+                                  </button>
+                                  <button
+                                    onClick={() => { setReviewing(null); setApproveAgentId(''); }}
+                                    className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted"
+                                  >
+                                    cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="mt-4 flex gap-2">
+                                <button
+                                  onClick={() => {
+                                    setReviewing(s.id);
+                                    setApproveAgentId('');
+                                  }}
+                                  className="text-[10px] uppercase tracking-[0.14em] font-sans border border-fg px-3 py-1 hover:bg-fg hover:text-bg"
+                                >
+                                  approve
+                                </button>
+                                <button
+                                  onClick={() => reject(s.id)}
+                                  className="text-[10px] uppercase tracking-[0.14em] font-sans border border-border px-3 py-1 hover:border-red-700 hover:text-red-700"
+                                >
+                                  reject
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
-                    )}
-                  </>
-                )}
-              </div>
-            );
-          })}
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -1365,64 +1624,6 @@ function AgentDetail({
             </tbody>
           </table>
         )}
-      </div>
-    </div>
-  );
-}
-
-function GraphCoverageTab() {
-  const [nodes, setNodes] = useState<GraphCoverageNode[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    api.enrichment
-      .graphCoverage()
-      .then((r) => {
-        const list = Array.isArray(r) ? r : r.nodes;
-        setNodes(list ?? []);
-      })
-      .catch((err) => setError((err as Error).message))
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) return <div className="text-sm text-muted">Loading…</div>;
-  if (error) return <div className="text-xs font-sans text-red-700">{error}</div>;
-  if (nodes.length === 0)
-    return (
-      <div className="text-sm text-muted font-sans">
-        No concept nodes yet — run an enrichment cycle first.
-      </div>
-    );
-
-  return (
-    <div>
-      <h2 className="font-display text-xl mb-2">Graph coverage</h2>
-      <p className="text-sm text-muted mb-4">
-        Concept nodes by connection count. Red bars ({'<'} 3 connections) are what
-        proactive search targets.
-      </p>
-      <div className="w-full h-[480px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={nodes}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e6e6e4" />
-            <XAxis
-              dataKey="name"
-              tick={{ fontSize: 10, fontFamily: 'monospace' }}
-              angle={-40}
-              textAnchor="end"
-              height={100}
-              interval={0}
-            />
-            <YAxis tick={{ fontSize: 10 }} />
-            <Tooltip />
-            <Bar dataKey="degree">
-              {nodes.map((n, i) => (
-                <Cell key={i} fill={n.degree < 3 ? '#b91c1c' : '#0a0a0a'} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
       </div>
     </div>
   );

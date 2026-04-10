@@ -18,9 +18,17 @@ export function ConversationList({ conversations, activeId, onSelect, loading }:
       </p>
     );
   }
+
+  // Sort by most recently updated
+  const sorted = [...conversations].sort((a, b) => {
+    const aTime = a.UpdatedAt ? new Date(a.UpdatedAt).getTime() : 0;
+    const bTime = b.UpdatedAt ? new Date(b.UpdatedAt).getTime() : 0;
+    return bTime - aTime; // Descending order (most recent first)
+  });
+
   return (
     <ul className="space-y-1">
-      {conversations.map((c) => {
+      {sorted.map((c) => {
         const isActive = c.Id === activeId;
         return (
           <li key={c.Id}>

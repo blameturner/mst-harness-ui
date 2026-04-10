@@ -5,7 +5,6 @@ import { getAuthContext } from '../lib/auth-context.js';
 import { assertInteger } from '../lib/noco-filter.js';
 import { FetchTimeoutError } from '../lib/fetch-with-timeout.js';
 import {
-  getGraphCoverage,
   getSchedulerStatus,
   triggerScheduler,
   listEnrichmentAgents,
@@ -26,6 +25,8 @@ import {
   patchEnrichmentSuggestion,
   approveEnrichmentSuggestion,
   rejectEnrichmentSuggestion,
+  approveEnrichmentSuggestionsByParent,
+  rejectEnrichmentSuggestionsByParent,
 } from '../services/harness/index.js';
 import type { AuthVariables } from '../types/auth.js';
 
@@ -97,6 +98,7 @@ function normaliseSource(row: Record<string, unknown>) {
     enrichment_agent_id: row.enrichment_agent_id ?? null,
     use_playwright: row.use_playwright === true || row.use_playwright === 1,
     playwright_fallback: row.playwright_fallback === true || row.playwright_fallback === 1,
+    parent_target: row.parent_target ?? null,
   };
 }
 
@@ -116,6 +118,7 @@ function normaliseSuggestion(row: Record<string, unknown>) {
     status: row.status,
     reviewed_by_user_id: row.reviewed_by_user_id ?? null,
     reviewed_at: row.reviewed_at ?? null,
+    parent_target: row.parent_target ?? null,
   };
 }
 
@@ -342,6 +345,28 @@ enrichmentRoute.get('/suggestions', async (c) => {
   }
 });
 
+enrichmentRoute.post('/suggestions/approve-by-parent', async (c) => {
+  const body = await c.req.json().catch(() => null);
+  if (!body || body.parent_target == null) return c.json({ error: 'invalid_body' }, 400);
+  try {
+    const res = await approveEnrichmentSuggestionsByParent(body);
+    return forward(res);
+  } catch (err) {
+    return mapHarnessError(err);
+  }
+});
+
+enrichmentRoute.post('/suggestions/reject-by-parent', async (c) => {
+  const body = await c.req.json().catch(() => null);
+  if (!body || body.parent_target == null) return c.json({ error: 'invalid_body' }, 400);
+  try {
+    const res = await rejectEnrichmentSuggestionsByParent(body);
+    return forward(res);
+  } catch (err) {
+    return mapHarnessError(err);
+  }
+});
+
 enrichmentRoute.get('/suggestions/:id', async (c) => {
   const id = parseIdParam(c.req.param('id'));
   if (id == null) return c.json({ error: 'invalid_id' }, 400);
@@ -403,19 +428,6 @@ enrichmentRoute.get('/status', async () => {
 enrichmentRoute.post('/trigger', async () => {
   try {
     const res = await triggerScheduler();
-    return forward(res);
-  } catch (err) {
-    return mapHarnessError(err);
-  }
-});
-
-enrichmentRoute.get('/graph/coverage', async (c) => {
-  const { orgId } = getAuthContext(c);
-  try {
-    const res = await getGraphCoverage(Number(orgId));
-    if (res.status === 404) {
-      return c.json({ nodes: [] });
-    }
     return forward(res);
   } catch (err) {
     return mapHarnessError(err);

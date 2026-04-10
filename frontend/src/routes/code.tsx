@@ -918,7 +918,13 @@ function CodePage() {
         ) : sessions.length === 0 ? (
           <p className="text-muted text-xs px-2 py-2">No sessions yet.</p>
         ) : (
-          sessions.map((c) => {
+          [...sessions]
+            .sort((a, b) => {
+              const aTime = a.UpdatedAt ? new Date(a.UpdatedAt).getTime() : 0;
+              const bTime = b.UpdatedAt ? new Date(b.UpdatedAt).getTime() : 0;
+              return bTime - aTime; // Most recent first
+            })
+            .map((c) => {
             const active = c.Id === conversationId;
             return (
               <div

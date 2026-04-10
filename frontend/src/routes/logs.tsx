@@ -41,12 +41,13 @@ function inferGroup(c: DockerContainer): string {
   const name = c.name.toLowerCase();
   const image = c.image.toLowerCase();
   if (name.includes('llama') || name.includes('model') || name.includes('reasoner') || name.includes('coder') || name.includes('fast') || image.includes('llama') || image.includes('gguf') || image.includes('vllm')) return 'Models';
-  if (name.includes('redis') || name.includes('postgres') || name.includes('nocodb') || name.includes('falkor') || name.includes('mysql') || name.includes('mongo') || image.includes('redis') || image.includes('postgres') || image.includes('nocodb') || image.includes('falkor')) return 'Data';
+  if (name.includes('redis') || name.includes('postgres') || name.includes('nocodb') || name.includes('mysql') || name.includes('mongo') || image.includes('redis') || image.includes('postgres') || image.includes('nocodb')) return 'Data';
   if (name.includes('nginx') || name.includes('proxy') || name.includes('traefik') || name.includes('caddy') || image.includes('nginx') || image.includes('proxy')) return 'Proxy';
   return 'Services';
 }
 
-function LogsPage() {
+/** Exported so the harness page can embed it inline */
+export function LogsPage() {
   const [containers, setContainers] = useState<DockerContainer[]>([]);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [lines, setLines] = useState<StoredLine[]>([]);
