@@ -2,11 +2,7 @@ import { Hono } from 'hono';
 import { FetchTimeoutError } from '../lib/fetch-with-timeout.js';
 import { listStyles } from '../services/harness/index.js';
 
-/**
- * Passthrough for the harness style catalogue. No auth/ownership: it's a
- * static list of prompt presets that only changes on deploy. We cache the
- * parsed JSON in-process for 24h — on deploy the container restart flushes it.
- */
+
 export const stylesRoute = new Hono();
 
 const TTL_MS = 24 * 60 * 60 * 1000;

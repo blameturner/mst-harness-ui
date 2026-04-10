@@ -197,6 +197,8 @@ function SourcesTab() {
     category: 'documentation' as EnrichmentCategory,
     frequency_hours: 24,
     enrichment_agent_id: null as number | null,
+    use_playwright: false,
+    playwright_fallback: false,
   });
 
   async function load() {
@@ -231,7 +233,7 @@ function SourcesTab() {
     try {
       await api.enrichment.createSource(form);
       setShowForm(false);
-      setForm({ name: '', url: '', category: 'documentation', frequency_hours: 24, enrichment_agent_id: null });
+      setForm({ name: '', url: '', category: 'documentation', frequency_hours: 24, enrichment_agent_id: null, use_playwright: false, playwright_fallback: false });
       load();
     } catch (err) {
       setError((err as Error).message);
@@ -290,6 +292,15 @@ function SourcesTab() {
     }
   }
 
+  async function updateSource(sourceId: number, patch: Partial<ScrapeTarget>) {
+    try {
+      await api.enrichment.updateSource(sourceId, patch);
+      load();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
   const agentName = (id: number | null) => {
     if (id == null) return null;
     return agents.find((a) => a.Id === id)?.name ?? null;
@@ -303,6 +314,7 @@ function SourcesTab() {
         agentName={agentName}
         onBack={() => setSelected(null)}
         onAssignAgent={(agentId) => assignAgent(selected.id, agentId)}
+        onUpdate={(patch) => updateSource(selected.id, patch)}
         onToggleActive={() => toggleActive(selected)}
         onTrigger={() => triggerNow(selected.id)}
         onFlush={() => flushChunks(selected.id)}
@@ -369,7 +381,19 @@ function SourcesTab() {
               position="below"
             />
           </div>
-          <div className="flex items-end justify-end">
+          <div className="col-span-2 flex items-center gap-6">
+            <LabeledCheckbox
+              label="Use Playwright"
+              checked={form.use_playwright}
+              onChange={(v) => setForm({ ...form, use_playwright: v })}
+            />
+            <LabeledCheckbox
+              label="Playwright fallback"
+              checked={form.playwright_fallback}
+              onChange={(v) => setForm({ ...form, playwright_fallback: v })}
+            />
+          </div>
+          <div className="col-span-2 flex justify-end">
             <button
               type="submit"
               className="text-[11px] uppercase tracking-[0.18em] font-sans border border-fg px-4 py-2 hover:bg-fg hover:text-bg"
@@ -394,6 +418,7 @@ function SourcesTab() {
               <th className="text-left py-2">category</th>
               <th className="text-left py-2">agent</th>
               <th className="text-left py-2">freq</th>
+              <th className="text-left py-2">pw</th>
               <th className="text-left py-2">last scraped</th>
               <th className="text-left py-2">status</th>
               <th className="text-right py-2">chunks</th>
@@ -421,6 +446,9 @@ function SourcesTab() {
                   {agentName(s.enrichment_agent_id) ?? '—'}
                 </td>
                 <td className="py-2 font-sans text-xs">{s.frequency_hours}h</td>
+                <td className="py-2 font-sans text-xs text-muted">
+                  {s.use_playwright ? 'PW' : s.playwright_fallback ? 'PW-fb' : ''}
+                </td>
                 <td className="py-2 text-xs text-muted">{relTime(s.last_scraped_at)}</td>
                 <td className="py-2 text-xs">
                   {s.status ?? '—'}
@@ -458,6 +486,7 @@ function SourceDetail({
   agentName,
   onBack,
   onAssignAgent,
+  onUpdate,
   onToggleActive,
   onTrigger,
   onFlush,
@@ -468,6 +497,7 @@ function SourceDetail({
   agentName: (id: number | null) => string | null;
   onBack: () => void;
   onAssignAgent: (agentId: number | null) => void;
+  onUpdate: (patch: Partial<ScrapeTarget>) => void;
   onToggleActive: () => void;
   onTrigger: () => void;
   onFlush: () => void;
@@ -479,7 +509,7 @@ function SourceDetail({
   useEffect(() => {
     setHistLoading(true);
     api.enrichment
-      .log({ scrape_target_id: source.id, limit: 50 })
+      .sourceLog(source.id, 50)
       .then((r) => setHistory(r.entries))
       .catch(() => setHistory([]))
       .finally(() => setHistLoading(false));
@@ -554,25 +584,43 @@ function SourceDetail({
         </div>
       </div>
 
-      {/* Agent assignment */}
-      <div className="border border-border rounded-md p-4 bg-panel/20 mb-6">
-        <h3 className="font-display text-base mb-3">Assigned agent</h3>
-        <div className="flex items-center gap-4">
-          <Select
-            value={source.enrichment_agent_id == null ? '' : String(source.enrichment_agent_id)}
-            onChange={(v) => onAssignAgent(v === '' ? null : Number(v))}
-            placeholder="none"
-            options={[
-              { value: '', label: 'None (unassigned)' },
-              ...agents.map((a) => ({ value: String(a.Id), label: a.name })),
-            ]}
-            position="below"
-          />
-          {source.enrichment_agent_id != null && (
-            <span className="text-xs text-muted font-sans">
-              Currently: {agentName(source.enrichment_agent_id) ?? `ID ${source.enrichment_agent_id}`}
-            </span>
-          )}
+      {/* Agent assignment + Playwright settings */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="border border-border rounded-md p-4 bg-panel/20">
+          <h3 className="font-display text-base mb-3">Assigned agent</h3>
+          <div className="flex items-center gap-4">
+            <Select
+              value={source.enrichment_agent_id == null ? '' : String(source.enrichment_agent_id)}
+              onChange={(v) => onAssignAgent(v === '' ? null : Number(v))}
+              placeholder="none"
+              options={[
+                { value: '', label: 'None (unassigned)' },
+                ...agents.map((a) => ({ value: String(a.Id), label: a.name })),
+              ]}
+              position="below"
+            />
+            {source.enrichment_agent_id != null && (
+              <span className="text-xs text-muted font-sans">
+                Currently: {agentName(source.enrichment_agent_id) ?? `ID ${source.enrichment_agent_id}`}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="border border-border rounded-md p-4 bg-panel/20">
+          <h3 className="font-display text-base mb-3">Scraper settings</h3>
+          <div className="flex flex-col gap-3">
+            <LabeledCheckbox
+              label="Use Playwright (skip httpx, always use browser)"
+              checked={source.use_playwright}
+              onChange={(v) => onUpdate({ use_playwright: v })}
+            />
+            <LabeledCheckbox
+              label="Playwright fallback (try httpx first, fall back to browser)"
+              checked={source.playwright_fallback}
+              onChange={(v) => onUpdate({ playwright_fallback: v })}
+            />
+          </div>
         </div>
       </div>
 
@@ -597,16 +645,23 @@ function SourceDetail({
 
 function SuggestionsTab() {
   const [items, setItems] = useState<SuggestedScrapeTarget[]>([]);
+  const [agents, setAgents] = useState<EnrichmentAgent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [reviewing, setReviewing] = useState<number | null>(null);
-  const [freq, setFreq] = useState(24);
+  const [approveAgentId, setApproveAgentId] = useState<string>('');
 
   async function load() {
     setLoading(true);
+    setError(null);
     try {
-      const res = await api.enrichment.suggestions();
-      setItems(res.suggestions);
+      const [sugRes, agRes] = await Promise.all([
+        api.enrichment.suggestions(statusFilter),
+        api.enrichment.agents(),
+      ]);
+      setItems(sugRes.suggestions);
+      setAgents(agRes.agents ?? []);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -616,12 +671,15 @@ function SuggestionsTab() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [statusFilter]);
 
   async function approve(id: number) {
     try {
-      await api.enrichment.reviewSuggestion(id, { status: 'approved', frequency_hours: freq });
+      const body: { enrichment_agent_id?: number } = {};
+      if (approveAgentId) body.enrichment_agent_id = Number(approveAgentId);
+      await api.enrichment.approveSuggestion(id, body);
       setReviewing(null);
+      setApproveAgentId('');
       load();
     } catch (err) {
       setError((err as Error).message);
@@ -630,96 +688,138 @@ function SuggestionsTab() {
 
   async function reject(id: number) {
     try {
-      await api.enrichment.reviewSuggestion(id, { status: 'rejected' });
+      await api.enrichment.rejectSuggestion(id);
       load();
     } catch (err) {
       setError((err as Error).message);
     }
   }
 
-  if (loading) return <div className="text-sm text-muted">Loading…</div>;
-  if (error) return <div className="text-xs font-sans text-red-700">{error}</div>;
-  if (items.length === 0)
-    return <div className="text-sm text-muted font-sans">No pending suggestions.</div>;
+  const statusTabs: { id: 'pending' | 'approved' | 'rejected'; label: string }[] = [
+    { id: 'pending', label: 'Pending' },
+    { id: 'approved', label: 'Approved' },
+    { id: 'rejected', label: 'Rejected' },
+  ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {items.map((s) => {
-        const borderColor =
-          s.confidence === 'high'
-            ? 'border-green-600'
-            : s.confidence === 'medium'
-              ? 'border-amber-600'
-              : 'border-red-600';
-        return (
-          <div
-            key={s.id}
-            className={`bg-panel border-l-4 ${borderColor} border-t border-r border-b border-border p-4`}
+    <div>
+      <div className="flex gap-1 mb-4">
+        {statusTabs.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setStatusFilter(t.id)}
+            className={[
+              'px-3 py-1.5 text-[10px] uppercase tracking-[0.14em] font-sans border transition-colors',
+              statusFilter === t.id
+                ? 'border-fg bg-fg text-bg'
+                : 'border-border text-muted hover:text-fg',
+            ].join(' ')}
           >
-            <div className="flex justify-between items-start mb-2">
-              <h3 className="font-display text-lg">{s.name}</h3>
-              <span className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted">
-                {s.confidence} · score {s.confidence_score}
-              </span>
-            </div>
-            <a
-              href={s.url}
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs font-sans text-muted underline break-all"
-            >
-              {s.url}
-            </a>
-            <div className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted mt-2">
-              {s.category} · seen {s.times_suggested}×
-            </div>
-            {s.reason && <p className="text-sm text-fg mt-3">{s.reason}</p>}
-            {reviewing === s.id ? (
-              <div className="mt-4 flex items-center gap-2">
-                <label className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted">
-                  freq
-                </label>
-                <input
-                  type="number"
-                  value={freq}
-                  onChange={(e) => setFreq(Number(e.target.value) || 24)}
-                  className="w-16 bg-bg border border-border px-2 py-1 text-xs font-sans"
-                />
-                <button
-                  onClick={() => approve(s.id)}
-                  className="text-[10px] uppercase tracking-[0.14em] font-sans border border-fg px-3 py-1 hover:bg-fg hover:text-bg"
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {error && <div className="text-xs font-sans text-red-700 mb-3">{error}</div>}
+      {loading ? (
+        <div className="text-sm text-muted">Loading…</div>
+      ) : items.length === 0 ? (
+        <div className="text-sm text-muted font-sans">No {statusFilter} suggestions.</div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {items.map((s) => {
+            const borderColor =
+              s.confidence === 'high'
+                ? 'border-green-600'
+                : s.confidence === 'medium'
+                  ? 'border-amber-600'
+                  : 'border-red-600';
+            return (
+              <div
+                key={s.id}
+                className={`bg-panel border-l-4 ${borderColor} border-t border-r border-b border-border p-4`}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="font-display text-lg">{s.name}</h3>
+                  <span className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted">
+                    {s.confidence} · score {s.confidence_score}
+                  </span>
+                </div>
+                <a
+                  href={s.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs font-sans text-muted underline break-all"
                 >
-                  confirm
-                </button>
-                <button
-                  onClick={() => setReviewing(null)}
-                  className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted"
-                >
-                  cancel
-                </button>
+                  {s.url}
+                </a>
+                <div className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted mt-2">
+                  {s.category} · seen {s.times_suggested}×
+                  {s.suggested_by_url && (
+                    <span> · from {s.suggested_by_url}</span>
+                  )}
+                </div>
+                {s.reason && <p className="text-sm text-fg mt-3">{s.reason}</p>}
+                {statusFilter === 'pending' && (
+                  <>
+                    {reviewing === s.id ? (
+                      <div className="mt-4 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted">
+                            agent
+                          </span>
+                          <Select
+                            value={approveAgentId}
+                            onChange={setApproveAgentId}
+                            placeholder="none"
+                            options={[
+                              { value: '', label: 'None' },
+                              ...agents.map((a) => ({ value: String(a.Id), label: a.name })),
+                            ]}
+                            position="below"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => approve(s.id)}
+                            className="text-[10px] uppercase tracking-[0.14em] font-sans border border-fg px-3 py-1 hover:bg-fg hover:text-bg"
+                          >
+                            confirm
+                          </button>
+                          <button
+                            onClick={() => { setReviewing(null); setApproveAgentId(''); }}
+                            className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted"
+                          >
+                            cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-4 flex gap-2">
+                        <button
+                          onClick={() => {
+                            setReviewing(s.id);
+                            setApproveAgentId('');
+                          }}
+                          className="text-[10px] uppercase tracking-[0.14em] font-sans border border-fg px-3 py-1 hover:bg-fg hover:text-bg"
+                        >
+                          approve
+                        </button>
+                        <button
+                          onClick={() => reject(s.id)}
+                          className="text-[10px] uppercase tracking-[0.14em] font-sans border border-border px-3 py-1 hover:border-red-700 hover:text-red-700"
+                        >
+                          reject
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
-            ) : (
-              <div className="mt-4 flex gap-2">
-                <button
-                  onClick={() => {
-                    setReviewing(s.id);
-                    setFreq(24);
-                  }}
-                  className="text-[10px] uppercase tracking-[0.14em] font-sans border border-fg px-3 py-1 hover:bg-fg hover:text-bg"
-                >
-                  approve
-                </button>
-                <button
-                  onClick={() => reject(s.id)}
-                  className="text-[10px] uppercase tracking-[0.14em] font-sans border border-border px-3 py-1 hover:border-red-700 hover:text-red-700"
-                >
-                  reject
-                </button>
-              </div>
-            )}
-          </div>
-        );
-      })}
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -728,69 +828,46 @@ function LogTab() {
   const [entries, setEntries] = useState<EnrichmentLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [limit] = useState(100);
-  const [total, setTotal] = useState(0);
   const [selectedEvents, setSelectedEvents] = useState<EnrichmentEventType[]>([]);
-  const [sourceFilter, setSourceFilter] = useState<number | ''>('');
-  const [cycleFilter, setCycleFilter] = useState<string>('');
-  const [sources, setSources] = useState<ScrapeTarget[]>([]);
-  const [knownCycles, setKnownCycles] = useState<string[]>([]);
-
-  useEffect(() => {
-    api.enrichment.sources().then((r) => setSources(r.sources)).catch(() => undefined);
-  }, []);
 
   useEffect(() => {
     setLoading(true);
     setError(null);
     api.enrichment
-      .log({
-        page,
-        limit,
-        event_type: selectedEvents.length ? selectedEvents.join(',') : undefined,
-        scrape_target_id: sourceFilter === '' ? undefined : Number(sourceFilter),
-        cycle_id: cycleFilter || undefined,
-      })
-      .then((r) => {
-        setEntries(r.entries);
-        setTotal(r.total);
-        setKnownCycles((prev) => {
-          const seen = new Set(prev);
-          for (const e of r.entries) if (e.cycle_id) seen.add(e.cycle_id);
-          return Array.from(seen).sort().reverse();
-        });
-      })
+      .log({ limit: 200 })
+      .then((r) => setEntries(r.entries))
       .catch((err) => setError((err as Error).message))
       .finally(() => setLoading(false));
-  }, [page, limit, selectedEvents, sourceFilter, cycleFilter]);
+  }, []);
+
+  const filtered = useMemo(() => {
+    if (selectedEvents.length === 0) return entries;
+    return entries.filter((e) => selectedEvents.includes(e.event_type));
+  }, [entries, selectedEvents]);
 
   const grouped = useMemo(() => {
     const groups = new Map<string, EnrichmentLogEntry[]>();
-    for (const e of entries) {
+    for (const e of filtered) {
       const key = e.cycle_id || 'uncycled';
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(e);
     }
     return Array.from(groups.entries());
-  }, [entries]);
+  }, [filtered]);
 
   function toggleEvent(ev: EnrichmentEventType) {
-    setPage(1);
     setSelectedEvents((prev) =>
       prev.includes(ev) ? prev.filter((e) => e !== ev) : [...prev, ev],
     );
   }
 
-  const maxPage = Math.max(1, Math.ceil(total / limit));
-
   return (
     <div>
       <div className="bg-panel border border-border p-4 mb-4">
         <div className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted mb-2">
-          event type
+          event type filter
         </div>
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex flex-wrap gap-2">
           {ENRICHMENT_EVENT_TYPES.map((ev) => (
             <button
               key={ev}
@@ -805,44 +882,6 @@ function LogTab() {
               {ev}
             </button>
           ))}
-        </div>
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3">
-            <label className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted">
-              source
-            </label>
-            <Select
-              value={sourceFilter === '' ? '' : String(sourceFilter)}
-              onChange={(v) => {
-                setPage(1);
-                setSourceFilter(v === '' ? '' : Number(v));
-              }}
-              placeholder="all"
-              options={[
-                { value: '', label: 'all' },
-                ...sources.map((s) => ({ value: String(s.id), label: s.name })),
-              ]}
-              position="below"
-            />
-          </div>
-          <div className="flex items-center gap-3">
-            <label className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted">
-              cycle
-            </label>
-            <Select
-              value={cycleFilter}
-              onChange={(v) => {
-                setPage(1);
-                setCycleFilter(v);
-              }}
-              placeholder="all"
-              options={[
-                { value: '', label: 'all' },
-                ...knownCycles.map((c) => ({ value: c, label: c })),
-              ]}
-              position="below"
-            />
-          </div>
         </div>
       </div>
 
@@ -879,26 +918,8 @@ function LogTab() {
         </div>
       )}
 
-      <div className="flex justify-between items-center mt-6 text-[10px] uppercase tracking-[0.14em] font-sans text-muted">
-        <span>
-          page {page} / {maxPage} · {total} entries
-        </span>
-        <div className="flex gap-2">
-          <button
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-            className="px-2 py-1 border border-border disabled:opacity-30 hover:text-fg"
-          >
-            prev
-          </button>
-          <button
-            disabled={page >= maxPage}
-            onClick={() => setPage((p) => p + 1)}
-            className="px-2 py-1 border border-border disabled:opacity-30 hover:text-fg"
-          >
-            next
-          </button>
-        </div>
+      <div className="mt-6 text-[10px] uppercase tracking-[0.14em] font-sans text-muted">
+        {filtered.length} entries{selectedEvents.length > 0 && ` (${entries.length} total)`}
       </div>
     </div>
   );
@@ -1459,6 +1480,30 @@ function LabeledSelect({
         position="below"
       />
     </div>
+  );
+}
+
+function LabeledCheckbox({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <label className="flex items-center gap-2 cursor-pointer">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="accent-fg"
+      />
+      <span className="text-[10px] uppercase tracking-[0.14em] text-muted font-sans">
+        {label}
+      </span>
+    </label>
   );
 }
 

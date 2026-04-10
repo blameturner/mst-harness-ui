@@ -64,16 +64,6 @@ interface HarnessCodeConversation {
   rag_collection?: string | null;
 }
 
-/**
- * Confirm that `conversationId` belongs to `orgId` by looking it up in the
- * harness's list endpoint (the only one we can rely on: the singular
- * `/code/conversations/{id}` either doesn't exist on the harness or returns
- * an unwrapped shape that breaks ownership checks). The list is already
- * filtered server-side by `org_id`, so a hit there is authoritative.
- *
- * Returns the conversation row on success so callers can reuse it (handy
- * for the plain GET /conversations/:id endpoint).
- */
 async function findOwnedCodeConversation(
   conversationId: number,
   orgId: number,

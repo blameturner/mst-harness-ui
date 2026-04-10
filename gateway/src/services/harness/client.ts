@@ -31,4 +31,7 @@ export const harnessClient = {
       timeoutMs,
     );
   },
+  delete(path: string, timeoutMs: number): Promise<Response> {
+    return fetchWithTimeout(`${env.HARNESS_URL}${path}`, { method: 'DELETE' }, timeoutMs);
+  },
 };

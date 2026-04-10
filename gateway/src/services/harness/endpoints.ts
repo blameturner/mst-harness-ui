@@ -162,6 +162,74 @@ export function getEnrichmentAgentStatus(id: number): Promise<Response> {
   return harnessClient.get(`/enrichment/agents/${id}/status`, HARNESS_SCHEDULER_TIMEOUT_MS);
 }
 
+// --- Enrichment sources ------------------------------------------------------
+
+export function listEnrichmentSources(
+  orgId: number,
+  opts?: { agent_id?: number; active_only?: boolean },
+): Promise<Response> {
+  const params = new URLSearchParams({ org_id: String(orgId) });
+  if (opts?.agent_id != null) params.set('agent_id', String(opts.agent_id));
+  if (opts?.active_only != null) params.set('active_only', String(opts.active_only));
+  return harnessClient.get(`/enrichment/sources?${params}`, HARNESS_ENRICHMENT_TIMEOUT_MS);
+}
+
+export function getEnrichmentSource(sourceId: number): Promise<Response> {
+  return harnessClient.get(`/enrichment/sources/${sourceId}`, HARNESS_ENRICHMENT_TIMEOUT_MS);
+}
+
+export function createEnrichmentSource(body: unknown): Promise<Response> {
+  return harnessClient.post('/enrichment/sources', body, HARNESS_ENRICHMENT_TIMEOUT_MS);
+}
+
+export function patchEnrichmentSource(sourceId: number, body: unknown): Promise<Response> {
+  return harnessClient.patch(`/enrichment/sources/${sourceId}`, body, HARNESS_ENRICHMENT_TIMEOUT_MS);
+}
+
+export function deleteEnrichmentSource(sourceId: number): Promise<Response> {
+  return harnessClient.delete(`/enrichment/sources/${sourceId}`, HARNESS_ENRICHMENT_TIMEOUT_MS);
+}
+
+export function flushEnrichmentSource(sourceId: number): Promise<Response> {
+  return harnessClient.post(`/enrichment/sources/${sourceId}/flush`, {}, HARNESS_ENRICHMENT_TIMEOUT_MS);
+}
+
+export function getEnrichmentSourceLog(sourceId: number, limit = 50): Promise<Response> {
+  return harnessClient.get(`/enrichment/sources/${sourceId}/log?limit=${limit}`, HARNESS_ENRICHMENT_TIMEOUT_MS);
+}
+
+// --- Enrichment log ----------------------------------------------------------
+
+export function listEnrichmentLog(orgId: number, limit = 100): Promise<Response> {
+  return harnessClient.get(`/enrichment/log?org_id=${orgId}&limit=${limit}`, HARNESS_ENRICHMENT_TIMEOUT_MS);
+}
+
+// --- Enrichment suggestions --------------------------------------------------
+
+export function listEnrichmentSuggestions(orgId: number, status?: string): Promise<Response> {
+  const params = new URLSearchParams({ org_id: String(orgId) });
+  if (status) params.set('status', status);
+  return harnessClient.get(`/enrichment/suggestions?${params}`, HARNESS_ENRICHMENT_TIMEOUT_MS);
+}
+
+export function getEnrichmentSuggestion(suggestionId: number): Promise<Response> {
+  return harnessClient.get(`/enrichment/suggestions/${suggestionId}`, HARNESS_ENRICHMENT_TIMEOUT_MS);
+}
+
+export function patchEnrichmentSuggestion(suggestionId: number, body: unknown): Promise<Response> {
+  return harnessClient.patch(`/enrichment/suggestions/${suggestionId}`, body, HARNESS_ENRICHMENT_TIMEOUT_MS);
+}
+
+export function approveEnrichmentSuggestion(suggestionId: number, body: unknown): Promise<Response> {
+  return harnessClient.post(`/enrichment/suggestions/${suggestionId}/approve`, body, HARNESS_ENRICHMENT_TIMEOUT_MS);
+}
+
+export function rejectEnrichmentSuggestion(suggestionId: number): Promise<Response> {
+  return harnessClient.post(`/enrichment/suggestions/${suggestionId}/reject`, {}, HARNESS_ENRICHMENT_TIMEOUT_MS);
+}
+
+// --- Codebases ---------------------------------------------------------------
+
 export function listCodebases(orgId: number): Promise<Response> {
   return harnessClient.get(`/codebases?org_id=${orgId}`, HARNESS_ENRICHMENT_TIMEOUT_MS);
 }

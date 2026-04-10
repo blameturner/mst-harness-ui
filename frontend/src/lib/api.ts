@@ -299,6 +299,8 @@ export interface ScrapeTarget {
   content_hash: string | null;
   active: boolean;
   enrichment_agent_id: number | null;
+  use_playwright: boolean;
+  playwright_fallback: boolean;
 }
 
 export interface EnrichmentLogEntry {
@@ -526,15 +528,26 @@ export const api = {
     streamJob('api/run/stream', body, signal),
 
   enrichment: {
-    sources: () =>
-      http.get('api/enrichment/sources').json<{ sources: ScrapeTarget[] }>(),
+    // Sources
+    sources: (params?: { agent_id?: number; active_only?: boolean }) => {
+      const searchParams: Record<string, string> = {};
+      if (params?.agent_id != null) searchParams.agent_id = String(params.agent_id);
+      if (params?.active_only != null) searchParams.active_only = String(params.active_only);
+      return http
+        .get('api/enrichment/sources', { searchParams })
+        .json<{ sources: ScrapeTarget[] }>();
+    },
+    getSource: (id: number) =>
+      http.get(`api/enrichment/sources/${id}`).json<ScrapeTarget>(),
     createSource: (body: {
       name: string;
       url: string;
-      category: EnrichmentCategory;
-      frequency_hours: number;
+      category?: EnrichmentCategory;
+      frequency_hours?: number;
       active?: boolean;
       enrichment_agent_id?: number | null;
+      use_playwright?: boolean;
+      playwright_fallback?: boolean;
     }) => http.post('api/enrichment/sources', { json: body }).json<ScrapeTarget>(),
     updateSource: (id: number, body: Partial<ScrapeTarget>) =>
       http.patch(`api/enrichment/sources/${id}`, { json: body }).json<ScrapeTarget>(),
@@ -544,32 +557,36 @@ export const api = {
       http.post(`api/enrichment/sources/${id}/trigger`).json<{ status: string }>(),
     flushSource: (id: number) =>
       http.post(`api/enrichment/sources/${id}/flush`).json<{ ok: true; note?: string }>(),
-    log: (params: {
-      cycle_id?: string;
-      event_type?: string;
-      scrape_target_id?: number;
-      page?: number;
-      limit?: number;
-    }) => {
+    sourceLog: (id: number, limit = 50) =>
+      http
+        .get(`api/enrichment/sources/${id}/log`, { searchParams: { limit: String(limit) } })
+        .json<{ entries: EnrichmentLogEntry[] }>(),
+
+    // Log
+    log: (params?: { limit?: number }) => {
       const searchParams: Record<string, string> = {};
-      if (params.cycle_id) searchParams.cycle_id = params.cycle_id;
-      if (params.event_type) searchParams.event_type = params.event_type;
-      if (params.scrape_target_id != null)
-        searchParams.scrape_target_id = String(params.scrape_target_id);
-      if (params.page != null) searchParams.page = String(params.page);
-      if (params.limit != null) searchParams.limit = String(params.limit);
+      if (params?.limit != null) searchParams.limit = String(params.limit);
       return http
         .get('api/enrichment/log', { searchParams })
-        .json<{ entries: EnrichmentLogEntry[]; page: number; limit: number; total: number }>();
+        .json<{ entries: EnrichmentLogEntry[] }>();
     },
-    suggestions: () =>
-      http
-        .get('api/enrichment/suggestions')
-        .json<{ suggestions: SuggestedScrapeTarget[] }>(),
-    reviewSuggestion: (
-      id: number,
-      body: { status: 'approved' | 'rejected'; frequency_hours?: number },
-    ) => http.patch(`api/enrichment/suggestions/${id}`, { json: body }).json<{ ok: true }>(),
+
+    // Suggestions
+    suggestions: (status?: string) => {
+      const searchParams: Record<string, string> = {};
+      if (status) searchParams.status = status;
+      return http
+        .get('api/enrichment/suggestions', { searchParams })
+        .json<{ suggestions: SuggestedScrapeTarget[] }>();
+    },
+    getSuggestion: (id: number) =>
+      http.get(`api/enrichment/suggestions/${id}`).json<SuggestedScrapeTarget>(),
+    approveSuggestion: (id: number, body?: { enrichment_agent_id?: number }) =>
+      http.post(`api/enrichment/suggestions/${id}/approve`, { json: body ?? {} }).json<{ ok: true }>(),
+    rejectSuggestion: (id: number) =>
+      http.post(`api/enrichment/suggestions/${id}/reject`).json<{ ok: true }>(),
+
+    // Scheduler
     status: () => http.get('api/enrichment/status').json<SchedulerStatus>(),
     triggerCycle: () =>
       http.post('api/enrichment/trigger').json<{ status: string }>(),
@@ -577,6 +594,8 @@ export const api = {
       http
         .get('api/enrichment/graph/coverage')
         .json<GraphCoverageNode[] | { nodes: GraphCoverageNode[] }>(),
+
+    // Agents
     agents: () =>
       http.get('api/enrichment/agents').json<{ agents: EnrichmentAgent[] }>(),
     createAgent: (body: EnrichmentAgentCreateBody) =>
