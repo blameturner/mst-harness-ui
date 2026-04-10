@@ -510,7 +510,7 @@ function SourceDetail({
     setHistLoading(true);
     api.enrichment
       .sourceLog(source.id, 50)
-      .then((r) => setHistory(r.entries))
+      .then((r) => setHistory(r.entries ?? []))
       .catch(() => setHistory([]))
       .finally(() => setHistLoading(false));
   }, [source.id]);
@@ -835,7 +835,7 @@ function LogTab() {
     setError(null);
     api.enrichment
       .log({ limit: 200 })
-      .then((r) => setEntries(r.entries))
+      .then((r) => setEntries(r.entries ?? []))
       .catch((err) => setError((err as Error).message))
       .finally(() => setLoading(false));
   }, []);

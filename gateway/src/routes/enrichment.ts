@@ -294,7 +294,10 @@ enrichmentRoute.get('/sources/:id/log', async (c) => {
   try {
     const res = await getEnrichmentSourceLog(id, limit);
     return forwardNormalised(res, (body) => {
-      const entries = Array.isArray(body.entries) ? body.entries : Array.isArray(body) ? body : [];
+      const entries = Array.isArray(body.entries) ? body.entries
+        : Array.isArray(body.logs) ? body.logs
+        : Array.isArray(body.log) ? body.log
+        : Array.isArray(body) ? body : [];
       return { entries: entries.map((e: Record<string, unknown>) => normaliseLogEntry(e)) };
     });
   } catch (err) {
@@ -311,7 +314,10 @@ enrichmentRoute.get('/log', async (c) => {
   try {
     const res = await listEnrichmentLog(Number(orgId), limit);
     return forwardNormalised(res, (body) => {
-      const entries = Array.isArray(body.entries) ? body.entries : Array.isArray(body) ? body : [];
+      const entries = Array.isArray(body.entries) ? body.entries
+        : Array.isArray(body.logs) ? body.logs
+        : Array.isArray(body.log) ? body.log
+        : Array.isArray(body) ? body : [];
       return { entries: entries.map((e: Record<string, unknown>) => normaliseLogEntry(e)) };
     });
   } catch (err) {
