@@ -7,6 +7,7 @@ export const STYLE_LABELS: Record<string, string> = {
   direct: 'Direct',
   strategist: 'Strategist',
   challenger: 'Challenger',
+  inquisitive: 'Inquisitive',
   explain: 'Explain',
   review: 'Review',
   refactor: 'Refactor',
