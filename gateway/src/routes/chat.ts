@@ -2,9 +2,9 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { getAuthContext } from '../lib/auth-context.js';
-import { FetchTimeoutError } from '../lib/fetch-with-timeout.js';
+import { FetchTimeoutError } from '../lib/FetchTimeoutError.js';
 import { chat as harnessChat } from '../services/harness/index.js';
-import type { AuthVariables } from '../types/auth.js';
+import type { AuthVariables } from '../types/AuthVariables.js';
 
 export const chatRoute = new Hono<{ Variables: AuthVariables }>();
 

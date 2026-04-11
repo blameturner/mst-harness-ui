@@ -1,4 +1,4 @@
-import type { Worker } from '../lib/api';
+import type { Worker } from '../api/types/Worker';
 import { ModelBadge } from './ModelBadge';
 
 interface Props {

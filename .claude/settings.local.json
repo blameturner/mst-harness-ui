@@ -3,7 +3,10 @@
     "allow": [
       "Bash(grep:*)",
       "Bash(npx tsc:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(perl -i -pe \"s|from './types/auth\\\\.js'|from './types/AuthVariables.js'|g\" gateway/src/index.ts)",
+      "Bash(perl -i -pe \"s|from '\\\\.\\\\./\\\\.\\\\./lib/fetch-with-timeout\\\\.js'|from '../../lib/fetchWithTimeout.js'|g\" gateway/src/services/harness/client.ts)",
+      "Bash(perl -i -pe \"s|from '\\\\./fetch-with-timeout\\\\.js'|from './FetchTimeoutError.js'|g\" gateway/src/lib/mapHarnessError.ts)"
     ]
   }
 }

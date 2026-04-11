@@ -1,9 +1,7 @@
-export { initNocodbTables } from './client.js';
-export {
-  listWhere,
-  listPage,
-  countActive,
-  createRow,
-  patchRow,
-  deleteRow,
-} from './operations.js';
+export { initNocodbTables } from './initNocodbTables.js';
+export { listWhere } from './operations/listWhere.js';
+export { listPage } from './operations/listPage.js';
+export { countActive } from './operations/countActive.js';
+export { createRow } from './operations/createRow.js';
+export { patchRow } from './operations/patchRow.js';
+export { deleteRow } from './operations/deleteRow.js';

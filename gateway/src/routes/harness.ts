@@ -1,16 +1,15 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { getAuthContext } from '../lib/auth-context.js';
-import { FetchTimeoutError } from '../lib/fetch-with-timeout.js';
+import { FetchTimeoutError } from '../lib/FetchTimeoutError.js';
 import { forwardResponse } from '../lib/forwardResponse.js';
 import { getUsageStats } from '../services/harness/index.js';
-import type { AuthVariables } from '../types/auth.js';
+import type { AuthVariables } from '../types/AuthVariables.js';
 
 export const harnessRoute = new Hono<{ Variables: AuthVariables }>();
 
 harnessRoute.use('*', requireAuth);
 
-// TODO: dedupe after reconciling log message format
 function mapHarnessError(err: unknown) {
   if (err instanceof FetchTimeoutError) {
     return new Response(JSON.stringify({ error: 'harness_timeout' }), {

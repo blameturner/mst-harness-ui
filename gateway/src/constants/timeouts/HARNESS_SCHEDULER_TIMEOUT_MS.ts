@@ -1,0 +1,1 @@
+export const HARNESS_SCHEDULER_TIMEOUT_MS = 5_000;

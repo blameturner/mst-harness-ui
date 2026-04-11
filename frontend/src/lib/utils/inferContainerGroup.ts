@@ -1,4 +1,4 @@
-import type { DockerContainer } from '../api';
+import type { DockerContainer } from '../../api/types/DockerContainer';
 
 export function inferContainerGroup(c: DockerContainer): string {
   const name = c.name.toLowerCase();

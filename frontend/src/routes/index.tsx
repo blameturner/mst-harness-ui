@@ -1,11 +1,11 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { api } from '../lib/api';
+import { setupStatus } from '../api/auth/setupStatus';
 import { authClient } from '../lib/auth-client';
 
 export const Route = createFileRoute('/')({
   beforeLoad: async () => {
     try {
-      const status = await api.setupStatus();
+      const status = await setupStatus();
       if (!status.configured) {
         throw redirect({ to: '/setup' });
       }

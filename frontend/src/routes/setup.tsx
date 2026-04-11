@@ -1,6 +1,7 @@
 import { createFileRoute, Link, redirect, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
-import { api } from '../lib/api';
+import { setupStatus } from '../api/auth/setupStatus';
+import { setup } from '../api/auth/setup';
 import { FormInput } from '../components/FormInput';
 import { slugify } from '../utils/slugify';
 
@@ -20,7 +21,7 @@ function SetupPage() {
     setError(null);
     setBusy(true);
     try {
-      await api.setup({ orgName, slug: slug || slugify(orgName), email, password, displayName });
+      await setup({ orgName, slug: slug || slugify(orgName), email, password, displayName });
       navigate({ to: '/login' });
     } catch (err: any) {
       setError(await toUserError(err));
@@ -124,7 +125,7 @@ export const Route = createFileRoute('/setup')({
   beforeLoad: async () => {
     let status: { configured: boolean };
     try {
-      status = await api.setupStatus();
+      status = await setupStatus();
     } catch {
       return;
     }

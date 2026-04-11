@@ -1,6 +1,6 @@
 import { createFileRoute, isRedirect, redirect, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
-import { api } from '../lib/api';
+import { setupStatus } from '../api/auth/setupStatus';
 import { authClient } from '../lib/auth-client';
 import { FormInput } from '../components/FormInput';
 
@@ -71,7 +71,7 @@ export const Route = createFileRoute('/login')({
   beforeLoad: async () => {
     let status: { configured: boolean };
     try {
-      status = await api.setupStatus();
+      status = await setupStatus();
     } catch {
       return;
     }

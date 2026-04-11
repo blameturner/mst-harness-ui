@@ -1,5 +1,6 @@
 import type { Context } from 'hono';
-import type { AuthContext, AuthVariables } from '../types/auth.js';
+import type { AuthContext } from '../types/AuthContext.js';
+import type { AuthVariables } from '../types/AuthVariables.js';
 
 /**
  * Reads the auth context set by the requireAuth middleware. Safe to call from any

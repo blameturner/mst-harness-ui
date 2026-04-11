@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { FetchTimeoutError } from '../lib/fetch-with-timeout.js';
+import { FetchTimeoutError } from '../lib/FetchTimeoutError.js';
 import { listStyles } from '../services/harness/index.js';
 
 

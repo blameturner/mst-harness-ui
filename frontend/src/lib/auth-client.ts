@@ -5,5 +5,3 @@ export const authClient = createAuthClient({
   baseURL: gatewayUrl(),
   fetchOptions: { credentials: 'include' },
 });
-
-export const { signIn, signOut, useSession } = authClient;

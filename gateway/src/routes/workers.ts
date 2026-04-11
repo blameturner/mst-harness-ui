@@ -1,10 +1,10 @@
 import { Hono } from 'hono';
-import { listAgents, listWorkerTypes } from '../services/harness/endpoints.js';
+import { listAgents, listWorkerTypes } from '../services/harness/index.js';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { getAuthContext } from '../lib/auth-context.js';
-import { FetchTimeoutError } from '../lib/fetch-with-timeout.js';
-import type { AuthVariables } from '../types/auth.js';
-import type { HarnessAgent } from '../types/harness.js';
+import { FetchTimeoutError } from '../lib/FetchTimeoutError.js';
+import type { AuthVariables } from '../types/AuthVariables.js';
+import type { HarnessAgent } from '../types/HarnessAgent.js';
 
 export const workersRoute = new Hono<{ Variables: AuthVariables }>();
 

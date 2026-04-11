@@ -1,6 +1,7 @@
 import type { Context, Next } from 'hono';
-import { auth, getOrgIdForUser } from '../auth.js';
-import type { AuthVariables } from '../types/auth.js';
+import { auth } from '../auth/auth.js';
+import { getOrgIdForUser } from '../auth/getOrgIdForUser.js';
+import type { AuthVariables } from '../types/AuthVariables.js';
 
 export async function requireAuth(c: Context<{ Variables: AuthVariables }>, next: Next) {
   const session = await auth.api.getSession({ headers: c.req.raw.headers });

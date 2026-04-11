@@ -1,6 +1,9 @@
 import { createFileRoute, Link, redirect, useParams } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { api, type AgentOutputRow, type AgentRun } from '../lib/api';
+import type { AgentOutputRow } from '../api/types/AgentOutputRow';
+import type { AgentRun } from '../api/types/AgentRun';
+import { getAgentRuns } from '../api/agents/getAgentRuns';
+import { getAgentOutputs } from '../api/agents/getAgentOutputs';
 import { authClient } from '../lib/auth-client';
 
 function RunDetailPage() {
@@ -19,8 +22,8 @@ function RunDetailPage() {
       setError(null);
       try {
         const [runsRes, outputsRes] = await Promise.all([
-          api.agents.runs(agentId),
-          api.agents.outputs(agentId),
+          getAgentRuns(agentId),
+          getAgentOutputs(agentId),
         ]);
         if (cancelled) return;
         setRun(runsRes.runs.find((r) => r.Id === runIdNum) ?? null);

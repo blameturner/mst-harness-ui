@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { env } from '../env.js';
-import type { AuthVariables } from '../types/auth.js';
+import type { AuthVariables } from '../types/AuthVariables.js';
 
 export const streamRoute = new Hono<{ Variables: AuthVariables }>();
 

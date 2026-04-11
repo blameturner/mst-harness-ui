@@ -1,6 +1,7 @@
 import { createFileRoute, Link, redirect, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { api } from '../lib/api';
+import { listWorkerTypes } from '../api/models/listWorkerTypes';
+import { createSchedule } from '../api/schedules/createSchedule';
 import { authClient } from '../lib/auth-client';
 
 function humaniseCron(expr: string): string {
@@ -32,8 +33,7 @@ function AgentsNewPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    api.agents
-      .workerTypes()
+    listWorkerTypes()
       .then((r) => setWorkerTypes(r.types))
       .catch(() => setWorkerTypes([]));
   }, []);
@@ -43,7 +43,7 @@ function AgentsNewPage() {
     setSubmitting(true);
     setError(null);
     try {
-      const res = await api.schedules.create(form);
+      const res = await createSchedule(form);
       if (res.reload_warning) {
         setError(`Created, but scheduler reload warning: ${res.reload_warning}`);
       } else {

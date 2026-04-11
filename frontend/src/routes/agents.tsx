@@ -1,10 +1,10 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import {
-  api,
-  type AgentSchedule,
-  type AgentSummary,
-} from '../lib/api';
+import type { AgentSchedule } from '../api/types/AgentSchedule';
+import type { AgentSummary } from '../api/types/AgentSummary';
+import { listAgents } from '../api/agents/listAgents';
+import { listSchedules } from '../api/schedules/listSchedules';
+import { deleteSchedule as deleteScheduleReq } from '../api/schedules/deleteSchedule';
 import { authClient } from '../lib/auth-client';
 
 function AgentsPage() {
@@ -17,7 +17,7 @@ function AgentsPage() {
     setLoading(true);
     setError(null);
     try {
-      const [a, s] = await Promise.all([api.agents.list(), api.schedules.list()]);
+      const [a, s] = await Promise.all([listAgents(), listSchedules()]);
       setAgents(a.agents);
       setSchedules(s.schedules);
     } catch (err) {
@@ -34,7 +34,7 @@ function AgentsPage() {
   async function deleteSchedule(id: number) {
     if (!confirm('Delete this schedule?')) return;
     try {
-      const res = await api.schedules.delete(id);
+      const res = await deleteScheduleReq(id);
       if (res.reload_warning) {
         setError(`Deleted, but: ${res.reload_warning}`);
       }

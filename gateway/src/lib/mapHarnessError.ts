@@ -1,4 +1,4 @@
-import { FetchTimeoutError } from './fetch-with-timeout.js';
+import { FetchTimeoutError } from './FetchTimeoutError.js';
 
 export function mapHarnessError(err: unknown, tag: string): Response {
   if (err instanceof FetchTimeoutError) {

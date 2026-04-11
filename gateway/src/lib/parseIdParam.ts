@@ -1,4 +1,4 @@
-import { assertInteger } from './noco-filter.js';
+import { assertInteger } from './assertInteger.js';
 
 export function parseIdParam(raw: string | undefined, field = 'id'): number | null {
   if (raw == null) return null;

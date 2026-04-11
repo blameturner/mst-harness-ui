@@ -1,11 +1,11 @@
 import { createFileRoute, Link, redirect, useParams } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import {
-  api,
-  type AgentOutputRow,
-  type AgentRun,
-  type AgentSummary,
-} from '../lib/api';
+import type { AgentOutputRow } from '../api/types/AgentOutputRow';
+import type { AgentRun } from '../api/types/AgentRun';
+import type { AgentSummary } from '../api/types/AgentSummary';
+import { getAgent } from '../api/agents/getAgent';
+import { getAgentRuns } from '../api/agents/getAgentRuns';
+import { getAgentOutputs } from '../api/agents/getAgentOutputs';
 import { authClient } from '../lib/auth-client';
 
 type Tab = 'runs' | 'outputs';
@@ -27,9 +27,9 @@ function AgentDetailPage() {
       setError(null);
       try {
         const [agentRes, runsRes, outputsRes] = await Promise.all([
-          api.agents.get(agentId),
-          api.agents.runs(agentId),
-          api.agents.outputs(agentId),
+          getAgent(agentId),
+          getAgentRuns(agentId),
+          getAgentOutputs(agentId),
         ]);
         if (cancelled) return;
         setAgent(agentRes);

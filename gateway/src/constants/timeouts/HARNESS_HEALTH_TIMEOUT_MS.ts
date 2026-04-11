@@ -1,0 +1,1 @@
+export const HARNESS_HEALTH_TIMEOUT_MS = 3_000;

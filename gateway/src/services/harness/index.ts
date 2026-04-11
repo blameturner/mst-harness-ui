@@ -1,47 +1,45 @@
-export {
-  chat,
-  code,
-  listCodeConversations,
-  getCodeConversation,
-  getCodeConversationMessages,
-  getCodeWorkspace,
-  updateCodeConversation,
-  getConversationMessages,
-  getConversationSummary,
-  getSchedulerStatus,
-  health,
-  listAgents,
-  listConversations,
-  listModels,
-  listStyles,
-  listWorkerTypes,
-  reloadScheduler,
-  run,
-  runStream,
-  triggerScheduler,
-  updateConversation,
-  listCodebases,
-  createCodebase,
-  indexCodebase,
-  listEnrichmentAgents,
-  createEnrichmentAgent,
-  patchEnrichmentAgent,
-  triggerEnrichmentAgent,
-  getEnrichmentAgentStatus,
-  listEnrichmentSources,
-  getEnrichmentSource,
-  createEnrichmentSource,
-  patchEnrichmentSource,
-  deleteEnrichmentSource,
-  flushEnrichmentSource,
-  getEnrichmentSourceLog,
-  listEnrichmentLog,
-  listEnrichmentSuggestions,
-  getEnrichmentSuggestion,
-  patchEnrichmentSuggestion,
-  approveEnrichmentSuggestion,
-  rejectEnrichmentSuggestion,
-  approveEnrichmentSuggestionsByParent,
-  rejectEnrichmentSuggestionsByParent,
-  getUsageStats,
-} from './endpoints.js';
+export { health } from './endpoints/health.js';
+export { listModels } from './endpoints/listModels.js';
+export { listStyles } from './endpoints/listStyles.js';
+export { run } from './endpoints/run.js';
+export { runStream } from './endpoints/runStream.js';
+export { chat } from './endpoints/chat.js';
+export { code } from './endpoints/code.js';
+export { listCodeConversations } from './endpoints/listCodeConversations.js';
+export { getCodeConversation } from './endpoints/getCodeConversation.js';
+export { getCodeConversationMessages } from './endpoints/getCodeConversationMessages.js';
+export { getCodeWorkspace } from './endpoints/getCodeWorkspace.js';
+export { updateCodeConversation } from './endpoints/updateCodeConversation.js';
+export { listAgents } from './endpoints/listAgents.js';
+export { listConversations } from './endpoints/listConversations.js';
+export { getConversationMessages } from './endpoints/getConversationMessages.js';
+export { getConversationSummary } from './endpoints/getConversationSummary.js';
+export { updateConversation } from './endpoints/updateConversation.js';
+export { triggerScheduler } from './endpoints/triggerScheduler.js';
+export { reloadScheduler } from './endpoints/reloadScheduler.js';
+export { getSchedulerStatus } from './endpoints/getSchedulerStatus.js';
+export { listEnrichmentAgents } from './endpoints/listEnrichmentAgents.js';
+export { createEnrichmentAgent } from './endpoints/createEnrichmentAgent.js';
+export { patchEnrichmentAgent } from './endpoints/patchEnrichmentAgent.js';
+export { triggerEnrichmentAgent } from './endpoints/triggerEnrichmentAgent.js';
+export { getEnrichmentAgentStatus } from './endpoints/getEnrichmentAgentStatus.js';
+export { listEnrichmentSources } from './endpoints/listEnrichmentSources.js';
+export { getEnrichmentSource } from './endpoints/getEnrichmentSource.js';
+export { createEnrichmentSource } from './endpoints/createEnrichmentSource.js';
+export { patchEnrichmentSource } from './endpoints/patchEnrichmentSource.js';
+export { deleteEnrichmentSource } from './endpoints/deleteEnrichmentSource.js';
+export { flushEnrichmentSource } from './endpoints/flushEnrichmentSource.js';
+export { getEnrichmentSourceLog } from './endpoints/getEnrichmentSourceLog.js';
+export { listEnrichmentLog } from './endpoints/listEnrichmentLog.js';
+export { listEnrichmentSuggestions } from './endpoints/listEnrichmentSuggestions.js';
+export { getEnrichmentSuggestion } from './endpoints/getEnrichmentSuggestion.js';
+export { patchEnrichmentSuggestion } from './endpoints/patchEnrichmentSuggestion.js';
+export { approveEnrichmentSuggestion } from './endpoints/approveEnrichmentSuggestion.js';
+export { rejectEnrichmentSuggestion } from './endpoints/rejectEnrichmentSuggestion.js';
+export { approveEnrichmentSuggestionsByParent } from './endpoints/approveEnrichmentSuggestionsByParent.js';
+export { rejectEnrichmentSuggestionsByParent } from './endpoints/rejectEnrichmentSuggestionsByParent.js';
+export { getUsageStats } from './endpoints/getUsageStats.js';
+export { listCodebases } from './endpoints/listCodebases.js';
+export { createCodebase } from './endpoints/createCodebase.js';
+export { indexCodebase } from './endpoints/indexCodebase.js';
+export { listWorkerTypes } from './endpoints/listWorkerTypes.js';

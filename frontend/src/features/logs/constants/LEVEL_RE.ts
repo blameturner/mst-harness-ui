@@ -1,0 +1,1 @@
+export const LEVEL_RE = /\b(ERROR|FATAL|PANIC|WARN(?:ING)?|INFO|DEBUG|TRACE)\b/;

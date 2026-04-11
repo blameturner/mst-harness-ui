@@ -1,4 +1,4 @@
-import type { Conversation } from '../lib/api';
+import type { Conversation } from '../api/types/Conversation';
 
 interface Props {
   conversations: Conversation[];

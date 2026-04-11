@@ -1,5 +1,5 @@
 import { env } from '../../env.js';
-import { fetchWithTimeout } from '../../lib/fetch-with-timeout.js';
+import { fetchWithTimeout } from '../../lib/fetchWithTimeout.js';
 
 /**
  * Thin typed wrapper around fetch() for the Harness HTTP API. The only place in the

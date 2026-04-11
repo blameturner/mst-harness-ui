@@ -5,13 +5,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-
-export interface SelectOption<T extends string | number> {
-  value: T;
-  label: string;
-  hint?: string;
-  description?: string;
-}
+import type { SelectOption } from './SelectOption';
 
 interface SelectProps<T extends string | number> {
   value: T | '';

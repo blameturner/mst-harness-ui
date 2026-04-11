@@ -5,18 +5,11 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react';
-import type { LlmModel, StyleOption } from '../lib/api';
-import { styleLabel } from '../lib/styles';
+import type { LlmModel } from '../api/types/LlmModel';
+import type { StyleOption } from '../api/types/StyleOption';
+import { styleLabel } from '../lib/styles/styleLabel';
 import { Select } from './Select';
-
-export interface ComposerToggle {
-  key: string;
-  label: string;
-  active: boolean;
-  disabled?: boolean;
-  title?: string;
-  onToggle: () => void;
-}
+import type { ComposerToggle } from './ComposerToggle';
 
 interface ComposerDockProps {
   value: string;
