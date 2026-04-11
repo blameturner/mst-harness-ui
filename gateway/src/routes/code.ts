@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { getAuthContext } from '../lib/auth-context.js';
 import { FetchTimeoutError } from '../lib/fetch-with-timeout.js';
+import { mapHarnessError } from '../lib/mapHarnessError.js';
+import { forwardResponse } from '../lib/forwardResponse.js';
 import {
   code as harnessCode,
   listCodeConversations,
@@ -35,26 +37,6 @@ const codeSchema = z.object({
   response_style: z.string().optional(),
 });
 
-async function forward(res: Response) {
-  const text = await res.text();
-  const contentType = res.headers.get('content-type') ?? 'application/json';
-  return new Response(text, { status: res.status, headers: { 'Content-Type': contentType } });
-}
-
-function mapHarnessError(err: unknown) {
-  if (err instanceof FetchTimeoutError) {
-    return new Response(JSON.stringify({ error: 'harness_timeout' }), {
-      status: 504,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-  console.error('[code] harness unreachable', err);
-  return new Response(JSON.stringify({ error: 'harness_unreachable' }), {
-    status: 502,
-    headers: { 'Content-Type': 'application/json' },
-  });
-}
-
 interface HarnessCodeConversation {
   Id?: number;
   id?: number;
@@ -72,7 +54,7 @@ async function findOwnedCodeConversation(
   | { ok: false; response: Response }
 > {
   const listRes = await listCodeConversations(orgId);
-  if (!listRes.ok) return { ok: false, response: await forward(listRes) };
+  if (!listRes.ok) return { ok: false, response: await forwardResponse(listRes) };
   const body = (await listRes.json()) as {
     conversations?: HarnessCodeConversation[];
   };
@@ -95,9 +77,9 @@ codeRoute.get('/conversations', async (c) => {
   const { orgId } = getAuthContext(c);
   try {
     const res = await listCodeConversations(Number(orgId));
-    return forward(res);
+    return forwardResponse(res);
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'code');
   }
 });
 
@@ -114,7 +96,7 @@ codeRoute.get('/conversations/:id', async (c) => {
     if (!owned.ok) return owned.response;
     return c.json({ conversation: owned.conversation });
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'code');
   }
 });
 
@@ -130,9 +112,9 @@ codeRoute.get('/conversations/:id/messages', async (c) => {
     const owned = await findOwnedCodeConversation(conversationId, Number(orgId));
     if (!owned.ok) return owned.response;
     const res = await getCodeConversationMessages(conversationId);
-    return forward(res);
+    return forwardResponse(res);
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'code');
   }
 });
 
@@ -148,9 +130,9 @@ codeRoute.get('/conversations/:id/workspace', async (c) => {
     const owned = await findOwnedCodeConversation(conversationId, Number(orgId));
     if (!owned.ok) return owned.response;
     const res = await getCodeWorkspace(conversationId);
-    return forward(res);
+    return forwardResponse(res);
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'code');
   }
 });
 
@@ -175,9 +157,9 @@ codeRoute.patch('/conversations/:id', async (c) => {
     const owned = await findOwnedCodeConversation(conversationId, Number(orgId));
     if (!owned.ok) return owned.response;
     const res = await updateCodeConversation(conversationId, parsed.data);
-    return forward(res);
+    return forwardResponse(res);
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'code');
   }
 });
 

@@ -2,6 +2,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, type DockerContainer, type LogLine } from '../lib/api';
 import { authClient } from '../lib/auth-client';
+import { inferContainerGroup } from '../lib/utils/inferContainerGroup';
 
 const MAX_LINES = 2000;
 
@@ -34,16 +35,6 @@ function classifyLevel(text: string): LogLevel {
   if (l === 'WARN' || l === 'WARNING') return 'warn';
   if (l === 'INFO') return 'info';
   return 'debug';
-}
-
-// Infer a group from the container name/image
-function inferGroup(c: DockerContainer): string {
-  const name = c.name.toLowerCase();
-  const image = c.image.toLowerCase();
-  if (name.includes('llama') || name.includes('model') || name.includes('reasoner') || name.includes('coder') || name.includes('fast') || image.includes('llama') || image.includes('gguf') || image.includes('vllm')) return 'Models';
-  if (name.includes('redis') || name.includes('postgres') || name.includes('nocodb') || name.includes('mysql') || name.includes('mongo') || image.includes('redis') || image.includes('postgres') || image.includes('nocodb')) return 'Data';
-  if (name.includes('nginx') || name.includes('proxy') || name.includes('traefik') || name.includes('caddy') || image.includes('nginx') || image.includes('proxy')) return 'Proxy';
-  return 'Services';
 }
 
 /** Exported so the harness page can embed it inline */
@@ -172,7 +163,7 @@ export function LogsPage() {
 
   const showGroup = useCallback((group: string) => {
     const groupNames = new Set(
-      containers.filter((c) => inferGroup(c) === group).map((c) => c.name),
+      containers.filter((c) => inferContainerGroup(c) === group).map((c) => c.name),
     );
     setHidden((prev) => {
       const next = new Set(prev);
@@ -232,7 +223,7 @@ export function LogsPage() {
       }
     });
     for (const c of containers) {
-      const group = inferGroup(c);
+      const group = inferContainerGroup(c);
       if (!groups.has(group)) groups.set(group, []);
       groups.get(group)!.push(c);
     }

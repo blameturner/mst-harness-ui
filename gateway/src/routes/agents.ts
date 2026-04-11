@@ -35,6 +35,7 @@ type AgentOutputRow = {
   CreatedAt?: string;
 };
 
+// TODO: dedupe after reconciling log message format
 function mapHarnessError(err: unknown, tag: string) {
   if (err instanceof FetchTimeoutError) {
     return new Response(JSON.stringify({ error: 'harness_timeout' }), {

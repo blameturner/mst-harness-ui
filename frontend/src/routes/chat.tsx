@@ -14,16 +14,10 @@ import { ChatBubble, type DisplayMessage } from '../components/ChatBubble';
 import { ComposerDock, type ComposerToggle } from '../components/ComposerDock';
 import { Sheet, IconButton } from '../components/Sheet';
 import { styleLabel } from '../lib/styles';
-import {
-  isTransientNetworkError,
-  useOnVisibilityResume,
-  useWasRecentlyHidden,
-} from '../lib/network';
-
-
-function uid() {
-  return Math.random().toString(36).slice(2);
-}
+import { isTransientNetworkError } from '../lib/network/isTransientNetworkError';
+import { useOnVisibilityResume } from '../hooks/useOnVisibilityResume';
+import { useWasRecentlyHidden } from '../hooks/useWasRecentlyHidden';
+import { uid } from '../lib/utils/uid';
 
 function ChatPage() {
   const navigate = useNavigate();

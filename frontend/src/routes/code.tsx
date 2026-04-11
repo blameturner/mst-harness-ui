@@ -25,11 +25,10 @@ import { authClient } from '../lib/auth-client';
 import { ComposerDock } from '../components/ComposerDock';
 import { Sheet, IconButton } from '../components/Sheet';
 import { styleLabel } from '../lib/styles';
-import {
-  isTransientNetworkError,
-  useOnVisibilityResume,
-  useWasRecentlyHidden,
-} from '../lib/network';
+import { isTransientNetworkError } from '../lib/network/isTransientNetworkError';
+import { useOnVisibilityResume } from '../hooks/useOnVisibilityResume';
+import { useWasRecentlyHidden } from '../hooks/useWasRecentlyHidden';
+import { uid } from '../lib/utils/uid';
 
 type Mode = 'plan' | 'execute' | 'debug';
 
@@ -58,10 +57,6 @@ interface CodeBlock {
   code: string;
   file?: string;
   index: number;
-}
-
-function uid() {
-  return Math.random().toString(36).slice(2);
 }
 
 function parseCodeBlocks(md: string): CodeBlock[] {

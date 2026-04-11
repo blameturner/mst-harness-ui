@@ -2,8 +2,8 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { getAuthContext } from '../lib/auth-context.js';
-import { assertInteger } from '../lib/noco-filter.js';
 import { FetchTimeoutError } from '../lib/fetch-with-timeout.js';
+import { parseIdParam } from '../lib/parseIdParam.js';
 import {
   createRow,
   listWhere,
@@ -108,15 +108,6 @@ async function loadOwned(orgId: number, id: number): Promise<ScheduleRow | null>
   return rows[0] ?? null;
 }
 
-function parseIdParam(raw: string | undefined): number | null {
-  if (raw == null) return null;
-  try {
-    return assertInteger(raw, 'schedule_id');
-  } catch {
-    return null;
-  }
-}
-
 schedulesRoute.get('/', async (c) => {
   const { orgId } = getAuthContext(c);
   try {
@@ -163,7 +154,7 @@ schedulesRoute.patch('/:id', async (c) => {
   }
   const { orgId } = getAuthContext(c);
   try {
-    const id = parseIdParam(c.req.param('id'));
+    const id = parseIdParam(c.req.param('id'), 'schedule_id');
     if (id == null) return c.json({ error: 'invalid_id' }, 400);
     const existing = await loadOwned(orgId, id);
     if (!existing) return c.json({ error: 'not_found' }, 404);
@@ -183,7 +174,7 @@ schedulesRoute.patch('/:id', async (c) => {
 schedulesRoute.delete('/:id', async (c) => {
   const { orgId } = getAuthContext(c);
   try {
-    const id = parseIdParam(c.req.param('id'));
+    const id = parseIdParam(c.req.param('id'), 'schedule_id');
     if (id == null) return c.json({ error: 'invalid_id' }, 400);
     const existing = await loadOwned(orgId, id);
     if (!existing) return c.json({ error: 'not_found' }, 404);

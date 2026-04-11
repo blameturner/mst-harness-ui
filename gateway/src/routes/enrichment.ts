@@ -3,7 +3,10 @@ import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { getAuthContext } from '../lib/auth-context.js';
 import { assertInteger } from '../lib/noco-filter.js';
-import { FetchTimeoutError } from '../lib/fetch-with-timeout.js';
+import { mapHarnessError } from '../lib/mapHarnessError.js';
+import { forwardResponse } from '../lib/forwardResponse.js';
+import { parseIdParam } from '../lib/parseIdParam.js';
+import { forwardNormalised } from '../lib/forwardNormalised.js';
 import {
   getSchedulerStatus,
   triggerScheduler,
@@ -44,38 +47,6 @@ const CATEGORIES = [
   'model_releases',
 ] as const;
 const categoryEnum = z.enum(CATEGORIES);
-
-function mapHarnessError(err: unknown) {
-  if (err instanceof FetchTimeoutError) {
-    return new Response(JSON.stringify({ error: 'harness_timeout' }), {
-      status: 504,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-  console.error('[enrichment] harness unreachable', err);
-  return new Response(JSON.stringify({ error: 'harness_unreachable' }), {
-    status: 502,
-    headers: { 'Content-Type': 'application/json' },
-  });
-}
-
-async function forward(res: Response) {
-  const text = await res.text();
-  const contentType = res.headers.get('content-type') ?? 'application/json';
-  return new Response(text, {
-    status: res.status,
-    headers: { 'Content-Type': contentType },
-  });
-}
-
-function parseIdParam(raw: string | undefined): number | null {
-  if (raw == null) return null;
-  try {
-    return assertInteger(raw, 'id');
-  } catch {
-    return null;
-  }
-}
 
 /**
  * The harness returns rows with NocoDB-style `Id` (capital I) and `CreatedAt`/`UpdatedAt`.
@@ -145,33 +116,6 @@ function normaliseLogEntry(row: Record<string, unknown>) {
   };
 }
 
-/** Forward a harness response, transforming the JSON body with a mapper. */
-async function forwardNormalised<T>(
-  res: Response,
-  transform: (body: Record<string, unknown>) => T,
-): Promise<Response> {
-  const text = await res.text();
-  if (!res.ok) {
-    return new Response(text, {
-      status: res.status,
-      headers: { 'Content-Type': res.headers.get('content-type') ?? 'application/json' },
-    });
-  }
-  try {
-    const json = JSON.parse(text);
-    const transformed = transform(json);
-    return new Response(JSON.stringify(transformed), {
-      status: res.status,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  } catch {
-    return new Response(text, {
-      status: res.status,
-      headers: { 'Content-Type': res.headers.get('content-type') ?? 'application/json' },
-    });
-  }
-}
-
 // --- Sources ----------------------------------------------------------------
 
 const createSourceSchema = z.object({
@@ -211,7 +155,7 @@ enrichmentRoute.get('/sources', async (c) => {
       return { sources: sources.map((s: Record<string, unknown>) => normaliseSource(s)) };
     });
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'enrichment');
   }
 });
 
@@ -222,7 +166,7 @@ enrichmentRoute.get('/sources/:id', async (c) => {
     const res = await getEnrichmentSource(id);
     return forwardNormalised(res, (body) => normaliseSource(body));
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'enrichment');
   }
 });
 
@@ -237,7 +181,7 @@ enrichmentRoute.post('/sources', async (c) => {
     const res = await createEnrichmentSource({ ...parsed.data, org_id: Number(orgId) });
     return forwardNormalised(res, (body) => normaliseSource(body));
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'enrichment');
   }
 });
 
@@ -253,7 +197,7 @@ enrichmentRoute.patch('/sources/:id', async (c) => {
     const res = await patchEnrichmentSource(id, parsed.data);
     return forwardNormalised(res, (body) => normaliseSource(body));
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'enrichment');
   }
 });
 
@@ -262,9 +206,9 @@ enrichmentRoute.delete('/sources/:id', async (c) => {
   if (id == null) return c.json({ error: 'invalid_id' }, 400);
   try {
     const res = await deleteEnrichmentSource(id);
-    return forward(res);
+    return forwardResponse(res);
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'enrichment');
   }
 });
 
@@ -272,9 +216,9 @@ enrichmentRoute.post('/sources/:id/trigger', async (c) => {
   // Per-source trigger not yet in harness — fire a full scheduler cycle.
   try {
     const res = await triggerScheduler();
-    return forward(res);
+    return forwardResponse(res);
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'enrichment');
   }
 });
 
@@ -283,9 +227,9 @@ enrichmentRoute.post('/sources/:id/flush', async (c) => {
   if (id == null) return c.json({ error: 'invalid_id' }, 400);
   try {
     const res = await flushEnrichmentSource(id);
-    return forward(res);
+    return forwardResponse(res);
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'enrichment');
   }
 });
 
@@ -304,7 +248,7 @@ enrichmentRoute.get('/sources/:id/log', async (c) => {
       return { entries: entries.map((e: Record<string, unknown>) => normaliseLogEntry(e)) };
     });
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'enrichment');
   }
 });
 
@@ -324,7 +268,7 @@ enrichmentRoute.get('/log', async (c) => {
       return { entries: entries.map((e: Record<string, unknown>) => normaliseLogEntry(e)) };
     });
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'enrichment');
   }
 });
 
@@ -341,7 +285,7 @@ enrichmentRoute.get('/suggestions', async (c) => {
       return { suggestions: suggestions.map((s: Record<string, unknown>) => normaliseSuggestion(s)) };
     });
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'enrichment');
   }
 });
 
@@ -350,9 +294,9 @@ enrichmentRoute.post('/suggestions/approve-by-parent', async (c) => {
   if (!body || body.parent_target == null) return c.json({ error: 'invalid_body' }, 400);
   try {
     const res = await approveEnrichmentSuggestionsByParent(body);
-    return forward(res);
+    return forwardResponse(res);
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'enrichment');
   }
 });
 
@@ -361,9 +305,9 @@ enrichmentRoute.post('/suggestions/reject-by-parent', async (c) => {
   if (!body || body.parent_target == null) return c.json({ error: 'invalid_body' }, 400);
   try {
     const res = await rejectEnrichmentSuggestionsByParent(body);
-    return forward(res);
+    return forwardResponse(res);
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'enrichment');
   }
 });
 
@@ -374,7 +318,7 @@ enrichmentRoute.get('/suggestions/:id', async (c) => {
     const res = await getEnrichmentSuggestion(id);
     return forwardNormalised(res, (body) => normaliseSuggestion(body));
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'enrichment');
   }
 });
 
@@ -385,9 +329,9 @@ enrichmentRoute.patch('/suggestions/:id', async (c) => {
   if (id == null) return c.json({ error: 'invalid_id' }, 400);
   try {
     const res = await patchEnrichmentSuggestion(id, body);
-    return forward(res);
+    return forwardResponse(res);
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'enrichment');
   }
 });
 
@@ -397,9 +341,9 @@ enrichmentRoute.post('/suggestions/:id/approve', async (c) => {
   if (id == null) return c.json({ error: 'invalid_id' }, 400);
   try {
     const res = await approveEnrichmentSuggestion(id, body);
-    return forward(res);
+    return forwardResponse(res);
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'enrichment');
   }
 });
 
@@ -408,9 +352,9 @@ enrichmentRoute.post('/suggestions/:id/reject', async (c) => {
   if (id == null) return c.json({ error: 'invalid_id' }, 400);
   try {
     const res = await rejectEnrichmentSuggestion(id);
-    return forward(res);
+    return forwardResponse(res);
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'enrichment');
   }
 });
 
@@ -419,18 +363,18 @@ enrichmentRoute.post('/suggestions/:id/reject', async (c) => {
 enrichmentRoute.get('/status', async () => {
   try {
     const res = await getSchedulerStatus();
-    return forward(res);
+    return forwardResponse(res);
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'enrichment');
   }
 });
 
 enrichmentRoute.post('/trigger', async () => {
   try {
     const res = await triggerScheduler();
-    return forward(res);
+    return forwardResponse(res);
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'enrichment');
   }
 });
 
@@ -450,9 +394,9 @@ enrichmentRoute.get('/agents', async (c) => {
   const { orgId } = getAuthContext(c);
   try {
     const res = await listEnrichmentAgents(Number(orgId));
-    return forward(res);
+    return forwardResponse(res);
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'enrichment');
   }
 });
 
@@ -463,9 +407,9 @@ enrichmentRoute.post('/agents', async (c) => {
   const { orgId } = getAuthContext(c);
   try {
     const res = await createEnrichmentAgent({ ...parsed.data, org_id: Number(orgId) });
-    return forward(res);
+    return forwardResponse(res);
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'enrichment');
   }
 });
 
@@ -476,9 +420,9 @@ enrichmentRoute.patch('/agents/:id', async (c) => {
   try { id = assertInteger(c.req.param('id'), 'agent_id'); } catch { return c.json({ error: 'invalid_id' }, 400); }
   try {
     const res = await patchEnrichmentAgent(id, body);
-    return forward(res);
+    return forwardResponse(res);
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'enrichment');
   }
 });
 
@@ -487,9 +431,9 @@ enrichmentRoute.post('/agents/:id/trigger', async (c) => {
   try { id = assertInteger(c.req.param('id'), 'agent_id'); } catch { return c.json({ error: 'invalid_id' }, 400); }
   try {
     const res = await triggerEnrichmentAgent(id);
-    return forward(res);
+    return forwardResponse(res);
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'enrichment');
   }
 });
 
@@ -498,8 +442,8 @@ enrichmentRoute.get('/agents/:id/status', async (c) => {
   try { id = assertInteger(c.req.param('id'), 'agent_id'); } catch { return c.json({ error: 'invalid_id' }, 400); }
   try {
     const res = await getEnrichmentAgentStatus(id);
-    return forward(res);
+    return forwardResponse(res);
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'enrichment');
   }
 });

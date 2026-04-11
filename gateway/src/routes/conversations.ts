@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { getAuthContext } from '../lib/auth-context.js';
-import { FetchTimeoutError } from '../lib/fetch-with-timeout.js';
+import { mapHarnessError } from '../lib/mapHarnessError.js';
+import { forwardResponse } from '../lib/forwardResponse.js';
 import { z } from 'zod';
 import {
   getConversationMessages as harnessGetMessages,
@@ -16,26 +17,14 @@ export const conversationsRoute = new Hono<{ Variables: AuthVariables }>();
 
 conversationsRoute.use('*', requireAuth);
 
-async function forward(res: Response) {
-  const text = await res.text();
-  const contentType = res.headers.get('content-type') ?? 'application/json';
-  return new Response(text, { status: res.status, headers: { 'Content-Type': contentType } });
-}
-
-function mapHarnessError(err: unknown) {
-  if (err instanceof FetchTimeoutError) return new Response(JSON.stringify({ error: 'harness_timeout' }), { status: 504, headers: { 'Content-Type': 'application/json' } });
-  console.error('[conversations] harness unreachable', err);
-  return new Response(JSON.stringify({ error: 'harness_unreachable' }), { status: 502, headers: { 'Content-Type': 'application/json' } });
-}
-
 /** List this org's conversations (most recent first). */
 conversationsRoute.get('/', async (c) => {
   const { orgId } = getAuthContext(c);
   try {
     const res = await harnessListConversations(Number(orgId));
-    return forward(res);
+    return forwardResponse(res);
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'conversations');
   }
 });
 
@@ -59,7 +48,7 @@ conversationsRoute.get('/:id/summary', async (c) => {
   }
   try {
     const res = await harnessGetSummary(conversationId);
-    if (!res.ok) return forward(res);
+    if (!res.ok) return forwardResponse(res);
     const body = (await res.json()) as {
       conversation?: { org_id?: number } | null;
     };
@@ -68,7 +57,7 @@ conversationsRoute.get('/:id/summary', async (c) => {
     }
     return c.json(body);
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'conversations');
   }
 });
 
@@ -99,7 +88,7 @@ conversationsRoute.patch('/:id', async (c) => {
   try {
     // Ownership check: fetch the existing conversation and verify org_id.
     const existingRes = await harnessGetSummary(conversationId);
-    if (!existingRes.ok) return forward(existingRes);
+    if (!existingRes.ok) return forwardResponse(existingRes);
     const existing = (await existingRes.json()) as {
       conversation?: { org_id?: number } | null;
     };
@@ -108,9 +97,9 @@ conversationsRoute.patch('/:id', async (c) => {
     }
 
     const res = await harnessUpdateConversation(conversationId, parsed.data);
-    return forward(res);
+    return forwardResponse(res);
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'conversations');
   }
 });
 
@@ -125,7 +114,7 @@ conversationsRoute.get('/:id/messages', async (c) => {
 
   try {
     const res = await harnessGetMessages(conversationId);
-    if (!res.ok) return forward(res);
+    if (!res.ok) return forwardResponse(res);
     const body = (await res.json()) as {
       conversation?: { org_id?: number } | null;
       messages?: unknown[];
@@ -135,6 +124,6 @@ conversationsRoute.get('/:id/messages', async (c) => {
     }
     return c.json(body);
   } catch (err) {
-    return mapHarnessError(err);
+    return mapHarnessError(err, 'conversations');
   }
 });

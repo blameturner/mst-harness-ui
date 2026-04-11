@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { api, type DockerContainer, type LlmModel } from '../lib/api';
 import { gatewayUrl } from '../lib/runtime-env';
 import { authClient } from '../lib/auth-client';
+import { extractPort } from '../lib/utils/extractPort';
+import { inferContainerGroup } from '../lib/utils/inferContainerGroup';
 
 interface HealthStatus {
   status: string;
@@ -368,40 +370,12 @@ function shortenUrl(url: string): string {
   }
 }
 
-function extractPort(url: string): string {
-  try {
-    return new URL(url).port || '3900';
-  } catch {
-    return '3900';
-  }
-}
-
-function inferGroup(c: DockerContainer): string {
-  const name = c.name.toLowerCase();
-  const image = c.image.toLowerCase();
-  if (
-    name.includes('llama') || name.includes('model') || name.includes('reasoner') ||
-    name.includes('coder') || name.includes('fast') ||
-    image.includes('llama') || image.includes('gguf') || image.includes('vllm')
-  ) return 'Models';
-  if (
-    name.includes('redis') || name.includes('postgres') || name.includes('nocodb') ||
-    name.includes('mysql') || name.includes('mongo') ||
-    image.includes('redis') || image.includes('postgres') || image.includes('nocodb')
-  ) return 'Data';
-  if (
-    name.includes('nginx') || name.includes('proxy') || name.includes('traefik') ||
-    name.includes('caddy') || image.includes('nginx') || image.includes('proxy')
-  ) return 'Proxy';
-  return 'Services';
-}
-
 function groupContainers(
   containers: DockerContainer[],
 ): [string, DockerContainer[]][] {
   const groups = new Map<string, DockerContainer[]>();
   for (const c of containers) {
-    const group = inferGroup(c);
+    const group = inferContainerGroup(c);
     if (!groups.has(group)) groups.set(group, []);
     groups.get(group)!.push(c);
   }

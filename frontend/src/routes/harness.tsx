@@ -6,6 +6,8 @@ import { authClient } from '../lib/auth-client';
 import { styleLabel } from '../lib/styles';
 import { LogsPage } from './logs';
 import { EnrichmentContent } from './enrichment';
+import { formatNumber } from '../lib/utils/formatNumber';
+import { extractPort } from '../lib/utils/extractPort';
 
 type Tab = 'architecture' | 'enrichment' | 'logs' | 'stats';
 
@@ -500,8 +502,8 @@ function StatsTab() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <StatCard label="Total requests" value={stats.total_requests.toLocaleString()} />
             <StatCard label="Conversations" value={stats.total_conversations.toLocaleString()} />
-            <StatCard label="Tokens in" value={fmt(stats.total_tokens_input)} />
-            <StatCard label="Tokens out" value={fmt(stats.total_tokens_output)} />
+            <StatCard label="Tokens in" value={formatNumber(stats.total_tokens_input)} />
+            <StatCard label="Tokens out" value={formatNumber(stats.total_tokens_output)} />
             <StatCard
               label="Error rate"
               value={stats.total_requests > 0 ? `${((stats.total_errors / stats.total_requests) * 100).toFixed(1)}%` : '0%'}
@@ -535,8 +537,8 @@ function StatsTab() {
                       <tr key={m.model_name} className="border-b border-border hover:bg-panelHi">
                         <td className="py-2 font-sans text-xs font-medium">{m.model_name}</td>
                         <td className="py-2 text-right font-mono text-xs">{m.requests.toLocaleString()}</td>
-                        <td className="py-2 text-right font-mono text-xs text-muted">{fmt(m.tokens_input)}</td>
-                        <td className="py-2 text-right font-mono text-xs text-muted">{fmt(m.tokens_output)}</td>
+                        <td className="py-2 text-right font-mono text-xs text-muted">{formatNumber(m.tokens_input)}</td>
+                        <td className="py-2 text-right font-mono text-xs text-muted">{formatNumber(m.tokens_output)}</td>
                         <td className="py-2 text-right font-mono text-xs text-muted">{m.avg_tokens_per_request.toLocaleString()}</td>
                         <td className="py-2 text-right font-mono text-xs text-muted">{m.avg_duration_seconds.toFixed(1)}s</td>
                         <td className="py-2 text-right font-mono text-xs text-muted">{m.p50_duration_seconds.toFixed(1)}s</td>
@@ -660,7 +662,7 @@ function StatsTab() {
                     <tr key={c.conversation_id} className="border-b border-border hover:bg-panelHi">
                       <td className="py-2 text-xs truncate max-w-[300px]">{c.title || `#${c.conversation_id}`}</td>
                       <td className="py-2 text-right font-mono text-xs">{c.message_count}</td>
-                      <td className="py-2 text-right font-mono text-xs text-muted">{fmt(c.total_tokens)}</td>
+                      <td className="py-2 text-right font-mono text-xs text-muted">{formatNumber(c.total_tokens)}</td>
                       <td className="py-2 text-right text-xs text-muted">{relDate(c.last_active)}</td>
                     </tr>
                   ))}
@@ -675,7 +677,7 @@ function StatsTab() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
               <StatCard label="Cycles run" value={stats.enrichment.total_cycles.toLocaleString()} />
               <StatCard label="Sources scraped" value={stats.enrichment.total_sources_scraped.toLocaleString()} />
-              <StatCard label="Tokens used" value={fmt(stats.enrichment.total_tokens_used)} />
+              <StatCard label="Tokens used" value={formatNumber(stats.enrichment.total_tokens_used)} />
               <StatCard
                 label="Suggestions"
                 value={stats.enrichment.suggestions_generated.toLocaleString()}
@@ -790,7 +792,7 @@ function DailyChart({ days }: { days: UsageStats['by_day'] }) {
                 style={{ height: `${((d.requests - d.errors) / max) * 100}%` }}
               />
               <div className="absolute -top-8 left-1/2 -translate-x-1/2 hidden group-hover:block bg-fg text-bg text-[10px] font-mono px-1.5 py-0.5 rounded whitespace-nowrap z-10">
-                {d.date}: {d.requests} req{d.errors > 0 ? ` · ${d.errors} err` : ''} · {fmt(d.tokens_input)} in
+                {d.date}: {d.requests} req{d.errors > 0 ? ` · ${d.errors} err` : ''} · {formatNumber(d.tokens_input)} in
               </div>
             </div>
           );
@@ -859,12 +861,7 @@ function Heatmap({ data }: { data: UsageStats['by_hour'] }) {
  * HELPERS
  * ========================================================================= */
 
-function fmt(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return n.toLocaleString();
-}
-
+// TODO: refactor to shared relTime after confirming 'just now' vs 's ago' UX
 function relDate(iso: string): string {
   try {
     const diff = Date.now() - new Date(iso).getTime();
@@ -874,14 +871,6 @@ function relDate(iso: string): string {
     return `${Math.floor(diff / 86_400_000)}d ago`;
   } catch {
     return iso;
-  }
-}
-
-function extractPort(url: string): string {
-  try {
-    return new URL(url).port || '3900';
-  } catch {
-    return '3900';
   }
 }
 

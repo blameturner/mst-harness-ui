@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { getAuthContext } from '../lib/auth-context.js';
 import { FetchTimeoutError } from '../lib/fetch-with-timeout.js';
+import { forwardResponse } from '../lib/forwardResponse.js';
 import {
   listCodebases,
   createCodebase,
@@ -21,16 +22,11 @@ function mapErr(err: unknown) {
   return new Response(JSON.stringify({ error: 'harness_unreachable' }), { status: 502, headers: { 'Content-Type': 'application/json' } });
 }
 
-async function forward(res: Response) {
-  const text = await res.text();
-  return new Response(text, { status: res.status, headers: { 'Content-Type': res.headers.get('content-type') ?? 'application/json' } });
-}
-
 codebasesRoute.get('/', async (c) => {
   const { orgId } = getAuthContext(c);
   try {
     const res = await listCodebases(Number(orgId));
-    return forward(res);
+    return forwardResponse(res);
   } catch (err) {
     return mapErr(err);
   }
@@ -48,7 +44,7 @@ codebasesRoute.post('/', async (c) => {
   const { orgId } = getAuthContext(c);
   try {
     const res = await createCodebase({ ...parsed.data, org_id: Number(orgId) });
-    return forward(res);
+    return forwardResponse(res);
   } catch (err) {
     return mapErr(err);
   }
@@ -70,7 +66,7 @@ codebasesRoute.post('/:id/index', async (c) => {
   if (!parsed.success) return c.json({ error: 'invalid_body', issues: parsed.error.issues }, 400);
   try {
     const res = await indexCodebase(id, parsed.data);
-    return forward(res);
+    return forwardResponse(res);
   } catch (err) {
     return mapErr(err);
   }
