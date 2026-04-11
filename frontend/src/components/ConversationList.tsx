@@ -19,11 +19,10 @@ export function ConversationList({ conversations, activeId, onSelect, loading }:
     );
   }
 
-  // Sort by most recently updated
   const sorted = [...conversations].sort((a, b) => {
     const aTime = a.UpdatedAt ? new Date(a.UpdatedAt).getTime() : 0;
     const bTime = b.UpdatedAt ? new Date(b.UpdatedAt).getTime() : 0;
-    return bTime - aTime; // Descending order (most recent first)
+    return bTime - aTime;
   });
 
   return (

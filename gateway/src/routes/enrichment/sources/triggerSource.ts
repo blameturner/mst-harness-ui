@@ -4,7 +4,7 @@ import { forwardResponse } from '../../../lib/forwardResponse.js';
 import { mapHarnessError } from '../../../lib/mapHarnessError.js';
 
 export async function triggerSource(c: Context) {
-  // Per-source trigger not yet in harness — fire a full scheduler cycle.
+  // Harness has no per-source trigger; fire a full scheduler cycle instead.
   try {
     const res = await triggerScheduler();
     return forwardResponse(res);

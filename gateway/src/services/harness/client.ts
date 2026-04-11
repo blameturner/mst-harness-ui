@@ -1,10 +1,7 @@
 import { env } from '../../env.js';
 import { fetchWithTimeout } from '../../lib/fetchWithTimeout.js';
 
-/**
- * Thin typed wrapper around fetch() for the Harness HTTP API. The only place in the
- * codebase that knows about `HARNESS_URL` — routes should call functions in `./endpoints.ts`.
- */
+// Only place that knows about HARNESS_URL — routes should call functions in ./endpoints/ instead.
 export const harnessClient = {
   get(path: string, timeoutMs: number): Promise<Response> {
     return fetchWithTimeout(`${env.HARNESS_URL}${path}`, { method: 'GET' }, timeoutMs);

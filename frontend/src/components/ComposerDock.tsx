@@ -75,12 +75,9 @@ export function ComposerDock({
 
   return (
     <div className="border-t border-border bg-bg/95 backdrop-blur">
-      {/* Top control rail ----------------------------------------------------- */}
       <div className="relative">
-        {/* subtle highlight rule */}
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-fg/20 to-transparent" />
         <div className="px-3 sm:px-5 pt-2 sm:pt-3 pb-2 flex items-stretch gap-3 sm:gap-5 overflow-x-auto no-scrollbar">
-          {/* ——— Left slot (e.g. mode switcher for code) ——— */}
           {leftRailSlot && (
             <>
               <DockZone label="Mode">{leftRailSlot}</DockZone>

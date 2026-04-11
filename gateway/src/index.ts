@@ -51,7 +51,6 @@ app.use('/api/setup/*', rateLimit({ windowMs: 60 * 60 * 1000, max: 10, name: 'se
 app.use('/api/setup', rateLimit({ windowMs: 60 * 60 * 1000, max: 10, name: 'setup' }));
 app.use('/api/*', rateLimit({ windowMs: 60 * 1000, max: 240, name: 'api' }));
 
-// Better Auth handles all /api/auth/** routes.
 app.on(['GET', 'POST'], '/api/auth/*', (c) => auth.handler(c.req.raw));
 
 app.route('/api/setup', setupRoute);
@@ -75,8 +74,7 @@ app.route('/api/harness', harnessRoute);
 app.get('/', (c) => c.json({ name: 'mst-ag-gateway', ok: true }));
 
 async function main() {
-  // 1. Better Auth schema migrations — idempotent, safe on every boot.
-  //    Without this, the `user` table (and our `orgId` column) does not exist.
+  // Better Auth migrations create the `user` table and our `orgId` column. Idempotent on every boot.
   try {
     const { runMigrations } = await getMigrations(authOptions);
     await runMigrations();
@@ -86,7 +84,7 @@ async function main() {
     process.exit(1);
   }
 
-  // 2. Nocodb table ID discovery (with retry). If this fails, crash so Docker restarts us.
+  // Nocodb table-id discovery has its own retry. If it still fails, crash so Docker restarts us.
   try {
     await initNocodbTables();
   } catch (err) {

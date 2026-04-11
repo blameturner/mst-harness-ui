@@ -1,4 +1,3 @@
-/** Forward a harness response, transforming the JSON body with a mapper. */
 export async function forwardNormalised<T>(
   res: Response,
   transform: (body: Record<string, unknown>) => T,
