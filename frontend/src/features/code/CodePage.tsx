@@ -126,6 +126,13 @@ export function CodePage() {
         const res = await getCodeMessages(convId);
         if (conversationIdRef.current !== convId) return;
         if (res.conversation?.status === 'processing') {
+          // Connected successfully — drop reconnecting so the UI shows
+          // a thinking indicator instead of the stale reconnecting badge.
+          setMessages((ms) =>
+            ms.map((x) =>
+              x.id === `pending-${convId}` ? { ...x, reconnecting: false, toolStatus: catThinkingLabel(), isThinking: true } : x,
+            ),
+          );
           scheduleCodeRetry(convId);
         } else {
           setMessages(hydrateCodeMessages(res.messages));
@@ -164,6 +171,8 @@ export function CodePage() {
     })();
     return () => {
       cancelled = true;
+      streamAbortRef.current?.abort();
+      if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null; }
     };
   }, []);
 

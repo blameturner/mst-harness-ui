@@ -74,6 +74,13 @@ export function ChatPage() {
         if (activeIdRef.current !== convId) return;
         const status = res.conversation?.status;
         if (status === 'processing') {
+          // Connected successfully — drop reconnecting so the UI shows
+          // "Thinking…" instead of the stale reconnecting badge.
+          setMessages((ms) =>
+            ms.map((x) =>
+              x.id === `pending-${convId}` ? { ...x, reconnecting: false } : x,
+            ),
+          );
           scheduleRetry(convId);
         } else {
           setMessages(hydrateMessages(res.messages));
@@ -144,6 +151,10 @@ export function ChatPage() {
 
   useEffect(() => {
     void runInitialLoad.current();
+    return () => {
+      streamAbortRef.current?.abort();
+      if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null; }
+    };
   }, []);
 
   useEffect(() => {
