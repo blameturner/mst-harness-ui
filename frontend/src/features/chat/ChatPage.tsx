@@ -318,6 +318,8 @@ export function ChatPage() {
                     status: 'pending',
                     sources: ev.sources,
                     searchConfidence: ev.confidence,
+                    toolStatus: undefined,
+                    isThinking: false,
                   }
                 : x,
             ),
