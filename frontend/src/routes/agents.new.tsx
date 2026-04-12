@@ -100,26 +100,12 @@ function AgentsNewPage() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <CronPicker
-              value={form.cron_expression}
-              onChange={(cron) => setForm({ ...form, cron_expression: cron })}
-            />
-            <div>
-              <label className="block text-[10px] uppercase tracking-[0.16em] text-muted mb-1.5 font-sans">
-                Timezone (IANA)
-              </label>
-              <input
-                value={form.timezone}
-                onChange={(e) => setForm({ ...form, timezone: e.target.value })}
-                required
-                className="w-full bg-bg border border-border rounded-md px-3 py-2 text-sm font-sans focus:outline-none focus:border-fg"
-              />
-              <div className="text-[10px] font-sans text-muted mt-1">
-                e.g. Australia/Sydney
-              </div>
-            </div>
-          </div>
+          <CronPicker
+            value={form.cron_expression}
+            onChange={(cron) => setForm({ ...form, cron_expression: cron })}
+            timezone={form.timezone}
+            onTimezoneChange={(tz) => setForm({ ...form, timezone: tz })}
+          />
 
           <label className="flex items-center gap-2 text-sm">
             <input

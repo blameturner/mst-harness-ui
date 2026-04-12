@@ -20,8 +20,8 @@ import { Route as ArchitectureRouteImport } from './routes/architecture'
 import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AgentsNewRouteImport } from './routes/agents.new'
-import { Route as AgentsEditIdRouteImport } from './routes/agents.edit.$id'
 import { Route as AgentsIdRouteImport } from './routes/agents.$id'
+import { Route as AgentsEditIdRouteImport } from './routes/agents.edit.$id'
 import { Route as AgentsIdRunsRunIdRouteImport } from './routes/agents.$id.runs.$runId'
 
 const SetupRoute = SetupRouteImport.update({
@@ -79,14 +79,14 @@ const AgentsNewRoute = AgentsNewRouteImport.update({
   path: '/new',
   getParentRoute: () => AgentsRoute,
 } as any)
-const AgentsEditIdRoute = AgentsEditIdRouteImport.update({
-  id: '/edit/$id',
-  path: '/edit/$id',
-  getParentRoute: () => AgentsRoute,
-} as any)
 const AgentsIdRoute = AgentsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
+  getParentRoute: () => AgentsRoute,
+} as any)
+const AgentsEditIdRoute = AgentsEditIdRouteImport.update({
+  id: '/edit/$id',
+  path: '/edit/$id',
   getParentRoute: () => AgentsRoute,
 } as any)
 const AgentsIdRunsRunIdRoute = AgentsIdRunsRunIdRouteImport.update({
@@ -107,8 +107,8 @@ export interface FileRoutesByFullPath {
   '/logs': typeof LogsRoute
   '/setup': typeof SetupRoute
   '/agents/$id': typeof AgentsIdRouteWithChildren
-  '/agents/edit/$id': typeof AgentsEditIdRoute
   '/agents/new': typeof AgentsNewRoute
+  '/agents/edit/$id': typeof AgentsEditIdRoute
   '/agents/$id/runs/$runId': typeof AgentsIdRunsRunIdRoute
 }
 export interface FileRoutesByTo {
@@ -123,8 +123,8 @@ export interface FileRoutesByTo {
   '/logs': typeof LogsRoute
   '/setup': typeof SetupRoute
   '/agents/$id': typeof AgentsIdRouteWithChildren
-  '/agents/edit/$id': typeof AgentsEditIdRoute
   '/agents/new': typeof AgentsNewRoute
+  '/agents/edit/$id': typeof AgentsEditIdRoute
   '/agents/$id/runs/$runId': typeof AgentsIdRunsRunIdRoute
 }
 export interface FileRoutesById {
@@ -140,8 +140,8 @@ export interface FileRoutesById {
   '/logs': typeof LogsRoute
   '/setup': typeof SetupRoute
   '/agents/$id': typeof AgentsIdRouteWithChildren
-  '/agents/edit/$id': typeof AgentsEditIdRoute
   '/agents/new': typeof AgentsNewRoute
+  '/agents/edit/$id': typeof AgentsEditIdRoute
   '/agents/$id/runs/$runId': typeof AgentsIdRunsRunIdRoute
 }
 export interface FileRouteTypes {
@@ -158,8 +158,8 @@ export interface FileRouteTypes {
     | '/logs'
     | '/setup'
     | '/agents/$id'
-    | '/agents/edit/$id'
     | '/agents/new'
+    | '/agents/edit/$id'
     | '/agents/$id/runs/$runId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -174,8 +174,8 @@ export interface FileRouteTypes {
     | '/logs'
     | '/setup'
     | '/agents/$id'
-    | '/agents/edit/$id'
     | '/agents/new'
+    | '/agents/edit/$id'
     | '/agents/$id/runs/$runId'
   id:
     | '__root__'
@@ -190,8 +190,8 @@ export interface FileRouteTypes {
     | '/logs'
     | '/setup'
     | '/agents/$id'
-    | '/agents/edit/$id'
     | '/agents/new'
+    | '/agents/edit/$id'
     | '/agents/$id/runs/$runId'
   fileRoutesById: FileRoutesById
 }
@@ -287,18 +287,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgentsNewRouteImport
       parentRoute: typeof AgentsRoute
     }
-    '/agents/edit/$id': {
-      id: '/agents/edit/$id'
-      path: '/edit/$id'
-      fullPath: '/agents/edit/$id'
-      preLoaderRoute: typeof AgentsEditIdRouteImport
-      parentRoute: typeof AgentsRoute
-    }
     '/agents/$id': {
       id: '/agents/$id'
       path: '/$id'
       fullPath: '/agents/$id'
       preLoaderRoute: typeof AgentsIdRouteImport
+      parentRoute: typeof AgentsRoute
+    }
+    '/agents/edit/$id': {
+      id: '/agents/edit/$id'
+      path: '/edit/$id'
+      fullPath: '/agents/edit/$id'
+      preLoaderRoute: typeof AgentsEditIdRouteImport
       parentRoute: typeof AgentsRoute
     }
     '/agents/$id/runs/$runId': {
@@ -325,14 +325,14 @@ const AgentsIdRouteWithChildren = AgentsIdRoute._addFileChildren(
 
 interface AgentsRouteChildren {
   AgentsIdRoute: typeof AgentsIdRouteWithChildren
-  AgentsEditIdRoute: typeof AgentsEditIdRoute
   AgentsNewRoute: typeof AgentsNewRoute
+  AgentsEditIdRoute: typeof AgentsEditIdRoute
 }
 
 const AgentsRouteChildren: AgentsRouteChildren = {
   AgentsIdRoute: AgentsIdRouteWithChildren,
-  AgentsEditIdRoute: AgentsEditIdRoute,
   AgentsNewRoute: AgentsNewRoute,
+  AgentsEditIdRoute: AgentsEditIdRoute,
 }
 
 const AgentsRouteWithChildren =

@@ -12,6 +12,7 @@ type Frequency =
   | 'every_30_min'
   | 'hourly'
   | 'daily'
+  | 'daily_multi'
   | 'weekdays'
   | 'weekly'
   | 'monthly'
@@ -23,7 +24,8 @@ const FREQUENCY_OPTIONS: { value: Frequency; label: string }[] = [
   { value: 'every_15_min', label: 'Every 15 minutes' },
   { value: 'every_30_min', label: 'Every 30 minutes' },
   { value: 'hourly', label: 'Every hour' },
-  { value: 'daily', label: 'Every day' },
+  { value: 'daily', label: 'Every day (one time)' },
+  { value: 'daily_multi', label: 'Every day (multiple times)' },
   { value: 'weekdays', label: 'Weekdays (Mon\u2013Fri)' },
   { value: 'weekly', label: 'Every week' },
   { value: 'monthly', label: 'Every month' },
@@ -32,38 +34,72 @@ const FREQUENCY_OPTIONS: { value: Frequency; label: string }[] = [
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-function frequencyFromCron(expr: string): {
+interface CronState {
   frequency: Frequency;
   hour: string;
   minute: string;
+  hours: number[];
   dayOfWeek: string;
   dayOfMonth: string;
-} {
+}
+
+const DEFAULTS: Pick<CronState, 'hours' | 'dayOfWeek' | 'dayOfMonth'> = {
+  hours: [3], dayOfWeek: '1', dayOfMonth: '1',
+};
+
+/** Pattern table: [test, builder]. First match wins. */
+const CRON_PATTERNS: [
+  (min: string, hour: string, dom: string, mon: string, dow: string) => boolean,
+  (min: string, hour: string, dom: string, mon: string, dow: string) => CronState,
+][] = [
+  // Every-N-minutes family
+  [(_m, h, d, mo, dw) => _m === '*' && h === '*' && d === '*' && mo === '*' && dw === '*',
+   ()             => ({ frequency: 'every_minute', hour: '0', minute: '0', ...DEFAULTS })],
+  [(_m)           => _m === '*/5',
+   ()             => ({ frequency: 'every_5_min', hour: '0', minute: '0', ...DEFAULTS })],
+  [(_m)           => _m === '*/15',
+   ()             => ({ frequency: 'every_15_min', hour: '0', minute: '0', ...DEFAULTS })],
+  [(_m)           => _m === '*/30',
+   ()             => ({ frequency: 'every_30_min', hour: '0', minute: '0', ...DEFAULTS })],
+
+  // Hourly
+  [(_m, h, d, mo, dw) => h === '*' && d === '*' && mo === '*' && dw === '*',
+   (m)            => ({ frequency: 'hourly', hour: '0', minute: m, ...DEFAULTS })],
+
+  // Daily at multiple hours: "0 1,3,6 * * *"
+  [(_m, h, d, mo, dw) => h.includes(',') && d === '*' && mo === '*' && dw === '*',
+   (m, h)         => {
+     const parsed = h.split(',').map(Number).filter(Number.isFinite).sort((a, b) => a - b);
+     return { frequency: 'daily_multi', hour: String(parsed[0] ?? 0), minute: m, hours: parsed, dayOfWeek: '1', dayOfMonth: '1' };
+   }],
+
+  // Weekdays
+  [(_m, _h, d, mo, dw) => d === '*' && mo === '*' && dw === '1-5',
+   (m, h)         => ({ frequency: 'weekdays', hour: h, minute: m, ...DEFAULTS })],
+
+  // Weekly
+  [(_m, _h, d, mo, dw) => d === '*' && mo === '*' && dw !== '*',
+   (m, h, _d, _mo, dw) => ({ frequency: 'weekly', hour: h, minute: m, ...DEFAULTS, dayOfWeek: dw })],
+
+  // Monthly
+  [(_m, _h, d, mo, dw) => mo === '*' && dw === '*' && d !== '*',
+   (m, h, d)      => ({ frequency: 'monthly', hour: h, minute: m, ...DEFAULTS, dayOfMonth: d })],
+
+  // Daily (single time)
+  [(_m, _h, d, mo, dw) => d === '*' && mo === '*' && dw === '*',
+   (m, h)         => ({ frequency: 'daily', hour: h, minute: m, ...DEFAULTS })],
+];
+
+function frequencyFromCron(expr: string): CronState {
+  const fallback: CronState = { frequency: 'custom', hour: '3', minute: '0', ...DEFAULTS };
   const parts = expr.trim().split(/\s+/);
-  if (parts.length !== 5) return { frequency: 'custom', hour: '3', minute: '0', dayOfWeek: '1', dayOfMonth: '1' };
+  if (parts.length !== 5) return fallback;
 
   const [min, hour, dom, mon, dow] = parts;
-
-  if (min === '*' && hour === '*' && dom === '*' && mon === '*' && dow === '*')
-    return { frequency: 'every_minute', hour: '0', minute: '0', dayOfWeek: '1', dayOfMonth: '1' };
-  if (min === '*/5' && hour === '*' && dom === '*' && mon === '*' && dow === '*')
-    return { frequency: 'every_5_min', hour: '0', minute: '0', dayOfWeek: '1', dayOfMonth: '1' };
-  if (min === '*/15' && hour === '*' && dom === '*' && mon === '*' && dow === '*')
-    return { frequency: 'every_15_min', hour: '0', minute: '0', dayOfWeek: '1', dayOfMonth: '1' };
-  if (min === '*/30' && hour === '*' && dom === '*' && mon === '*' && dow === '*')
-    return { frequency: 'every_30_min', hour: '0', minute: '0', dayOfWeek: '1', dayOfMonth: '1' };
-  if (hour === '*' && dom === '*' && mon === '*' && dow === '*')
-    return { frequency: 'hourly', hour: '0', minute: min, dayOfWeek: '1', dayOfMonth: '1' };
-  if (dom === '*' && mon === '*' && dow === '1-5')
-    return { frequency: 'weekdays', hour, minute: min, dayOfWeek: '1', dayOfMonth: '1' };
-  if (dom === '*' && mon === '*' && dow !== '*')
-    return { frequency: 'weekly', hour, minute: min, dayOfWeek: dow, dayOfMonth: '1' };
-  if (mon === '*' && dow === '*' && dom !== '*')
-    return { frequency: 'monthly', hour, minute: min, dayOfWeek: '1', dayOfMonth: dom };
-  if (dom === '*' && mon === '*' && dow === '*')
-    return { frequency: 'daily', hour, minute: min, dayOfWeek: '1', dayOfMonth: '1' };
-
-  return { frequency: 'custom', hour: hour === '*' ? '0' : hour, minute: min === '*' ? '0' : min, dayOfWeek: '1', dayOfMonth: '1' };
+  for (const [test, build] of CRON_PATTERNS) {
+    if (test(min, hour, dom, mon, dow)) return build(min, hour, dom, mon, dow);
+  }
+  return { ...fallback, hour: hour === '*' ? '0' : hour, minute: min === '*' ? '0' : min };
 }
 
 function buildCron(
@@ -72,6 +108,7 @@ function buildCron(
   minute: string,
   dayOfWeek: string,
   dayOfMonth: string,
+  hours?: number[],
 ): string {
   switch (frequency) {
     case 'every_minute':
@@ -86,6 +123,8 @@ function buildCron(
       return `${minute} * * * *`;
     case 'daily':
       return `${minute} ${hour} * * *`;
+    case 'daily_multi':
+      return `${minute} ${hours && hours.length > 0 ? hours.join(',') : hour} * * *`;
     case 'weekdays':
       return `${minute} ${hour} * * 1-5`;
     case 'weekly':
@@ -105,6 +144,13 @@ export function humaniseCron(expr: string): string {
   if (min.startsWith('*/')) return `Every ${min.slice(2)} minutes`;
   if (hour === '*' && dom === '*' && mon === '*' && dow === '*')
     return `Every hour at :${min.padStart(2, '0')}`;
+
+  // Multi-hour: "0 1,3,6 * * *" → "Daily at 01:00, 03:00, 06:00"
+  if (hour.includes(',') && dom === '*' && mon === '*' && dow === '*') {
+    const times = hour.split(',').map((h) => `${h.padStart(2, '0')}:${min.padStart(2, '0')}`);
+    return `Daily at ${times.join(', ')}`;
+  }
+
   const time = `${hour.padStart(2, '0')}:${min.padStart(2, '0')}`;
   if (dom === '*' && mon === '*' && dow === '1-5') return `Weekdays at ${time}`;
   if (dom === '*' && mon === '*' && dow !== '*')
@@ -115,16 +161,39 @@ export function humaniseCron(expr: string): string {
   return expr;
 }
 
+const COMMON_TIMEZONES = [
+  'Australia/Sydney',
+  'Australia/Melbourne',
+  'Australia/Brisbane',
+  'Australia/Perth',
+  'Australia/Adelaide',
+  'Pacific/Auckland',
+  'Asia/Tokyo',
+  'Asia/Singapore',
+  'Asia/Kolkata',
+  'Europe/London',
+  'Europe/Berlin',
+  'Europe/Paris',
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Los_Angeles',
+  'UTC',
+];
+
 interface CronPickerProps {
   value: string;
   onChange: (cron: string) => void;
+  timezone?: string;
+  onTimezoneChange?: (tz: string) => void;
 }
 
-export function CronPicker({ value, onChange }: CronPickerProps) {
+export function CronPicker({ value, onChange, timezone, onTimezoneChange }: CronPickerProps) {
   const initial = frequencyFromCron(value);
   const [frequency, setFrequency] = useState<Frequency>(initial.frequency);
   const [hour, setHour] = useState(initial.hour);
   const [minute, setMinute] = useState(initial.minute);
+  const [hours, setHours] = useState<number[]>(initial.hours);
   const [dayOfWeek, setDayOfWeek] = useState(initial.dayOfWeek);
   const [dayOfMonth, setDayOfMonth] = useState(initial.dayOfMonth);
   const [customCron, setCustomCron] = useState(initial.frequency === 'custom' ? value : '');
@@ -134,11 +203,20 @@ export function CronPicker({ value, onChange }: CronPickerProps) {
       if (customCron.trim().split(/\s+/).length === 5) onChange(customCron.trim());
       return;
     }
-    onChange(buildCron(frequency, hour, minute, dayOfWeek, dayOfMonth));
-  }, [frequency, hour, minute, dayOfWeek, dayOfMonth, customCron]);
+    onChange(buildCron(frequency, hour, minute, dayOfWeek, dayOfMonth, hours));
+  }, [frequency, hour, minute, hours, dayOfWeek, dayOfMonth, customCron]);
+
+  function toggleHour(h: number) {
+    setHours((prev) => {
+      const next = prev.includes(h)
+        ? prev.filter((x) => x !== h)
+        : [...prev, h].sort((a, b) => a - b);
+      return next.length === 0 ? [h] : next;
+    });
+  }
 
   const showTime = ['daily', 'weekdays', 'weekly', 'monthly'].includes(frequency);
-  const showMinuteOnly = frequency === 'hourly';
+  const showMinuteOnly = frequency === 'hourly' || frequency === 'daily_multi';
 
   const sel =
     'bg-bg border border-border rounded-md px-3 py-2 text-sm font-sans focus:outline-none focus:border-fg';
@@ -174,6 +252,37 @@ export function CronPicker({ value, onChange }: CronPickerProps) {
               </option>
             ))}
           </select>
+        </div>
+      )}
+
+      {frequency === 'daily_multi' && (
+        <div>
+          <label className="block text-[10px] uppercase tracking-[0.16em] text-muted mb-1.5 font-sans">
+            Hours (tap to toggle)
+          </label>
+          <div className="grid grid-cols-8 gap-1">
+            {Array.from({ length: 24 }, (_, i) => {
+              const active = hours.includes(i);
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => toggleHour(i)}
+                  className={[
+                    'text-[11px] font-mono py-1.5 rounded border transition-colors',
+                    active
+                      ? 'bg-fg text-bg border-fg'
+                      : 'bg-bg text-muted border-border hover:border-fg hover:text-fg',
+                  ].join(' ')}
+                >
+                  {String(i).padStart(2, '0')}
+                </button>
+              );
+            })}
+          </div>
+          <div className="text-[10px] font-sans text-muted mt-1">
+            {hours.length} hour{hours.length !== 1 ? 's' : ''} selected
+          </div>
         </div>
       )}
 
@@ -253,8 +362,29 @@ export function CronPicker({ value, onChange }: CronPickerProps) {
         </div>
       )}
 
+      {onTimezoneChange && (
+        <div>
+          <label className="block text-[10px] uppercase tracking-[0.16em] text-muted mb-1.5 font-sans">
+            Timezone
+          </label>
+          <select
+            value={timezone ?? ''}
+            onChange={(e) => onTimezoneChange(e.target.value)}
+            className={`w-full ${sel}`}
+          >
+            {COMMON_TIMEZONES.map((tz) => (
+              <option key={tz} value={tz}>{tz}</option>
+            ))}
+          </select>
+          <div className="text-[10px] font-sans text-muted mt-1">
+            IANA timezone for schedule evaluation
+          </div>
+        </div>
+      )}
+
       <div className="text-[11px] font-sans text-muted px-0.5">
         {humaniseCron(value)}
+        {timezone && <span className="ml-1">({timezone})</span>}
         <span className="ml-2 font-mono text-[10px] text-muted/70">{value}</span>
       </div>
     </div>
