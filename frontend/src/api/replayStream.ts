@@ -28,7 +28,7 @@ export async function* replayStream(
   let cursor = 0;
   let emptyRetries = 0;
   let activeEs: EventSource | null = null;
-  const MAX_EMPTY_RETRIES = 4;
+  const MAX_EMPTY_RETRIES = 8;
   let receivedAny = false;
 
   function connect() {
@@ -85,8 +85,7 @@ export async function* replayStream(
 
       if ('__reconnect' in item) {
         emptyRetries++;
-        // If we never received any events, the job is likely gone
-        if (!receivedAny || emptyRetries >= MAX_EMPTY_RETRIES) {
+        if (emptyRetries >= MAX_EMPTY_RETRIES) {
           return;
         }
         await new Promise((r) => setTimeout(r, 500 * Math.min(emptyRetries + 1, 4)));

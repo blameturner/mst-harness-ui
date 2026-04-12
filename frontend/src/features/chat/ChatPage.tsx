@@ -608,11 +608,12 @@ export function ChatPage() {
         setActiveId(newConversationId);
       }
     } catch (err) {
-      clearActiveStream();
       const aborted = (err as Error)?.name === 'AbortError';
       const transient =
         isTransientNetworkError(err) && (vis.isHidden() || vis.justResumed());
       if (!aborted && !transient) {
+        // Real failure — clear activeStream and show error
+        clearActiveStream();
         const msg = (err as Error)?.message ?? 'Send failed';
         setMessages((ms) =>
           ms.map((x) =>
@@ -621,8 +622,12 @@ export function ChatPage() {
         );
         setError(msg);
       } else if (transient) {
+        // Transient network error while hidden — remove pending bubble, keep
+        // activeStream so reconnection can pick up where we left off.
         setMessages((ms) => ms.filter((x) => x.id !== pendingId));
       }
+      // On abort (navigation away): don't clear activeStream — the user may
+      // navigate back and resumeActiveStream will reconnect via replayStream.
     } finally {
       if (streamAbortRef.current === controller) {
         streamAbortRef.current = null;
