@@ -247,7 +247,7 @@ export function CodePage() {
 
 
   function hydrateCodeMessages(rows: CodeMessageRow[]): CodeMessage[] {
-    return rows.map((r) => ({
+    return rows.filter((r) => r.role !== 'system').map((r) => ({
       id: String(r.Id),
       role: r.role === 'assistant' ? 'assistant' as const : 'user' as const,
       mode: (r.mode ?? 'plan') as Mode,
