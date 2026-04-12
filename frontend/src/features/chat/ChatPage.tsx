@@ -1,5 +1,6 @@
 import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import type { ChatMessageRow } from '../../api/types/ChatMessageRow';
 import type { Conversation } from '../../api/types/Conversation';
 import type { ConversationSummary } from '../../api/types/ConversationSummary';
@@ -289,9 +290,11 @@ export function ChatPage() {
           continue;
         }
         if (ev.type === 'searching') {
-          setMessages((ms) =>
-            ms.map((x) => (x.id === pendingId ? { ...x, status: 'searching', toolStatus: undefined, isThinking: false } : x)),
-          );
+          flushSync(() => {
+            setMessages((ms) =>
+              ms.map((x) => (x.id === pendingId ? { ...x, status: 'searching', toolStatus: undefined, isThinking: false } : x)),
+            );
+          });
           continue;
         }
         if (ev.type === 'tool_status') {
@@ -304,26 +307,30 @@ export function ChatPage() {
               ? `${labelForTool(ev.tool)}…`
               : undefined;
           const isThinking = ev.phase === 'thinking';
-          setMessages((ms) =>
-            ms.map((x) => (x.id === pendingId ? { ...x, toolStatus: label, isThinking } : x)),
-          );
+          flushSync(() => {
+            setMessages((ms) =>
+              ms.map((x) => (x.id === pendingId ? { ...x, toolStatus: label, isThinking } : x)),
+            );
+          });
           continue;
         }
         if (ev.type === 'search_complete') {
-          setMessages((ms) =>
-            ms.map((x) =>
-              x.id === pendingId
-                ? {
-                    ...x,
-                    status: 'pending',
-                    sources: ev.sources,
-                    searchConfidence: ev.confidence,
-                    toolStatus: undefined,
-                    isThinking: false,
-                  }
-                : x,
-            ),
-          );
+          flushSync(() => {
+            setMessages((ms) =>
+              ms.map((x) =>
+                x.id === pendingId
+                  ? {
+                      ...x,
+                      status: 'pending',
+                      sources: ev.sources,
+                      searchConfidence: ev.confidence,
+                      toolStatus: undefined,
+                      isThinking: false,
+                    }
+                  : x,
+              ),
+            );
+          });
           continue;
         }
         if (ev.type === 'search_consent_required') {

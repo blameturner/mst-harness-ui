@@ -5,6 +5,7 @@ import {
   useState,
   type DragEvent,
 } from 'react';
+import { flushSync } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -477,9 +478,11 @@ export function CodePage() {
               ? `${labelForTool(ev.tool)}…`
               : undefined;
           const isThinking = ev.phase === 'thinking';
-          setMessages((ms) =>
-            ms.map((x) => (x.id === pendingId ? { ...x, toolStatus: label, isThinking } : x)),
-          );
+          flushSync(() => {
+            setMessages((ms) =>
+              ms.map((x) => (x.id === pendingId ? { ...x, toolStatus: label, isThinking } : x)),
+            );
+          });
         } else if (ev.type === 'meta') {
           if (ev.conversation_id && !gotConversationId) {
             setConversationId(ev.conversation_id);
