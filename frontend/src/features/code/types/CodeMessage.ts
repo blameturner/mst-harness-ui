@@ -12,6 +12,5 @@ export interface CodeMessage {
   sourceMode?: Mode;
   sourceApprovedPlan?: string | null;
   toolStatus?: string;
-  isThinking?: boolean;
   reconnecting?: boolean;
 }

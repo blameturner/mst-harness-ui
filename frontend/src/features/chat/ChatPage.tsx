@@ -12,6 +12,7 @@ import { getConversationSummary } from '../../api/chat/getConversationSummary';
 import { renameConversation } from '../../api/chat/renameConversation';
 import { patchConversation } from '../../api/chat/patchConversation';
 import { chatStream } from '../../api/chat/chatStream';
+import { researchStream } from '../../api/chat/researchStream';
 import { listModels } from '../../api/models/listModels';
 import { listStyles } from '../../api/styles/listStyles';
 import { authClient } from '../../lib/auth-client';
@@ -29,7 +30,6 @@ import { uid } from '../../lib/utils/uid';
 import { SidebarBody } from './SidebarBody';
 import { useAutoScrollToBottom } from './hooks/useAutoScrollToBottom';
 import { labelForTool } from '../../lib/intent/labelForTool';
-import { catThinkingLabel } from '../../lib/intent/catThinkingLabel';
 import type { ConsentRequest } from './types/ConsentRequest';
 
 const EMPTY_STATE_PROMPTS = [
@@ -62,6 +62,7 @@ export function ChatPage() {
   // RAG/knowledge flags only apply on the first turn of a new conversation; harness ignores them afterwards
   const [ragEnabled, setRagEnabled] = useState(false);
   const [knowledgeEnabled, setKnowledgeEnabled] = useState(false);
+  const [searchMode, setSearchMode] = useState<'normal' | 'deep'>('normal');
   const streamAbortRef = useRef<AbortController | null>(null);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -262,16 +263,37 @@ export function ChatPage() {
     pendingId: string,
     userText: string,
   ): Promise<{ conversationId: number | null; consentNeeded: boolean }> {
-    const isFirstMessage = body.conversation_id == null;
     const controller = new AbortController();
     streamAbortRef.current = controller;
+    const stream = chatStream(body, controller.signal);
+    return processStream(stream, pendingId, userText, body.conversation_id == null, controller);
+  }
 
+  async function runResearchStream(
+    question: string,
+    pendingId: string,
+  ): Promise<{ conversationId: number | null; consentNeeded: boolean }> {
+    const controller = new AbortController();
+    streamAbortRef.current = controller;
+    const stream = researchStream(
+      { model, question, conversation_id: activeId ?? undefined },
+      controller.signal,
+    );
+    return processStream(stream, pendingId, question, activeId == null, controller);
+  }
+
+  async function processStream(
+    stream: AsyncGenerator<import('../../api/types/StreamEvent').StreamEvent, void, void>,
+    pendingId: string,
+    userText: string,
+    isFirstMessage: boolean,
+    controller: AbortController,
+  ): Promise<{ conversationId: number | null; consentNeeded: boolean }> {
     let newConversationId: number | null = null;
     let consentNeeded = false;
     let consentArgs: { query: string; reason: string } | null = null;
 
     try {
-      const stream = chatStream(body, controller.signal);
       for await (const ev of stream) {
         if (ev.type === 'intent_classified') {
           setMessages((ms) =>
@@ -292,24 +314,21 @@ export function ChatPage() {
         if (ev.type === 'searching') {
           flushSync(() => {
             setMessages((ms) =>
-              ms.map((x) => (x.id === pendingId ? { ...x, status: 'searching', toolStatus: undefined, isThinking: false } : x)),
+              ms.map((x) => (x.id === pendingId ? { ...x, status: 'searching', toolStatus: undefined } : x)),
             );
           });
           continue;
         }
         if (ev.type === 'tool_status') {
           const label =
-            ev.phase === 'thinking'
-              ? catThinkingLabel()
-              : ev.phase === 'planning'
+            ev.phase === 'planning'
               ? ev.summary || 'Planning tools…'
               : ev.phase === 'start'
               ? `${labelForTool(ev.tool)}…`
               : undefined;
-          const isThinking = ev.phase === 'thinking';
           flushSync(() => {
             setMessages((ms) =>
-              ms.map((x) => (x.id === pendingId ? { ...x, toolStatus: label, isThinking } : x)),
+              ms.map((x) => (x.id === pendingId ? { ...x, toolStatus: label } : x)),
             );
           });
           continue;
@@ -325,10 +344,17 @@ export function ChatPage() {
                       sources: ev.sources,
                       searchConfidence: ev.confidence,
                       toolStatus: undefined,
-                      isThinking: false,
                     }
                   : x,
               ),
+            );
+          });
+          continue;
+        }
+        if (ev.type === 'research_status') {
+          flushSync(() => {
+            setMessages((ms) =>
+              ms.map((x) => (x.id === pendingId ? { ...x, toolStatus: ev.message } : x)),
             );
           });
           continue;
@@ -377,6 +403,21 @@ export function ChatPage() {
               setActiveId(newConversationId);
               listConversations().then((r) => setConversations(r.conversations)).catch(() => {});
             }
+          }
+          if (ev.estimate) {
+            const notice: DisplayMessage = {
+              id: uid(),
+              role: 'system',
+              status: 'system',
+              content: ev.estimate,
+            };
+            setMessages((ms) => {
+              const idx = ms.findIndex((x) => x.id === pendingId);
+              if (idx < 0) return [...ms, notice];
+              const copy = ms.slice();
+              copy.splice(idx, 0, notice);
+              return copy;
+            });
           }
         } else if (ev.type === 'done') {
           if (ev.conversation_id != null) newConversationId = ev.conversation_id;
@@ -492,11 +533,43 @@ export function ChatPage() {
           ...(isFirstMessage && ragEnabled ? { rag_enabled: true } : {}),
           ...(isFirstMessage && knowledgeEnabled ? { knowledge_enabled: true } : {}),
           ...(alwaysAllowSearch ? { search_enabled: true } : {}),
+          ...(searchMode !== 'normal' ? { search_mode: searchMode } : {}),
           ...(styleKey ? { response_style: styleKey } : {}),
         },
         pendingId,
         text,
       );
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function sendResearch() {
+    const text = input.trim();
+    if (!text || sending || !model) return;
+
+    const userMsg: DisplayMessage = {
+      id: uid(),
+      role: 'user',
+      content: text,
+      status: 'complete',
+    };
+    const pendingId = uid();
+    const pendingMsg: DisplayMessage = {
+      id: pendingId,
+      role: 'assistant',
+      content: '',
+      status: 'pending',
+      startedAt: Date.now(),
+      sourceUserText: text,
+    };
+    setMessages((m) => [...m, userMsg, pendingMsg]);
+    setInput('');
+    setSending(true);
+    setError(null);
+
+    try {
+      await runResearchStream(text, pendingId);
     } finally {
       setSending(false);
     }
@@ -795,6 +868,7 @@ export function ChatPage() {
           value={input}
           onChange={setInput}
           onSend={() => void send()}
+          onResearch={() => void sendResearch()}
           onStop={() => {
             streamAbortRef.current?.abort();
           }}
@@ -837,6 +911,13 @@ export function ChatPage() {
                     ? 'Knowledge graph is set when a conversation is first created'
                     : 'Extract entities and write concept edges to the knowledge graph',
                 onToggle: () => setKnowledgeEnabled((v) => !v),
+              },
+              {
+                key: 'deep',
+                label: 'Deep Search',
+                active: searchMode === 'deep',
+                title: 'Search + model summarisation + reranking (slower, higher quality)',
+                onToggle: () => setSearchMode((m) => m === 'deep' ? 'normal' : 'deep'),
               },
             ] satisfies ComposerToggle[]
           }

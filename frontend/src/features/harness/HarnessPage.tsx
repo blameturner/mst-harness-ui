@@ -4,6 +4,7 @@ import { EnrichmentContent } from '../enrichment/EnrichmentContent';
 import { LogsPage } from '../logs/LogsPage';
 import { ArchitectureTab } from './tabs/ArchitectureTab';
 import { StatsTab } from './tabs/StatsTab';
+import { QueueTab } from './tabs/QueueTab';
 import type { HarnessTab } from './types/HarnessTab';
 import type { HealthStatus } from './types/HealthStatus';
 
@@ -26,6 +27,7 @@ export function HarnessPage() {
     { id: 'enrichment', label: 'Enrichment' },
     { id: 'logs', label: 'Logs' },
     { id: 'stats', label: 'Stats' },
+    { id: 'queue', label: 'Queue' },
   ];
 
   return (
@@ -68,6 +70,7 @@ export function HarnessPage() {
         {tab === 'enrichment' && <EnrichmentContent />}
         {tab === 'logs' && <LogsPage />}
         {tab === 'stats' && <StatsTab />}
+        {tab === 'queue' && <QueueTab />}
       </div>
     </div>
   );

@@ -76,7 +76,7 @@ export function ChatBubble({ message, onRetry, onEdit }: Props) {
   if (message.status === 'pending' || message.status === 'searching') {
     return (
       <div className="flex justify-start animate-fadeIn">
-        <div className={`${BUBBLE_MAX} px-4 py-3 rounded-2xl rounded-bl-sm text-[15px] leading-relaxed bg-panel border border-border text-muted italic${message.isThinking ? ' animate-pulse' : ''}`}>
+        <div className={`${BUBBLE_MAX} px-4 py-3 rounded-2xl rounded-bl-sm text-[15px] leading-relaxed bg-panel border border-border text-muted italic`}>
           {(() => {
             if (message.toolStatus) return message.toolStatus;
             if (message.status === 'searching') return 'Searching the web';

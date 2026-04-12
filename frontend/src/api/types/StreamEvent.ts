@@ -7,7 +7,7 @@ import type { ChatIntent } from './ChatIntent';
 
 export type StreamEvent =
   | { type: 'chunk'; text: string }
-  | { type: 'meta'; conversation_id?: number; mode?: 'plan' | 'execute' | 'debug' }
+  | { type: 'meta'; conversation_id?: number; mode?: 'plan' | 'execute' | 'debug'; estimate?: string }
   | {
       type: 'done';
       usage?: { prompt_tokens: number; completion_tokens: number };
@@ -17,20 +17,21 @@ export type StreamEvent =
       conversation_id?: number;
       context_chars?: number;
       duration_seconds?: number;
-      mode?: 'plan' | 'execute' | 'debug';
+      mode?: 'plan' | 'execute' | 'debug' | 'research';
       output?: string;
       awaiting?: 'search_consent';
       search_used?: boolean;
       search_status?: SearchStatus;
       search_confidence?: SearchConfidence;
       search_source_count?: number;
+      sources_count?: number;
     }
   | { type: 'summarised'; removed: number; summary_chars: number }
   | { type: 'parsed'; output: AgentOutput | null }
   | { type: 'searching'; queries?: string[] }
   | {
       type: 'tool_status';
-      phase: 'thinking' | 'planning' | 'start' | 'end';
+      phase: 'planning' | 'start' | 'end';
       tool?: string;
       index?: number;
       reason?: string;
@@ -61,4 +62,10 @@ export type StreamEvent =
       confidence: number;
     }
   | { type: 'search_deferred'; entities: string[] }
+  | {
+      type: 'research_status';
+      phase: 'classifying' | 'searching' | 'scraping' | 'summarising' | 'synthesising';
+      message: string;
+      queries?: string[];
+    }
   | { type: 'error'; message: string };

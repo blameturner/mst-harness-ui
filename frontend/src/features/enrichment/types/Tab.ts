@@ -1,1 +1,1 @@
-export type Tab = 'sources' | 'suggestions' | 'log' | 'agents';
+export type Tab = 'sources' | 'suggestions' | 'log' | 'agents' | 'scrape-report';

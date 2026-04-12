@@ -43,3 +43,4 @@ export { listCodebases } from './endpoints/listCodebases.js';
 export { createCodebase } from './endpoints/createCodebase.js';
 export { indexCodebase } from './endpoints/indexCodebase.js';
 export { listWorkerTypes } from './endpoints/listWorkerTypes.js';
+export { research } from './endpoints/research.js';

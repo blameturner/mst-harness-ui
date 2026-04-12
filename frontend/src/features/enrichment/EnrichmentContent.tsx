@@ -7,6 +7,7 @@ import { SourcesTab } from './tabs/sources/SourcesTab';
 import { AgentsTab } from './tabs/agents/AgentsTab';
 import { SuggestionsTab } from './tabs/suggestions/SuggestionsTab';
 import { LogTab } from './tabs/log/LogTab';
+import { ScrapeReportPanel } from './tabs/scrapeReport/ScrapeReportPanel';
 import type { Tab } from './types/Tab';
 
 export function EnrichmentContent() {
@@ -51,6 +52,7 @@ export function EnrichmentContent() {
     { id: 'agents', label: 'Agents' },
     { id: 'suggestions', label: 'Suggestions' },
     { id: 'log', label: 'Log' },
+    { id: 'scrape-report', label: 'Scrape Report' },
   ];
 
   return (
@@ -94,6 +96,7 @@ export function EnrichmentContent() {
         {tab === 'agents' && <AgentsTab />}
         {tab === 'suggestions' && <SuggestionsTab />}
         {tab === 'log' && <LogTab />}
+        {tab === 'scrape-report' && <ScrapeReportPanel />}
       </main>
     </div>
   );

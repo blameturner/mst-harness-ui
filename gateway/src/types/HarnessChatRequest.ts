@@ -11,5 +11,6 @@ export interface HarnessChatRequest {
   knowledge_enabled?: boolean;
   search_enabled?: boolean;
   search_consent_declined?: boolean;
+  search_mode?: 'normal' | 'deep';
   response_style?: string;
 }

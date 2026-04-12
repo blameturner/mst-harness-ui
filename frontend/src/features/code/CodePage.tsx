@@ -34,7 +34,6 @@ import { useOnVisibilityResume } from '../../hooks/useOnVisibilityResume';
 import { useWasRecentlyHidden } from '../../hooks/useWasRecentlyHidden';
 import { uid } from '../../lib/utils/uid';
 import { labelForTool } from '../../lib/intent/labelForTool';
-import { catThinkingLabel } from '../../lib/intent/catThinkingLabel';
 import { formatBytes } from '../../lib/utils/formatBytes';
 import { useAutoScrollToBottom } from '../chat/hooks/useAutoScrollToBottom';
 import type { Mode } from './types/Mode';
@@ -131,7 +130,7 @@ export function CodePage() {
           // a thinking indicator instead of the stale reconnecting badge.
           setMessages((ms) =>
             ms.map((x) =>
-              x.id === `pending-${convId}` ? { ...x, reconnecting: false, toolStatus: catThinkingLabel(), isThinking: true } : x,
+              x.id === `pending-${convId}` ? { ...x, reconnecting: false } : x,
             ),
           );
           scheduleCodeRetry(convId);
@@ -470,17 +469,14 @@ export function CodePage() {
           );
         } else if (ev.type === 'tool_status') {
           const label =
-            ev.phase === 'thinking'
-              ? catThinkingLabel()
-              : ev.phase === 'planning'
+            ev.phase === 'planning'
               ? ev.summary || 'Planning tools…'
               : ev.phase === 'start'
               ? `${labelForTool(ev.tool)}…`
               : undefined;
-          const isThinking = ev.phase === 'thinking';
           flushSync(() => {
             setMessages((ms) =>
-              ms.map((x) => (x.id === pendingId ? { ...x, toolStatus: label, isThinking } : x)),
+              ms.map((x) => (x.id === pendingId ? { ...x, toolStatus: label } : x)),
             );
           });
         } else if (ev.type === 'meta') {
@@ -871,7 +867,7 @@ export function CodePage() {
                       ) : (
                         <>
                           {m.status === 'streaming' && m.toolStatus && (
-                            <div className={`text-[11px] italic text-muted mb-2 font-sans${m.isThinking ? ' animate-pulse' : ''}`}>
+                            <div className="text-[11px] italic text-muted mb-2 font-sans">
                               {m.toolStatus}
                               {m.reconnecting && (
                                 <span className="ml-2 not-italic uppercase tracking-[0.14em] text-muted/80">

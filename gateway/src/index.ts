@@ -25,6 +25,8 @@ import { streamRoute } from './routes/stream.js';
 import { codebasesRoute } from './routes/codebases/index.js';
 import { logsRoute } from './routes/logs/index.js';
 import { harnessRoute } from './routes/harness.js';
+import { researchRoute } from './routes/research.js';
+import { queueRoute } from './routes/queue.js';
 import { rateLimit } from './middleware/rateLimit.js';
 
 const app = new Hono<{ Variables: AuthVariables }>();
@@ -70,6 +72,8 @@ app.route('/api/stream', streamRoute);
 app.route('/api/codebases', codebasesRoute);
 app.route('/api/logs', logsRoute);
 app.route('/api/harness', harnessRoute);
+app.route('/api/research', researchRoute);
+app.route('/api/queue', queueRoute);
 
 app.get('/', (c) => c.json({ name: 'mst-ag-gateway', ok: true }));
 

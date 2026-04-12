@@ -23,10 +23,14 @@ export async function* streamJob(
     return;
   }
 
-  const { job_id } = (await res.json()) as { job_id: string };
+  const initData = (await res.json()) as { job_id: string; estimate?: string };
+  const { job_id } = initData;
   if (!job_id) {
     yield { type: 'error', message: 'No job_id returned' };
     return;
+  }
+  if (initData.estimate) {
+    yield { type: 'meta', estimate: initData.estimate };
   }
 
   type QueueItem = StreamEvent | { __done: true } | { __reconnect: true } | { __abort: true };

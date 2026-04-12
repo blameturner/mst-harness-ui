@@ -1,5 +1,9 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../../middleware/requireAuth.js';
+import { getAuthContext } from '../../lib/auth-context.js';
+import { mapHarnessError } from '../../lib/mapHarnessError.js';
+import { forwardResponse } from '../../lib/forwardResponse.js';
+import { harnessClient } from '../../services/harness/client.js';
 import type { AuthVariables } from '../../types/AuthVariables.js';
 import { listSources } from './sources/listSources.js';
 import { getSource } from './sources/getSource.js';
@@ -56,3 +60,13 @@ enrichmentRoute.post('/agents', createAgent);
 enrichmentRoute.patch('/agents/:id', patchAgent);
 enrichmentRoute.post('/agents/:id/trigger', triggerAgent);
 enrichmentRoute.get('/agents/:id/status', getAgentStatus);
+
+enrichmentRoute.get('/scrape-report', async (c) => {
+  const { orgId } = getAuthContext(c);
+  try {
+    const res = await harnessClient.get(`/enrichment/scrape-report?org_id=${Number(orgId)}`, 15_000);
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'enrichment');
+  }
+});
