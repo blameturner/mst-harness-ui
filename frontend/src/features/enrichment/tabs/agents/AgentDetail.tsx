@@ -2,7 +2,9 @@ import { useState } from 'react';
 import type { EnrichmentAgent } from '../../../../api/types/EnrichmentAgent';
 import type { EnrichmentAgentStatus } from '../../../../api/types/EnrichmentAgentStatus';
 import type { ScrapeTarget } from '../../../../api/types/ScrapeTarget';
+import { updateEnrichmentAgent } from '../../../../api/enrichment/updateEnrichmentAgent';
 import { Select } from '../../../../components/Select';
+import { CronPicker, humaniseCron } from '../../../../components/CronPicker';
 import { relTime } from '../../../../lib/utils/relTime';
 
 export function AgentDetail({
@@ -15,6 +17,7 @@ export function AgentDetail({
   onTrigger,
   onAssignSource,
   onRemoveSource,
+  onUpdated,
   triggering,
 }: {
   agent: EnrichmentAgent;
@@ -26,10 +29,49 @@ export function AgentDetail({
   onTrigger: () => void;
   onAssignSource: (sourceId: number) => void;
   onRemoveSource: (sourceId: number) => void;
+  onUpdated: (updated: EnrichmentAgent) => void;
   triggering: boolean;
 }) {
   const [addingSource, setAddingSource] = useState(false);
   const [sourceToAdd, setSourceToAdd] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: agent.name,
+    description: agent.description,
+    category: agent.category,
+    cron_expression: agent.cron_expression,
+    timezone: agent.timezone,
+    token_budget: agent.token_budget,
+  });
+
+  function startEditing() {
+    setEditForm({
+      name: agent.name,
+      description: agent.description,
+      category: agent.category,
+      cron_expression: agent.cron_expression,
+      timezone: agent.timezone,
+      token_budget: agent.token_budget,
+    });
+    setEditError(null);
+    setEditing(true);
+  }
+
+  async function saveEdit() {
+    setSaving(true);
+    setEditError(null);
+    try {
+      const updated = await updateEnrichmentAgent(agent.Id, editForm);
+      onUpdated(updated);
+      setEditing(false);
+    } catch (err) {
+      setEditError((err as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div>
@@ -59,6 +101,14 @@ export function AgentDetail({
             )}
           </div>
           <div className="flex gap-2 text-[10px] uppercase tracking-[0.14em] font-sans shrink-0">
+            {!editing && (
+              <button
+                onClick={startEditing}
+                className="border border-border px-2 py-1 hover:bg-fg hover:text-bg hover:border-fg transition-colors"
+              >
+                Edit
+              </button>
+            )}
             <button
               onClick={onTrigger}
               disabled={triggering}
@@ -75,38 +125,100 @@ export function AgentDetail({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-sans">
-          <div>
-            <span className="block text-[10px] uppercase tracking-[0.14em] text-muted mb-1">Cron</span>
-            <span>{agent.cron_expression}</span>
-          </div>
-          <div>
-            <span className="block text-[10px] uppercase tracking-[0.14em] text-muted mb-1">Timezone</span>
-            <span>{agent.timezone}</span>
-          </div>
-          <div>
-            <span className="block text-[10px] uppercase tracking-[0.14em] text-muted mb-1">Token budget</span>
-            <span>{agent.token_budget.toLocaleString()}</span>
-          </div>
-          {status?.last_run && (
-            <div>
-              <span className="block text-[10px] uppercase tracking-[0.14em] text-muted mb-1">Last run</span>
-              <span>{relTime(status.last_run.finished_at)}</span>
+        {editing ? (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] uppercase tracking-[0.14em] text-muted mb-1 font-sans">Name</label>
+                <input
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  className="w-full bg-bg border border-border rounded-md px-3 py-2 text-sm font-sans focus:outline-none focus:border-fg"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase tracking-[0.14em] text-muted mb-1 font-sans">Category</label>
+                <input
+                  value={editForm.category}
+                  onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                  className="w-full bg-bg border border-border rounded-md px-3 py-2 text-sm font-sans focus:outline-none focus:border-fg"
+                />
+              </div>
             </div>
-          )}
-          {status?.next_run && (
             <div>
-              <span className="block text-[10px] uppercase tracking-[0.14em] text-muted mb-1">Next run</span>
-              <span>{relTime(status.next_run)}</span>
+              <label className="block text-[10px] uppercase tracking-[0.14em] text-muted mb-1 font-sans">Description</label>
+              <input
+                value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                className="w-full bg-bg border border-border rounded-md px-3 py-2 text-sm font-sans focus:outline-none focus:border-fg"
+              />
             </div>
-          )}
-          {status != null && (
             <div>
-              <span className="block text-[10px] uppercase tracking-[0.14em] text-muted mb-1">Sources due</span>
-              <span>{status.sources_due}</span>
+              <label className="block text-[10px] uppercase tracking-[0.14em] text-muted mb-1 font-sans">Token budget</label>
+              <input
+                type="number"
+                value={editForm.token_budget}
+                onChange={(e) => setEditForm({ ...editForm, token_budget: parseInt(e.target.value, 10) || 50000 })}
+                className="w-full bg-bg border border-border rounded-md px-3 py-2 text-sm font-sans focus:outline-none focus:border-fg"
+              />
             </div>
-          )}
-        </div>
+            <CronPicker
+              value={editForm.cron_expression}
+              onChange={(cron) => setEditForm({ ...editForm, cron_expression: cron })}
+              timezone={editForm.timezone}
+              onTimezoneChange={(tz) => setEditForm({ ...editForm, timezone: tz })}
+            />
+            {editError && <p className="text-xs text-red-600 font-sans">{editError}</p>}
+            <div className="flex gap-2">
+              <button
+                onClick={() => void saveEdit()}
+                disabled={saving || !editForm.name}
+                className="text-[10px] uppercase tracking-[0.14em] font-sans border border-fg px-3 py-1.5 hover:bg-fg hover:text-bg transition-colors disabled:opacity-50"
+              >
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+              <button
+                onClick={() => setEditing(false)}
+                className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted px-3 py-1.5"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-sans">
+            <div>
+              <span className="block text-[10px] uppercase tracking-[0.14em] text-muted mb-1">Schedule</span>
+              <span title={agent.cron_expression}>{humaniseCron(agent.cron_expression)}</span>
+            </div>
+            <div>
+              <span className="block text-[10px] uppercase tracking-[0.14em] text-muted mb-1">Timezone</span>
+              <span>{agent.timezone}</span>
+            </div>
+            <div>
+              <span className="block text-[10px] uppercase tracking-[0.14em] text-muted mb-1">Token budget</span>
+              <span>{agent.token_budget.toLocaleString()}</span>
+            </div>
+            {status?.last_run && (
+              <div>
+                <span className="block text-[10px] uppercase tracking-[0.14em] text-muted mb-1">Last run</span>
+                <span>{relTime(status.last_run.finished_at)}</span>
+              </div>
+            )}
+            {status?.next_run && (
+              <div>
+                <span className="block text-[10px] uppercase tracking-[0.14em] text-muted mb-1">Next run</span>
+                <span>{relTime(status.next_run)}</span>
+              </div>
+            )}
+            {status != null && (
+              <div>
+                <span className="block text-[10px] uppercase tracking-[0.14em] text-muted mb-1">Sources due</span>
+                <span>{status.sources_due}</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="border border-border rounded-md p-4 bg-panel/20">

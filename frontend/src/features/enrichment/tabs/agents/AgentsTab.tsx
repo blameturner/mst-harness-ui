@@ -10,6 +10,7 @@ import { triggerEnrichmentAgent } from '../../../../api/enrichment/triggerEnrich
 import { getEnrichmentAgentStatus } from '../../../../api/enrichment/getEnrichmentAgentStatus';
 import { updateEnrichmentSource } from '../../../../api/enrichment/updateEnrichmentSource';
 import { LabeledInput } from '../../../../components/LabeledInput';
+import { CronPicker, humaniseCron } from '../../../../components/CronPicker';
 import { relTime } from '../../../../lib/utils/relTime';
 import { AgentDetail } from './AgentDetail';
 
@@ -125,6 +126,10 @@ export function AgentsTab() {
         onTrigger={() => trigger(selected.Id)}
         onAssignSource={(srcId) => assignSourceToAgent(srcId, selected.Id)}
         onRemoveSource={(srcId) => assignSourceToAgent(srcId, null)}
+        onUpdated={(updated) => {
+          setSelected(updated);
+          setAgents((as) => as.map((a) => (a.Id === updated.Id ? updated : a)));
+        }}
         triggering={triggering === selected.Id}
       />
     );
@@ -151,11 +156,13 @@ export function AgentsTab() {
             <LabeledInput label="Category" value={form.category} onChange={(v) => setForm({ ...form, category: v })} />
           </div>
           <LabeledInput label="Description" value={form.description} onChange={(v) => setForm({ ...form, description: v })} />
-          <div className="grid grid-cols-3 gap-3">
-            <LabeledInput label="Cron" value={form.cron_expression} onChange={(v) => setForm({ ...form, cron_expression: v })} required />
-            <LabeledInput label="Timezone" value={form.timezone} onChange={(v) => setForm({ ...form, timezone: v })} />
-            <LabeledInput label="Token budget" value={String(form.token_budget)} onChange={(v) => setForm({ ...form, token_budget: parseInt(v, 10) || 50000 })} />
-          </div>
+          <LabeledInput label="Token budget" value={String(form.token_budget)} onChange={(v) => setForm({ ...form, token_budget: parseInt(v, 10) || 50000 })} />
+          <CronPicker
+            value={form.cron_expression}
+            onChange={(v) => setForm({ ...form, cron_expression: v })}
+            timezone={form.timezone}
+            onTimezoneChange={(v) => setForm({ ...form, timezone: v })}
+          />
           <button
             onClick={() => void create()}
             disabled={saving || !form.name || !form.cron_expression}
@@ -201,7 +208,7 @@ export function AgentsTab() {
                       <p className="text-xs text-muted mb-2">{agent.description}</p>
                     )}
                     <div className="flex items-center gap-4 text-[10px] uppercase tracking-[0.12em] font-sans text-muted">
-                      <span>cron: {agent.cron_expression}</span>
+                      <span title={agent.cron_expression}>{humaniseCron(agent.cron_expression)}</span>
                       <span>{agent.timezone}</span>
                       <span>{agent.token_budget.toLocaleString()} tokens</span>
                       <span>{srcCount} source{srcCount !== 1 ? 's' : ''}</span>
