@@ -79,15 +79,18 @@ export function ChatPage() {
         if (activeIdRef.current !== convId) return;
         const status = res.conversation?.status;
         if (status === 'processing') {
-          // Connected successfully — drop reconnecting so the UI shows
-          // "Thinking…" instead of the stale reconnecting badge.
+          // Drop reconnecting badge so the UI shows "Thinking…"
           setMessages((ms) =>
-            ms.map((x) =>
-              x.id === `pending-${convId}` ? { ...x, reconnecting: false } : x,
-            ),
+            ms.map((x) => {
+              if (x.id === `pending-${convId}` || x.id === `resume-${convId}`) {
+                return { ...x, reconnecting: false };
+              }
+              return x;
+            }),
           );
           scheduleRetry(convId);
         } else {
+          clearActiveStream();
           setMessages(hydrateMessages(res.messages));
         }
       } catch {}
@@ -154,8 +157,117 @@ export function ChatPage() {
     }
   };
 
+  async function resumeActiveStream() {
+    const stored = loadActiveStream();
+    if (!stored) return;
+
+    const { conversationId, jobId } = stored;
+
+    // Load the conversation's current state from DB
+    let res: { conversation: Conversation; messages: ChatMessageRow[] };
+    try {
+      res = await getConversationMessages(conversationId);
+    } catch {
+      clearActiveStream();
+      return;
+    }
+
+    const convStatus = res.conversation?.status;
+
+    // If already complete or errored, just render from DB
+    if (convStatus !== 'processing') {
+      clearActiveStream();
+      setActiveId(conversationId);
+      setModel(res.conversation?.model || model);
+      setMessages(hydrateMessages(res.messages));
+      return;
+    }
+
+    // Check if the assistant message already landed in DB
+    const hasAssistantReply = res.messages.some(
+      (m) => m.role === 'assistant' && m.content && m.content.length > 0,
+    );
+
+    // Set up the conversation in the UI
+    setActiveId(conversationId);
+    setModel(res.conversation?.model || model);
+
+    const loaded = hydrateMessages(res.messages);
+    const pendingId = `resume-${conversationId}`;
+    setMessages([...loaded, {
+      id: pendingId,
+      role: 'assistant',
+      content: '',
+      status: 'pending',
+      startedAt: Date.now(),
+      reconnecting: true,
+    }]);
+
+    // Try SSE replay first
+    const controller = new AbortController();
+    streamAbortRef.current = controller;
+    setSending(true);
+
+    let replayWorked = false;
+    try {
+      const stream = replayStream(jobId, controller.signal);
+      const first = await stream.next();
+
+      if (!first.done) {
+        // SSE replay is alive — process the full stream
+        replayWorked = true;
+        // Remove reconnecting badge
+        setMessages((ms) =>
+          ms.map((x) => x.id === pendingId ? { ...x, reconnecting: false } : x),
+        );
+
+        // Process the first event + rest of stream
+        async function* prependFirst(
+          firstVal: import('../../api/types/StreamEvent').StreamEvent,
+          rest: AsyncGenerator<import('../../api/types/StreamEvent').StreamEvent, void, void>,
+        ): AsyncGenerator<import('../../api/types/StreamEvent').StreamEvent, void, void> {
+          yield firstVal;
+          yield* rest;
+        }
+
+        await processStream(
+          prependFirst(first.value, stream),
+          pendingId,
+          '',
+          false,
+          controller,
+        );
+      }
+    } catch {
+      // Replay failed, fall through to DB polling
+    }
+
+    if (!replayWorked) {
+      // SSE replay unavailable — fall back to DB-based polling
+      clearActiveStream();
+
+      if (hasAssistantReply) {
+        // Message already in DB, render it
+        setMessages(hydrateMessages(res.messages));
+        setSending(false);
+      } else {
+        // Still processing, poll for completion
+        setSending(false);
+        scheduleRetry(conversationId);
+      }
+      return;
+    }
+
+    setSending(false);
+    if (streamAbortRef.current === controller) {
+      streamAbortRef.current = null;
+    }
+  }
+
   useEffect(() => {
-    void runInitialLoad.current();
+    void runInitialLoad.current().then(() => {
+      void resumeActiveStream();
+    });
     return () => {
       streamAbortRef.current?.abort();
       if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null; }
@@ -293,6 +405,7 @@ export function ChatPage() {
     controller: AbortController,
   ): Promise<{ conversationId: number | null; consentNeeded: boolean }> {
     let newConversationId: number | null = null;
+    let streamJobId: string | null = null;
     let consentNeeded = false;
     let consentArgs: { query: string; reason: string } | null = null;
 
@@ -420,12 +533,16 @@ export function ChatPage() {
             );
           }
         } else if (ev.type === 'meta') {
+          if (ev.job_id) streamJobId = ev.job_id;
           if (ev.conversation_id != null && newConversationId == null) {
             newConversationId = ev.conversation_id;
             if (isFirstMessage) {
               setActiveId(newConversationId);
               listConversations().then((r) => setConversations(r.conversations.filter((c) => !c.deleted_at))).catch(() => {});
             }
+          }
+          if (streamJobId && newConversationId != null) {
+            saveActiveStream({ conversationId: newConversationId, jobId: streamJobId });
           }
           if (ev.estimate) {
             const notice: DisplayMessage = {
@@ -443,6 +560,7 @@ export function ChatPage() {
             });
           }
         } else if (ev.type === 'done') {
+          clearActiveStream();
           if (ev.conversation_id != null) newConversationId = ev.conversation_id;
           if (ev.awaiting === 'search_consent') {
             setMessages((ms) =>
@@ -474,6 +592,7 @@ export function ChatPage() {
             ),
           );
         } else if (ev.type === 'error') {
+          clearActiveStream();
           setMessages((ms) =>
             ms.map((x) =>
               x.id === pendingId
@@ -489,6 +608,7 @@ export function ChatPage() {
         setActiveId(newConversationId);
       }
     } catch (err) {
+      clearActiveStream();
       const aborted = (err as Error)?.name === 'AbortError';
       const transient =
         isTransientNetworkError(err) && (vis.isHidden() || vis.justResumed());

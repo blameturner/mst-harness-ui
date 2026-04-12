@@ -5,6 +5,7 @@ import type { AgentSummary } from '../api/types/AgentSummary';
 import { listAgents } from '../api/agents/listAgents';
 import { listSchedules } from '../api/schedules/listSchedules';
 import { deleteSchedule as deleteScheduleReq } from '../api/schedules/deleteSchedule';
+import { humaniseCron } from '../components/CronPicker';
 import { authClient } from '../lib/auth-client';
 
 function AgentsPage() {
@@ -126,11 +127,18 @@ function AgentsPage() {
                 {schedules.map((s) => (
                   <tr key={s.id} className="border-b border-border hover:bg-panelHi">
                     <td className="py-2 font-sans text-xs">{s.agent_name}</td>
-                    <td className="py-2 font-sans text-xs">{s.cron_expression}</td>
+                    <td className="py-2 font-sans text-xs" title={s.cron_expression}>{humaniseCron(s.cron_expression)}</td>
                     <td className="py-2 font-sans text-xs">{s.timezone}</td>
                     <td className="py-2 text-xs">{s.product || '—'}</td>
                     <td className="py-2 text-xs">{s.active ? 'yes' : 'no'}</td>
-                    <td className="py-2 text-right">
+                    <td className="py-2 text-right space-x-3">
+                      <Link
+                        to="/agents/edit/$id"
+                        params={{ id: String(s.id) }}
+                        className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted hover:text-fg"
+                      >
+                        edit
+                      </Link>
                       <button
                         onClick={() => deleteSchedule(s.id)}
                         className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted hover:text-red-700"

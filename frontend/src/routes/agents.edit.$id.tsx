@@ -1,12 +1,17 @@
 import { createFileRoute, Link, redirect, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
+import type { AgentSchedule } from '../api/types/AgentSchedule';
+import { listSchedules } from '../api/schedules/listSchedules';
+import { updateSchedule } from '../api/schedules/updateSchedule';
 import { listWorkerTypes } from '../api/models/listWorkerTypes';
-import { createSchedule } from '../api/schedules/createSchedule';
 import { CronPicker } from '../components/CronPicker';
 import { authClient } from '../lib/auth-client';
 
-function AgentsNewPage() {
+function AgentsEditPage() {
+  const { id } = Route.useParams();
+  const scheduleId = Number(id);
   const navigate = useNavigate();
+
   const [workerTypes, setWorkerTypes] = useState<
     { id: string; name: string; description: string }[]
   >([]);
@@ -18,23 +23,46 @@ function AgentsNewPage() {
     product: '',
     active: true,
   });
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    listWorkerTypes()
-      .then((r) => setWorkerTypes(r.types))
-      .catch(() => setWorkerTypes([]));
-  }, []);
+    Promise.all([
+      listSchedules(),
+      listWorkerTypes().catch(() => ({ types: [] })),
+    ]).then(([schedRes, wtRes]) => {
+      setWorkerTypes(wtRes.types);
+      const sched = schedRes.schedules.find(
+        (s: AgentSchedule) => s.id === scheduleId,
+      );
+      if (sched) {
+        setForm({
+          agent_name: sched.agent_name,
+          cron_expression: sched.cron_expression,
+          timezone: sched.timezone,
+          task_description: sched.task_description,
+          product: sched.product ?? '',
+          active: sched.active,
+        });
+      } else {
+        setError('Schedule not found');
+      }
+      setLoading(false);
+    }).catch((err) => {
+      setError((err as Error).message);
+      setLoading(false);
+    });
+  }, [scheduleId]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
     try {
-      const res = await createSchedule(form);
+      const res = await updateSchedule(scheduleId, form);
       if (res.reload_warning) {
-        setError(`Created, but scheduler reload warning: ${res.reload_warning}`);
+        setError(`Saved, but scheduler reload warning: ${res.reload_warning}`);
       } else {
         navigate({ to: '/agents' });
       }
@@ -45,13 +73,21 @@ function AgentsNewPage() {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-full bg-bg text-fg font-sans px-8 py-10">
+        <p className="text-sm text-muted">Loading…</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-full bg-bg text-fg font-sans">
       <header className="border-b border-border px-8 py-5 flex items-baseline gap-6">
         <Link to="/agents" className="text-xs uppercase tracking-[0.2em] text-muted font-sans">
           ← agents
         </Link>
-        <h1 className="font-display text-2xl tracking-tightest">New scheduled agent</h1>
+        <h1 className="font-display text-2xl tracking-tightest">Edit schedule</h1>
       </header>
 
       <main className="px-8 py-6 max-w-2xl">
@@ -140,7 +176,7 @@ function AgentsNewPage() {
               disabled={submitting}
               className="text-[11px] uppercase tracking-[0.18em] font-sans border border-fg px-4 py-2 hover:bg-fg hover:text-bg disabled:opacity-50"
             >
-              {submitting ? 'creating…' : 'create'}
+              {submitting ? 'saving…' : 'save'}
             </button>
             <Link
               to="/agents"
@@ -155,12 +191,12 @@ function AgentsNewPage() {
   );
 }
 
-export const Route = createFileRoute('/agents/new')({
+export const Route = createFileRoute('/agents/edit/$id')({
   beforeLoad: async () => {
     const session = await authClient.getSession();
     if (!session.data?.user) {
       throw redirect({ to: '/login' });
     }
   },
-  component: AgentsNewPage,
+  component: AgentsEditPage,
 });
