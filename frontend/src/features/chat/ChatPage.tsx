@@ -27,6 +27,8 @@ import { isTransientNetworkError } from '../../lib/network/isTransientNetworkErr
 import { useOnVisibilityResume } from '../../hooks/useOnVisibilityResume';
 import { useWasRecentlyHidden } from '../../hooks/useWasRecentlyHidden';
 import { uid } from '../../lib/utils/uid';
+import { replayStream } from '../../api/replayStream';
+import { saveActiveStream, loadActiveStream, clearActiveStream } from '../../lib/activeStream';
 import { SidebarBody } from './SidebarBody';
 import { useAutoScrollToBottom } from './hooks/useAutoScrollToBottom';
 import { labelForTool } from '../../lib/intent/labelForTool';
@@ -62,6 +64,7 @@ export function ChatPage() {
   // RAG/knowledge flags only apply on the first turn of a new conversation; harness ignores them afterwards
   const [ragEnabled, setRagEnabled] = useState(false);
   const [knowledgeEnabled, setKnowledgeEnabled] = useState(false);
+  const [researchEnabled, setResearchEnabled] = useState(false);
   const [searchMode, setSearchMode] = useState<'normal' | 'deep'>('normal');
   const streamAbortRef = useRef<AbortController | null>(null);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -133,7 +136,7 @@ export function ChatPage() {
         listModels(),
         listStyles('chat').catch(() => null),
       ]);
-      setConversations(convRes.conversations);
+      setConversations(convRes.conversations.filter((c) => !c.deleted_at));
       setModels(modelsRes.models);
       const reasoner = modelsRes.models.find((m) => m.role === 'reasoner');
       setModel((prev) => prev || reasoner?.name || modelsRes.models[0]?.name || '');
@@ -364,11 +367,31 @@ export function ChatPage() {
           consentArgs = { query: ev.query, reason: ev.reason };
           continue;
         }
-        if (ev.type === 'chunk') {
+        if (ev.type === 'thinking') {
           setMessages((ms) =>
             ms.map((x) =>
               x.id === pendingId
-                ? { ...x, status: 'streaming', content: x.content + ev.text }
+                ? {
+                    ...x,
+                    thinkingContent: (x.thinkingContent ?? '') + ev.text,
+                    thinkingStartTime: x.thinkingStartTime ?? Date.now(),
+                    isThinking: true,
+                  }
+                : x,
+            ),
+          );
+        } else if (ev.type === 'chunk') {
+          setMessages((ms) =>
+            ms.map((x) =>
+              x.id === pendingId
+                ? {
+                    ...x,
+                    status: 'streaming',
+                    content: x.content + ev.text,
+                    ...(x.isThinking
+                      ? { isThinking: false, thinkingEndTime: Date.now() }
+                      : {}),
+                  }
                 : x,
             ),
           );
@@ -401,7 +424,7 @@ export function ChatPage() {
             newConversationId = ev.conversation_id;
             if (isFirstMessage) {
               setActiveId(newConversationId);
-              listConversations().then((r) => setConversations(r.conversations)).catch(() => {});
+              listConversations().then((r) => setConversations(r.conversations.filter((c) => !c.deleted_at))).catch(() => {});
             }
           }
           if (ev.estimate) {
@@ -439,6 +462,7 @@ export function ChatPage() {
                 ? {
                     ...x,
                     status: 'complete',
+                    isThinking: false,
                     startedAt: undefined,
                     tokensIn: tokIn,
                     tokensOut: tokOut,
@@ -498,6 +522,9 @@ export function ChatPage() {
   }
 
   async function send(forcedText?: string) {
+    if (researchEnabled && !forcedText) {
+      return sendResearch();
+    }
     const text = (forcedText ?? input).trim();
     if (!text || sending || !model) return;
 
@@ -629,6 +656,20 @@ export function ChatPage() {
       setRenameError((err as Error)?.message ?? 'Rename failed');
     } finally {
       setRenaming(false);
+    }
+  }
+
+  async function deleteChat() {
+    if (activeId == null) return;
+    const confirmed = window.confirm('Delete this conversation? This cannot be undone.');
+    if (!confirmed) return;
+    try {
+      await patchConversation(activeId, { deleted_at: new Date().toISOString() });
+      setConversations((cs) => cs.filter((c) => c.Id !== activeId));
+      newChat();
+      setDrawerOpen(false);
+    } catch (err) {
+      setError((err as Error)?.message ?? 'Delete failed');
     }
   }
 
@@ -868,7 +909,6 @@ export function ChatPage() {
           value={input}
           onChange={setInput}
           onSend={() => void send()}
-          onResearch={() => void sendResearch()}
           onStop={() => {
             streamAbortRef.current?.abort();
           }}
@@ -911,6 +951,13 @@ export function ChatPage() {
                     ? 'Knowledge graph is set when a conversation is first created'
                     : 'Extract entities and write concept edges to the knowledge graph',
                 onToggle: () => setKnowledgeEnabled((v) => !v),
+              },
+              {
+                key: 'research',
+                label: 'Research',
+                active: researchEnabled,
+                title: 'Run a multi-step research workflow instead of a normal chat reply',
+                onToggle: () => setResearchEnabled((v) => !v),
               },
               {
                 key: 'deep',
@@ -1171,6 +1218,21 @@ export function ChatPage() {
                 </>
               )}
             </details>
+
+            {activeId != null && (
+              <section>
+                <h4 className="text-[10px] uppercase tracking-[0.18em] text-muted mb-2">
+                  Danger zone
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => void deleteChat()}
+                  className="w-full text-[11px] uppercase tracking-[0.14em] font-sans px-3 py-2 rounded border border-red-600 text-red-600 hover:bg-red-600 hover:text-bg transition-colors"
+                >
+                  Delete conversation
+                </button>
+              </section>
+            )}
 
             {stats && stats.observations.length > 0 && (
               <details className="group">

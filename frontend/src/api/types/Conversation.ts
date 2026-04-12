@@ -7,6 +7,7 @@ export interface Conversation {
   title: string;
   status?: ConversationStatus;
   contextual_grounding_enabled?: boolean;
+  deleted_at?: string | null;
   CreatedAt?: string;
   UpdatedAt?: string;
 }

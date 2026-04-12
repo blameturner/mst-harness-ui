@@ -31,7 +31,6 @@ interface ComposerDockProps {
   leftRailSlot?: ReactNode;
   onAttach?: (files: File[]) => void;
   attachmentPreview?: ReactNode;
-  onResearch?: () => void;
 }
 
 export function ComposerDock({
@@ -52,7 +51,6 @@ export function ComposerDock({
   leftRailSlot,
   onAttach,
   attachmentPreview,
-  onResearch,
 }: ComposerDockProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -228,16 +226,6 @@ export function ComposerDock({
             </button>
           ) : (
             <>
-              {onResearch && (
-                <button
-                  type="button"
-                  onClick={onResearch}
-                  disabled={disabled || sending || !value.trim()}
-                  className="shrink-0 px-4 py-2 rounded-md border border-fg text-fg text-sm font-medium tracking-wide hover:bg-fg hover:text-bg transition-colors disabled:opacity-40"
-                >
-                  Research
-                </button>
-              )}
               <button
                 type="button"
                 onClick={onSend}

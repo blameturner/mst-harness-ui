@@ -465,7 +465,17 @@ export function CodePage() {
       for await (const ev of stream) {
         if (ev.type === 'chunk') {
           setMessages((ms) =>
-            ms.map((x) => (x.id === pendingId ? { ...x, content: x.content + ev.text } : x)),
+            ms.map((x) =>
+              x.id === pendingId
+                ? {
+                    ...x,
+                    content: x.content + ev.text,
+                    ...(x.isThinking
+                      ? { isThinking: false, thinkingEndTime: Date.now() }
+                      : {}),
+                  }
+                : x,
+            ),
           );
         } else if (ev.type === 'tool_status') {
           const label =
@@ -488,20 +498,29 @@ export function CodePage() {
         } else if (ev.type === 'plan_checklist') {
           setChecklist(ev.steps ?? []);
           setChecked({});
+        } else if (ev.type === 'thinking') {
+          setMessages((ms) =>
+            ms.map((x) =>
+              x.id === pendingId
+                ? {
+                    ...x,
+                    thinkingContent: (x.thinkingContent ?? '') + ev.text,
+                    thinkingStartTime: x.thinkingStartTime ?? Date.now(),
+                    isThinking: true,
+                  }
+                : x,
+            ),
+          );
         } else if (ev.type === 'done') {
           if (ev.conversation_id && !gotConversationId) {
             setConversationId(ev.conversation_id);
             rememberActiveSession(ev.conversation_id);
             gotConversationId = true;
           }
-          // Message completed normally — no longer in-flight, drop the key
-          // so a later tab-nav doesn't re-resume a finished session.
-          rememberActiveSession(null);
           setMessages((ms) =>
-            ms.map((x) => (x.id === pendingId ? { ...x, status: 'complete' } : x)),
+            ms.map((x) => (x.id === pendingId ? { ...x, status: 'complete', isThinking: false } : x)),
           );
         } else if (ev.type === 'error') {
-          rememberActiveSession(null);
           setMessages((ms) =>
             ms.map((x) =>
               x.id === pendingId
@@ -866,6 +885,44 @@ export function CodePage() {
                         </div>
                       ) : (
                         <>
+                          {m.thinkingContent && (
+                            <details
+                              open={m.isThinking}
+                              className="mb-2 group/think"
+                            >
+                              <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden flex items-center gap-1.5 text-[11px] font-sans text-muted select-none">
+                                <svg
+                                  width="10"
+                                  height="10"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2.5"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  className="transition-transform group-open/think:rotate-90"
+                                >
+                                  <polyline points="9 6 15 12 9 18" />
+                                </svg>
+                                {m.isThinking ? (
+                                  <span className="animate-pulse">Thinking…</span>
+                                ) : (
+                                  <span>
+                                    Thought for{' '}
+                                    {Math.round(
+                                      ((m.thinkingEndTime ?? Date.now()) -
+                                        (m.thinkingStartTime ?? Date.now())) /
+                                        1000,
+                                    )}
+                                    s
+                                  </span>
+                                )}
+                              </summary>
+                              <pre className="mt-1.5 text-[11px] font-mono text-muted bg-bg/60 rounded-md p-3 whitespace-pre-wrap max-h-60 overflow-y-auto border border-border">
+                                {m.thinkingContent}
+                              </pre>
+                            </details>
+                          )}
                           {m.status === 'streaming' && m.toolStatus && (
                             <div className="text-[11px] italic text-muted mb-2 font-sans">
                               {m.toolStatus}
@@ -876,7 +933,7 @@ export function CodePage() {
                               )}
                             </div>
                           )}
-                          {m.status === 'streaming' && !m.content && !m.toolStatus && (
+                          {m.status === 'streaming' && !m.content && !m.toolStatus && !m.isThinking && !m.thinkingContent && (
                             <div className="text-[11px] italic text-muted mb-2 font-sans">
                               {m.reconnecting ? 'Reconnecting…' : 'Thinking…'}
                             </div>

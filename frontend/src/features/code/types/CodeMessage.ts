@@ -13,4 +13,8 @@ export interface CodeMessage {
   sourceApprovedPlan?: string | null;
   toolStatus?: string;
   reconnecting?: boolean;
+  thinkingContent?: string;
+  thinkingStartTime?: number;
+  thinkingEndTime?: number;
+  isThinking?: boolean;
 }

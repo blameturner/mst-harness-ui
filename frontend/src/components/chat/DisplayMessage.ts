@@ -23,4 +23,8 @@ export interface DisplayMessage {
   parsedOutput?: unknown;
   toolStatus?: string;
   reconnecting?: boolean;
+  thinkingContent?: string;
+  thinkingStartTime?: number;
+  thinkingEndTime?: number;
+  isThinking?: boolean;
 }

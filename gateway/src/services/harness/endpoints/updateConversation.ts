@@ -3,7 +3,7 @@ import { HARNESS_CONVERSATIONS_TIMEOUT_MS } from '../../../constants/timeouts/HA
 
 export function updateConversation(
   conversationId: number,
-  body: { title?: string; contextual_grounding_enabled?: boolean },
+  body: { title?: string; contextual_grounding_enabled?: boolean; deleted_at?: string },
 ): Promise<Response> {
   return harnessClient.patch(
     `/conversations/${conversationId}`,

@@ -7,7 +7,7 @@ import type { ChatIntent } from './ChatIntent';
 
 export type StreamEvent =
   | { type: 'chunk'; text: string }
-  | { type: 'meta'; conversation_id?: number; mode?: 'plan' | 'execute' | 'debug'; estimate?: string }
+  | { type: 'meta'; conversation_id?: number; mode?: 'plan' | 'execute' | 'debug'; estimate?: string; job_id?: string }
   | {
       type: 'done';
       usage?: { prompt_tokens: number; completion_tokens: number };
@@ -68,4 +68,5 @@ export type StreamEvent =
       message: string;
       queries?: string[];
     }
+  | { type: 'thinking'; text: string }
   | { type: 'error'; message: string };

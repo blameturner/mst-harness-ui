@@ -1,39 +1,14 @@
 import { gatewayUrl } from '../lib/runtime-env';
 import type { StreamEvent } from './types/StreamEvent';
 
-export async function* streamJob(
-  path: string,
-  body: unknown,
+/**
+ * Reconnects to an existing job's SSE stream by replaying from cursor 0.
+ * Returns null if the job is gone (404 / no events within timeout).
+ */
+export async function* replayStream(
+  jobId: string,
   signal?: AbortSignal,
 ): AsyncGenerator<StreamEvent, void, void> {
-  const res = await fetch(`${gatewayUrl()}/${path}`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    signal,
-  });
-
-  if (!res.ok) {
-    let detail = '';
-    try {
-      detail = await res.text();
-    } catch {}
-    yield { type: 'error', message: `HTTP ${res.status}${detail ? `: ${detail.slice(0, 300)}` : ''}` };
-    return;
-  }
-
-  const initData = (await res.json()) as { job_id: string; estimate?: string };
-  const { job_id } = initData;
-  if (!job_id) {
-    yield { type: 'error', message: 'No job_id returned' };
-    return;
-  }
-  yield { type: 'meta', job_id };
-  if (initData.estimate) {
-    yield { type: 'meta', estimate: initData.estimate };
-  }
-
   type QueueItem = StreamEvent | { __done: true } | { __reconnect: true } | { __abort: true };
   const queue: QueueItem[] = [];
   let waiting: ((v: void) => void) | null = null;
@@ -48,21 +23,22 @@ export async function* streamJob(
     return queue.shift()!;
   }
 
-  // Wire abort signal to wake the pull loop
   signal?.addEventListener('abort', () => push({ __abort: true }));
 
   let cursor = 0;
   let emptyRetries = 0;
   let activeEs: EventSource | null = null;
-  const MAX_EMPTY_RETRIES = 8;
+  const MAX_EMPTY_RETRIES = 4;
+  let receivedAny = false;
 
   function connect() {
-    const streamUrl = `${gatewayUrl()}/api/stream/${encodeURIComponent(job_id)}?cursor=${cursor}`;
+    const streamUrl = `${gatewayUrl()}/api/stream/${encodeURIComponent(jobId)}?cursor=${cursor}`;
     const es = new EventSource(streamUrl, { withCredentials: true });
 
     es.onopen = () => { emptyRetries = 0; };
 
     es.onmessage = (e) => {
+      receivedAny = true;
       if (e.data === '[DONE]') {
         es.close();
         push({ __done: true });
@@ -78,7 +54,6 @@ export async function* streamJob(
     };
 
     es.onerror = () => {
-      // Only push reconnect if this is still the active EventSource
       if (es === activeEs) {
         es.close();
         push({ __reconnect: true });
@@ -93,7 +68,6 @@ export async function* streamJob(
 
   const onVisibility = () => {
     if (document.visibilityState === 'visible') {
-      // Detach old ES handlers before closing to prevent spurious __reconnect
       es.onmessage = null;
       es.onerror = null;
       es.close();
@@ -111,8 +85,8 @@ export async function* streamJob(
 
       if ('__reconnect' in item) {
         emptyRetries++;
-        if (emptyRetries >= MAX_EMPTY_RETRIES) {
-          yield { type: 'error', message: 'Stream connection lost' };
+        // If we never received any events, the job is likely gone
+        if (!receivedAny || emptyRetries >= MAX_EMPTY_RETRIES) {
           return;
         }
         await new Promise((r) => setTimeout(r, 500 * Math.min(emptyRetries + 1, 4)));

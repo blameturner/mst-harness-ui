@@ -77,18 +77,45 @@ export function ChatBubble({ message, onRetry, onEdit }: Props) {
     return (
       <div className="flex justify-start animate-fadeIn">
         <div className={`${BUBBLE_MAX} px-4 py-3 rounded-2xl rounded-bl-sm text-[15px] leading-relaxed bg-panel border border-border text-muted italic`}>
-          {(() => {
-            if (message.toolStatus) return message.toolStatus;
-            if (message.status === 'searching') return 'Searching the web';
-            const label = typingLabelForIntent(message.intent);
-            if (label) return label + '…';
-            return <ThinkingLabel />;
-          })()}{' '}
-          <ElapsedTimer startedAt={message.startedAt} />
-          {message.reconnecting && (
-            <span className="ml-2 text-[10px] uppercase tracking-[0.14em] not-italic text-muted/80">
-              · reconnecting
-            </span>
+          {message.thinkingContent ? (
+            <details open className="group/think not-italic">
+              <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden flex items-center gap-1.5 text-[11px] font-sans text-muted select-none">
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="transition-transform group-open/think:rotate-90"
+                >
+                  <polyline points="9 6 15 12 9 18" />
+                </svg>
+                <span className="animate-pulse">Thinking…</span>
+                <ElapsedTimer startedAt={message.thinkingStartTime} />
+              </summary>
+              <pre className="mt-1.5 text-[11px] font-mono text-muted bg-bg/60 rounded-md p-3 whitespace-pre-wrap max-h-60 overflow-y-auto border border-border">
+                {message.thinkingContent}
+              </pre>
+            </details>
+          ) : (
+            <>
+              {(() => {
+                if (message.toolStatus) return message.toolStatus;
+                if (message.status === 'searching') return 'Searching the web';
+                const label = typingLabelForIntent(message.intent);
+                if (label) return label + '…';
+                return <ThinkingLabel />;
+              })()}{' '}
+              <ElapsedTimer startedAt={message.startedAt} />
+              {message.reconnecting && (
+                <span className="ml-2 text-[10px] uppercase tracking-[0.14em] not-italic text-muted/80">
+                  · reconnecting
+                </span>
+              )}
+            </>
           )}
           <span className="caret" />
         </div>
@@ -179,6 +206,41 @@ export function ChatBubble({ message, onRetry, onEdit }: Props) {
           <div className="mb-2">
             <IntentChip intent={message.intent} />
           </div>
+        )}
+        {message.thinkingContent && (
+          <details open={message.isThinking} className="mb-2 group/think">
+            <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden flex items-center gap-1.5 text-[11px] font-sans text-muted select-none">
+              <svg
+                width="10"
+                height="10"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="transition-transform group-open/think:rotate-90"
+              >
+                <polyline points="9 6 15 12 9 18" />
+              </svg>
+              {message.isThinking ? (
+                <span className="animate-pulse">Thinking…</span>
+              ) : (
+                <span>
+                  Thought for{' '}
+                  {Math.round(
+                    ((message.thinkingEndTime ?? Date.now()) -
+                      (message.thinkingStartTime ?? Date.now())) /
+                      1000,
+                  )}
+                  s
+                </span>
+              )}
+            </summary>
+            <pre className="mt-1.5 text-[11px] font-mono text-muted bg-bg/60 rounded-md p-3 whitespace-pre-wrap max-h-60 overflow-y-auto border border-border">
+              {message.thinkingContent}
+            </pre>
+          </details>
         )}
         <ConfidenceBanner confidence={message.searchConfidence} />
         <SearchStatusBadge status={message.searchStatus} />
