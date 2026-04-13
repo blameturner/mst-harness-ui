@@ -19,6 +19,7 @@ export interface DisplayMessage {
   searchConfidence?: SearchConfidence;
   intent?: ChatIntent | null;
   searchStatus?: SearchStatus;
+  searchContextText?: string;
   responseStyle?: string | null;
   sourceUserText?: string;
   parsedOutput?: unknown;
@@ -28,19 +29,6 @@ export interface DisplayMessage {
   thinkingStartTime?: number;
   thinkingEndTime?: number;
   isThinking?: boolean;
-  deepSearchPlan?: {
-    queries: string[];
-    sources: SearchSource[];
-    status: 'awaiting_approval' | 'approved' | 'revised';
-  };
-  researchPlan?: {
-    question: string;
-    objective: string;
-    queries: string[];
-    lookout: string[];
-    completionCriteria: string[];
-    status: 'awaiting_approval' | 'approved' | 'revised';
-  };
   deepSearchStatus?: 'waiting' | 'done';
   deepSearchMessage?: string;
   topics?: string[];

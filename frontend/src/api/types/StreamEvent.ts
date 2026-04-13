@@ -77,6 +77,7 @@ export type StreamEvent =
         completion_criteria: string[];
       };
     }
+  | { type: 'plan_approved'; tool: 'deep_search' | 'research' }
   | { type: 'jobs_queued'; tool: string; message: string; status: string }
   | {
       type: 'research_status';

@@ -76,15 +76,11 @@ export function ChatPage() {
   useEffect(() => {
     if (searchMode === 'normal') {
       setMessages((ms) =>
-        ms.map((x) => {
-          if (!x.deepSearchPlan && !x.researchPlan) return x;
-          if (x.deepSearchPlan?.status !== 'awaiting_approval' && x.researchPlan?.status !== 'awaiting_approval') return x;
-          return {
-            ...x,
-            deepSearchPlan: x.deepSearchPlan ? { ...x.deepSearchPlan, status: 'revised' as const } : undefined,
-            researchPlan: x.researchPlan ? { ...x.researchPlan, status: 'revised' as const } : undefined,
-          };
-        }),
+        ms.map((x) =>
+          x.searchStatus === 'awaiting_approval'
+            ? { ...x, searchStatus: undefined }
+            : x,
+        ),
       );
     }
   }, [searchMode]);
@@ -401,6 +397,7 @@ export function ChatPage() {
         responseStyle: m.response_style ?? null,
         sources: m.search_sources?.length ? m.search_sources : undefined,
         searchConfidence: m.search_confidence ?? undefined,
+        searchContextText: m.search_context_text ?? undefined,
         intent: m.classification?.intent ?? m.intent ?? undefined,
         searchStatus: m.search_status,
       }));
@@ -535,13 +532,7 @@ export function ChatPage() {
                     ...x,
                     deepSearchStatus: 'waiting' as const,
                     deepSearchMessage: label,
-                    // Clear approval cards once jobs are running
-                    deepSearchPlan: x.deepSearchPlan
-                      ? { ...x.deepSearchPlan, status: 'approved' as const }
-                      : undefined,
-                    researchPlan: x.researchPlan
-                      ? { ...x.researchPlan, status: 'approved' as const }
-                      : undefined,
+                    searchStatus: x.searchStatus === 'awaiting_approval' ? 'approved' as const : x.searchStatus,
                   }
                 : x,
             ),
@@ -601,36 +592,36 @@ export function ChatPage() {
         }
         if (ev.type === 'deep_search_plan') {
           setMessages((ms) =>
-            ms.map((x) => {
-              if (x.id !== pendingId) return x;
-              const planSources = x.sources ?? [];
-              return {
-                ...x,
-                deepSearchPlan: {
-                  queries: deepPlanQueries,
-                  sources: planSources,
-                  status: 'awaiting_approval' as const,
-                },
-              };
-            }),
+            ms.map((x) =>
+              x.id === pendingId
+                ? { ...x, model: 'deep_search_plan', searchStatus: 'awaiting_approval' as const }
+                : x,
+            ),
           );
           continue;
         }
         if (ev.type === 'research_plan') {
+          // Store the structured plan as searchContextText for rendering
+          const planJson = JSON.stringify(ev.plan);
           setMessages((ms) =>
             ms.map((x) =>
               x.id === pendingId
                 ? {
                     ...x,
-                    researchPlan: {
-                      question: ev.plan.question,
-                      objective: ev.plan.objective,
-                      queries: ev.plan.queries,
-                      lookout: ev.plan.lookout,
-                      completionCriteria: ev.plan.completion_criteria,
-                      status: 'awaiting_approval' as const,
-                    },
+                    model: 'research_plan',
+                    searchStatus: 'awaiting_approval' as const,
+                    searchContextText: planJson,
                   }
+                : x,
+            ),
+          );
+          continue;
+        }
+        if (ev.type === 'plan_approved') {
+          setMessages((ms) =>
+            ms.map((x) =>
+              x.id === pendingId
+                ? { ...x, searchStatus: 'approved' as const }
                 : x,
             ),
           );
@@ -863,14 +854,11 @@ export function ChatPage() {
     setMessages((m) => {
       // Clear any pending approval cards when a new message is sent
       const cleared = !searchModeOverride
-        ? m.map((x) => {
-            if (!x.deepSearchPlan && !x.researchPlan) return x;
-            return {
-              ...x,
-              deepSearchPlan: x.deepSearchPlan ? { ...x.deepSearchPlan, status: 'revised' as const } : undefined,
-              researchPlan: x.researchPlan ? { ...x.researchPlan, status: 'revised' as const } : undefined,
-            };
-          })
+        ? m.map((x) =>
+            x.searchStatus === 'awaiting_approval'
+              ? { ...x, searchStatus: undefined }
+              : x,
+          )
         : m;
       return [...cleared, userMsg, pendingMsg];
     });
@@ -1154,38 +1142,24 @@ export function ChatPage() {
                         : undefined
                     }
                     onPlanApprove={(mm) => {
-                      const mode = mm.researchPlan ? 'research_approved' : 'deep_approved';
+                      const mode = mm.model === 'research_plan' ? 'research_approved' : 'deep_approved';
                       setMessages((ms) =>
-                        ms.map((x) => {
-                          if (x.id !== mm.id) return x;
-                          return {
-                            ...x,
-                            deepSearchPlan: x.deepSearchPlan
-                              ? { ...x.deepSearchPlan, status: 'approved' as const }
-                              : undefined,
-                            researchPlan: x.researchPlan
-                              ? { ...x.researchPlan, status: 'approved' as const }
-                              : undefined,
-                          };
-                        }),
+                        ms.map((x) =>
+                          x.id === mm.id
+                            ? { ...x, searchStatus: 'approved' as const }
+                            : x,
+                        ),
                       );
                       void send('Approved', mode);
                     }}
                     onPlanRevise={(mm, feedback) => {
-                      const mode = mm.researchPlan ? 'research' : 'deep';
+                      const mode = mm.model === 'research_plan' ? 'research' : 'deep';
                       setMessages((ms) =>
-                        ms.map((x) => {
-                          if (x.id !== mm.id) return x;
-                          return {
-                            ...x,
-                            deepSearchPlan: x.deepSearchPlan
-                              ? { ...x.deepSearchPlan, status: 'revised' as const }
-                              : undefined,
-                            researchPlan: x.researchPlan
-                              ? { ...x.researchPlan, status: 'revised' as const }
-                              : undefined,
-                          };
-                        }),
+                        ms.map((x) =>
+                          x.id === mm.id
+                            ? { ...x, searchStatus: undefined }
+                            : x,
+                        ),
                       );
                       void send(feedback, mode);
                     }}

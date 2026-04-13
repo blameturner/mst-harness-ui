@@ -285,14 +285,13 @@ export function ChatBubble({ message, onRetry, onEdit, onPlanApprove, onPlanRevi
             Deep research complete — results added below
           </div>
         )}
-        {(message.deepSearchPlan || message.researchPlan) && (
-          <PlanApprovalCard
-            deepSearchPlan={message.deepSearchPlan}
-            researchPlan={message.researchPlan}
-            onApprove={() => onPlanApprove?.(message)}
-            onRevise={(fb) => onPlanRevise?.(message, fb)}
-          />
-        )}
+        <PlanApprovalCard
+          model={message.model}
+          searchStatus={message.searchStatus}
+          searchContextText={message.searchContextText}
+          onApprove={() => onPlanApprove?.(message)}
+          onRevise={(fb) => onPlanRevise?.(message, fb)}
+        />
         {message.status === 'complete' && message.errorMessage && (
           <div className="mt-2 text-[11px] font-sans text-amber-600 bg-amber-500/10 border border-amber-600/30 rounded-md px-2.5 py-1.5">
             <div className="flex items-center gap-1.5">
