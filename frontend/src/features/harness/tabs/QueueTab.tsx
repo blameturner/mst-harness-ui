@@ -28,7 +28,7 @@ export function QueueTab() {
   useEffect(() => {
     reload();
 
-    const es = new EventSource(`${gatewayUrl()}/api/queue/events`, { withCredentials: true });
+    const es = new EventSource(`${gatewayUrl()}/tool-queue/events`, { withCredentials: true });
     esRef.current = es;
 
     es.onmessage = (e) => {
@@ -86,26 +86,60 @@ export function QueueTab() {
         <div className="text-[13px] text-red-500 font-sans">{error}</div>
       )}
 
-      {status && (
-        <div className="grid grid-cols-3 gap-4">
-          <div className="border border-border rounded-lg p-4">
-            <div className="text-[10px] uppercase tracking-[0.16em] text-muted font-sans mb-1">Queue length</div>
-            <div className="font-display text-2xl">{status.queue_length}</div>
-          </div>
-          <div className="border border-border rounded-lg p-4">
-            <div className="text-[10px] uppercase tracking-[0.16em] text-muted font-sans mb-1">Current job</div>
-            <div className="font-display text-lg">
-              {status.current_job
-                ? `${status.current_job.type} (${Math.round(status.current_job.elapsed_s)}s)`
-                : 'Idle'}
+      {status && (() => {
+        const entries = Object.entries(status.counts);
+        const totalQueued = entries.reduce((s, [, v]) => s + v.queued, 0);
+        const totalRunning = entries.reduce((s, [, v]) => s + v.running, 0);
+        const totalCompleted = entries.reduce((s, [, v]) => s + v.completed, 0);
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="border border-border rounded-lg p-4">
+                <div className="text-[10px] uppercase tracking-[0.16em] text-muted font-sans mb-1">Queued</div>
+                <div className="font-display text-2xl">{totalQueued}</div>
+              </div>
+              <div className="border border-border rounded-lg p-4">
+                <div className="text-[10px] uppercase tracking-[0.16em] text-muted font-sans mb-1">Running</div>
+                <div className="font-display text-2xl">{totalRunning}</div>
+              </div>
+              <div className="border border-border rounded-lg p-4">
+                <div className="text-[10px] uppercase tracking-[0.16em] text-muted font-sans mb-1">Completed</div>
+                <div className="font-display text-2xl">{totalCompleted}</div>
+              </div>
+            </div>
+
+            {entries.length > 0 && (
+              <div className="text-[11px] font-sans text-muted space-y-1">
+                {entries.map(([type, counts]) => (
+                  <div key={type} className="flex gap-3">
+                    <span className="text-fg font-medium w-20">{type}</span>
+                    <span>{counts.queued} queued</span>
+                    <span>{counts.running} running</span>
+                    <span>{counts.completed} done</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 text-[11px] font-sans text-muted">
+              <span className={`w-1.5 h-1.5 rounded-full ${
+                status.backoff.state === 'clear' ? 'bg-emerald-500' :
+                status.backoff.state === 'active' ? 'bg-red-500 animate-pulse' :
+                'bg-amber-500 animate-pulse'
+              }`} />
+              <span>
+                {status.backoff.state === 'clear'
+                  ? `Clear — idle ${Math.round(status.backoff.idle_seconds)}s`
+                  : status.backoff.state === 'active'
+                  ? 'Backoff active — chat in progress'
+                  : status.backoff.state === 'priority_1_only'
+                  ? 'Research only — 2min idle'
+                  : 'Research + deep search — 5min idle'}
+              </span>
             </div>
           </div>
-          <div className="border border-border rounded-lg p-4">
-            <div className="text-[10px] uppercase tracking-[0.16em] text-muted font-sans mb-1">Estimated wait</div>
-            <div className="font-display text-2xl">{Math.round(status.estimated_wait_s)}s</div>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {jobs.length === 0 ? (
         <p className="text-muted text-sm font-sans">No jobs in the queue.</p>
@@ -124,7 +158,7 @@ export function QueueTab() {
             {jobs.map((job) => (
               <tr key={job.job_id} className="border-b border-border/50">
                 <td className="py-2.5 pr-4 text-muted font-mono text-xs">{job.job_id.slice(0, 8)}</td>
-                <td className="py-2.5 pr-4">{job.type}</td>
+                <td className="py-2.5 pr-4">{job.source}</td>
                 <td className="py-2.5 pr-4">
                   <span
                     className={[

@@ -64,6 +64,9 @@ export function ChatBubble({ message, onRetry, onEdit }: Props) {
   }
 
   if (message.role === 'system' || message.status === 'system') {
+    if (message.content.startsWith('[Deep search result]')) {
+      return <DeepSearchResultCard content={message.content} />;
+    }
     return (
       <div className="flex justify-center animate-fadeIn">
         <div className="text-[10px] uppercase tracking-[0.16em] font-sans text-muted px-3 py-1 rounded-full border border-border bg-panel/40">
@@ -246,6 +249,21 @@ export function ChatBubble({ message, onRetry, onEdit }: Props) {
         <SearchStatusBadge status={message.searchStatus} />
         <MarkdownBody content={message.content} />
         {isStreaming && <span className="caret" />}
+        {message.deepSearchStatus && (
+          <div className="mt-2 flex items-center gap-1.5 text-[11px] font-sans text-muted bg-bg/60 border border-border rounded-md px-2.5 py-1.5">
+            {message.deepSearchStatus === 'waiting' ? (
+              <>
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                {message.deepSearchMessage || 'Deep research queued — results arriving in background'}
+              </>
+            ) : (
+              <>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                Deep search results delivered
+              </>
+            )}
+          </div>
+        )}
         <SourcesPanel
           sources={message.sources ?? []}
           layout={resolveSourceLayout(message.intent, !!message.sources?.length)}
@@ -253,6 +271,79 @@ export function ChatBubble({ message, onRetry, onEdit }: Props) {
         {showCopy && (
           <div className="mt-2 -mb-1">
             <CopyButton copied={copied} onCopy={copyContent} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function parseDeepSearchContent(content: string): { url: string; summary: string } {
+  const lines = content.replace('[Deep search result]\n', '').split('\n');
+  let url = '';
+  const summaryLines: string[] = [];
+  for (const line of lines) {
+    if (line.startsWith('Source: ')) {
+      url = line.slice('Source: '.length).trim();
+    } else if (line.trim()) {
+      summaryLines.push(line);
+    }
+  }
+  return { url, summary: summaryLines.join('\n') };
+}
+
+function DeepSearchResultCard({ content }: { content: string }) {
+  const { url, summary } = parseDeepSearchContent(content);
+  const [open, setOpen] = useState(false);
+  const hostname = url ? (() => { try { return new URL(url).hostname; } catch { return url; } })() : '';
+
+  return (
+    <div className="flex justify-start animate-fadeIn">
+      <div className="max-w-[92%] md:max-w-[80%] rounded-md border border-border bg-panel/40 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-panelHi transition-colors"
+        >
+          <svg
+            width="10"
+            height="10"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={`transition-transform shrink-0 text-muted ${open ? 'rotate-90' : ''}`}
+          >
+            <polyline points="9 6 15 12 9 18" />
+          </svg>
+          <span className="text-[11px] font-sans text-muted uppercase tracking-[0.12em]">
+            Deep search result
+          </span>
+          {hostname && (
+            <span className="text-[10px] font-sans text-muted truncate ml-auto">
+              {hostname}
+            </span>
+          )}
+        </button>
+        {open && (
+          <div className="px-3 pb-2.5 space-y-1.5">
+            {url && (
+              <a
+                href={url}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="text-[11px] font-sans text-fg hover:underline underline-offset-2 break-all"
+              >
+                {url}
+              </a>
+            )}
+            {summary && (
+              <p className="text-[11px] font-sans text-muted leading-relaxed whitespace-pre-wrap">
+                {summary}
+              </p>
+            )}
           </div>
         )}
       </div>

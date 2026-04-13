@@ -299,14 +299,68 @@ export function ChatPage() {
     if (!initialLoadOkRef.current) void runInitialLoad.current();
   });
 
+  // Poll for deep search results when jobs are queued
+  const hasWaitingDeepSearch = messages.some((m) => m.deepSearchStatus === 'waiting');
+  useEffect(() => {
+    if (!hasWaitingDeepSearch || activeId == null) return;
+    const convId = activeId;
+    const timer = setInterval(async () => {
+      if (activeIdRef.current !== convId) return;
+      try {
+        const res = await getConversationMessages(convId);
+        if (activeIdRef.current !== convId) return;
+        const freshMessages = hydrateMessages(res.messages);
+        const hasNewDeepResults = freshMessages.some(
+          (m) => m.role === 'system' && m.content.startsWith('[Deep search result]'),
+        );
+        if (hasNewDeepResults) {
+          setMessages((prev) => {
+            // Merge: keep existing messages, append any new deep search results
+            const existingIds = new Set(prev.map((m) => m.id));
+            const newResults = freshMessages.filter(
+              (m) => m.content.startsWith('[Deep search result]') && !existingIds.has(m.id),
+            );
+            if (newResults.length === 0) return prev;
+            // Insert new results before the assistant message that has the waiting status
+            const waitIdx = prev.findIndex((m) => m.deepSearchStatus === 'waiting');
+            if (waitIdx < 0) return [...prev, ...newResults];
+            const copy = prev.slice();
+            copy.splice(waitIdx + 1, 0, ...newResults);
+            return copy;
+          });
+        }
+        // Check if all deep search jobs are done by seeing if fresh DB has no more pending
+        // system messages arriving — if the count stabilises, mark as complete
+        const dbDeepCount = freshMessages.filter(
+          (m) => m.content.startsWith('[Deep search result]'),
+        ).length;
+        setMessages((prev) => {
+          const prevDeepCount = prev.filter(
+            (m) => m.content.startsWith('[Deep search result]'),
+          ).length;
+          // If we got results and count matches DB, mark complete
+          if (dbDeepCount > 0 && dbDeepCount === prevDeepCount) {
+            return prev.map((m) =>
+              m.deepSearchStatus === 'waiting'
+                ? { ...m, deepSearchStatus: 'complete' as const }
+                : m,
+            );
+          }
+          return prev;
+        });
+      } catch {}
+    }, 18_000);
+    return () => clearInterval(timer);
+  }, [hasWaitingDeepSearch, activeId]);
+
   function hydrateMessages(msgs: ChatMessageRow[]): DisplayMessage[] {
     return msgs
-      .filter((m) => m.role !== 'system')
+      .filter((m) => m.role !== 'system' || m.content.startsWith('[Deep search result]'))
       .map<DisplayMessage>((m) => ({
         id: String(m.Id),
-        role: m.role as 'user' | 'assistant',
+        role: m.role as 'user' | 'assistant' | 'system',
         content: m.content,
-        status: 'complete',
+        status: m.role === 'system' ? 'system' : 'complete',
         tokensIn: m.tokens_input,
         tokensOut: m.tokens_output,
         responseStyle: m.response_style ?? null,
@@ -414,6 +468,16 @@ export function ChatPage() {
         if (ev.type === 'intent_classified') {
           setMessages((ms) =>
             ms.map((x) => (x.id === pendingId ? { ...x, intent: ev.intent } : x)),
+          );
+          continue;
+        }
+        if (ev.type === 'jobs_queued') {
+          setMessages((ms) =>
+            ms.map((x) =>
+              x.id === pendingId
+                ? { ...x, deepSearchStatus: 'waiting' as const, deepSearchMessage: ev.message }
+                : x,
+            ),
           );
           continue;
         }

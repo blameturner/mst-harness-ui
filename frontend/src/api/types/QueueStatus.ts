@@ -1,5 +1,15 @@
+export type BackoffState = 'active' | 'priority_1_only' | 'priority_1_2_only' | 'clear';
+
 export interface QueueStatus {
-  queue_length: number;
-  current_job: { job_id: string; type: string; elapsed_s: number } | null;
-  estimated_wait_s: number;
+  counts: Record<string, { queued: number; running: number; completed: number }>;
+  workers: Record<string, number>;
+  backoff: {
+    state: BackoffState;
+    idle_seconds: number;
+    thresholds: {
+      research: number;
+      deep_search: number;
+      background: number;
+    };
+  };
 }

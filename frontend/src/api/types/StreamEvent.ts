@@ -62,6 +62,7 @@ export type StreamEvent =
       confidence: number;
     }
   | { type: 'search_deferred'; entities: string[] }
+  | { type: 'jobs_queued'; tool: string; message: string; status: string }
   | {
       type: 'research_status';
       phase: 'classifying' | 'searching' | 'scraping' | 'summarising' | 'synthesising';
