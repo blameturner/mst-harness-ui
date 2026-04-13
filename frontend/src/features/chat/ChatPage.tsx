@@ -319,7 +319,7 @@ export function ChatPage() {
     if (!initialLoadOkRef.current) void runInitialLoad.current();
   });
 
-  // Poll for deep search progress and results
+  // Poll for deep search / research progress and results
   const hasWaitingDeepSearch = messages.some((m) => m.deepSearchStatus === 'waiting');
   useEffect(() => {
     if (!hasWaitingDeepSearch || activeId == null) return;
@@ -327,7 +327,7 @@ export function ChatPage() {
     const timer = setInterval(async () => {
       if (activeIdRef.current !== convId) return;
       try {
-        const qs = await getQueueActive({ conversation_id: convId, source: 'deep_search' });
+        const qs = await getQueueActive({ conversation_id: convId });
         if (activeIdRef.current !== convId) return;
 
         if (qs.active > 0) {
@@ -340,7 +340,7 @@ export function ChatPage() {
             ),
           );
         } else {
-          // All done — mark banner as done and refetch messages for [Deep search result] entries
+          // All done — mark banner as done and refetch messages for new results
           setMessages((ms) =>
             ms.map((m) =>
               m.deepSearchStatus === 'waiting'
@@ -354,8 +354,12 @@ export function ChatPage() {
             const fresh = hydrateMessages(res.messages);
             setMessages((prev) => {
               const existingIds = new Set(prev.map((x) => x.id));
+              const isResultMsg = (x: DisplayMessage) =>
+                x.content.startsWith('[Deep search result]') ||
+                x.model === 'deep_search' ||
+                x.model === 'research';
               const newResults = fresh.filter(
-                (x) => x.content.startsWith('[Deep search result]') && !existingIds.has(x.id),
+                (x) => isResultMsg(x) && !existingIds.has(x.id),
               );
               if (newResults.length === 0) return prev;
               return [...prev, ...newResults];
@@ -390,6 +394,7 @@ export function ChatPage() {
         id: String(m.Id),
         role: m.role as 'user' | 'assistant' | 'system',
         content: m.content,
+        model: m.model,
         status: m.role === 'system' ? 'system' : 'complete',
         tokensIn: m.tokens_input,
         tokensOut: m.tokens_output,

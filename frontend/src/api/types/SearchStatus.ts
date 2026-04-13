@@ -1,6 +1,7 @@
 export type SearchStatus =
   | 'not_used'
   | 'used'
+  | 'completed'
   | 'no_results'
   | 'error'
   | 'consent_required'

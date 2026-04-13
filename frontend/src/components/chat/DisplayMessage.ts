@@ -8,6 +8,7 @@ export interface DisplayMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
+  model?: string;
   status: MessageStatus;
   startedAt?: number;
   tokensIn?: number;

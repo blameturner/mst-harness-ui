@@ -79,6 +79,27 @@ export function ChatBubble({ message, onRetry, onEdit, onPlanApprove, onPlanRevi
     );
   }
 
+  if (message.model === 'deep_search' || message.model === 'research') {
+    const isResearch = message.model === 'research';
+    const label = isResearch ? 'Research Report' : 'Deep Search Result';
+    const failed = message.searchStatus === 'failed';
+    return (
+      <div className="flex justify-start animate-fadeIn">
+        <div className={`${BUBBLE_MAX} rounded-lg border overflow-hidden ${failed ? 'border-red-600/40' : 'border-border'}`}>
+          <div className={`flex items-center gap-2 px-3 py-2 ${failed ? 'bg-red-500/10' : 'bg-panel/40'} border-b border-border`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${failed ? 'bg-red-500' : 'bg-emerald-500'}`} />
+            <span className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted">
+              {label}{failed ? ' — Failed' : ''}
+            </span>
+          </div>
+          <div className="px-4 py-3 bg-panel/20 markdown-body">
+            <MarkdownBody content={message.content} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (message.status === 'pending' || message.status === 'searching') {
     return (
       <div className="flex justify-start animate-fadeIn">
