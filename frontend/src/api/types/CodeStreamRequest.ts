@@ -13,4 +13,5 @@ export interface CodeStreamRequest {
   knowledge_enabled?: boolean;
   codebase_collection?: string | null;
   response_style?: string;
+  search_enabled?: boolean;
 }

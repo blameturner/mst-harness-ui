@@ -29,6 +29,7 @@ import { useWasRecentlyHidden } from '../../hooks/useWasRecentlyHidden';
 import { uid } from '../../lib/utils/uid';
 import { replayStream } from '../../api/replayStream';
 import { saveActiveStream, loadActiveStream, clearActiveStream } from '../../lib/activeStream';
+import { getQueueActive } from '../../api/queue/getQueueActive';
 import { SidebarBody } from './SidebarBody';
 import { useAutoScrollToBottom } from './hooks/useAutoScrollToBottom';
 import { labelForTool } from '../../lib/intent/labelForTool';
@@ -66,6 +67,7 @@ export function ChatPage() {
   const [knowledgeEnabled, setKnowledgeEnabled] = useState(false);
   const [researchEnabled, setResearchEnabled] = useState(false);
   const [searchMode, setSearchMode] = useState<'normal' | 'deep'>('normal');
+  const [searchSuppressed, setSearchSuppressed] = useState(false);
   const streamAbortRef = useRef<AbortController | null>(null);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -97,7 +99,7 @@ export function ChatPage() {
     }, 4000);
   }
 
-  const [alwaysAllowSearch, setAlwaysAllowSearch] = useState(false);
+  const [alwaysAllowSearch, setAlwaysAllowSearch] = useState(true);
   const [grounding, setGrounding] = useState<boolean>(true);
 
   const [consentRequest, setConsentRequest] = useState<ConsentRequest | null>(null);
@@ -299,7 +301,7 @@ export function ChatPage() {
     if (!initialLoadOkRef.current) void runInitialLoad.current();
   });
 
-  // Poll for deep search results when jobs are queued
+  // Poll for deep search progress and results
   const hasWaitingDeepSearch = messages.some((m) => m.deepSearchStatus === 'waiting');
   useEffect(() => {
     if (!hasWaitingDeepSearch || activeId == null) return;
@@ -307,49 +309,43 @@ export function ChatPage() {
     const timer = setInterval(async () => {
       if (activeIdRef.current !== convId) return;
       try {
-        const res = await getConversationMessages(convId);
+        const qs = await getQueueActive({ conversation_id: convId, source: 'deep_search' });
         if (activeIdRef.current !== convId) return;
-        const freshMessages = hydrateMessages(res.messages);
-        const hasNewDeepResults = freshMessages.some(
-          (m) => m.role === 'system' && m.content.startsWith('[Deep search result]'),
-        );
-        if (hasNewDeepResults) {
-          setMessages((prev) => {
-            // Merge: keep existing messages, append any new deep search results
-            const existingIds = new Set(prev.map((m) => m.id));
-            const newResults = freshMessages.filter(
-              (m) => m.content.startsWith('[Deep search result]') && !existingIds.has(m.id),
-            );
-            if (newResults.length === 0) return prev;
-            // Insert new results before the assistant message that has the waiting status
-            const waitIdx = prev.findIndex((m) => m.deepSearchStatus === 'waiting');
-            if (waitIdx < 0) return [...prev, ...newResults];
-            const copy = prev.slice();
-            copy.splice(waitIdx + 1, 0, ...newResults);
-            return copy;
-          });
-        }
-        // Check if all deep search jobs are done by seeing if fresh DB has no more pending
-        // system messages arriving — if the count stabilises, mark as complete
-        const dbDeepCount = freshMessages.filter(
-          (m) => m.content.startsWith('[Deep search result]'),
-        ).length;
-        setMessages((prev) => {
-          const prevDeepCount = prev.filter(
-            (m) => m.content.startsWith('[Deep search result]'),
-          ).length;
-          // If we got results and count matches DB, mark complete
-          if (dbDeepCount > 0 && dbDeepCount === prevDeepCount) {
-            return prev.map((m) =>
+
+        if (qs.active > 0) {
+          // Update banner with progress
+          setMessages((ms) =>
+            ms.map((m) =>
               m.deepSearchStatus === 'waiting'
-                ? { ...m, deepSearchStatus: 'complete' as const }
+                ? { ...m, deepSearchMessage: `Researching... ${qs.active} source${qs.active === 1 ? '' : 's'} remaining` }
                 : m,
-            );
-          }
-          return prev;
-        });
+            ),
+          );
+        } else {
+          // All done — mark banner as done and refetch messages for [Deep search result] entries
+          setMessages((ms) =>
+            ms.map((m) =>
+              m.deepSearchStatus === 'waiting'
+                ? { ...m, deepSearchStatus: 'done' as const, deepSearchMessage: undefined }
+                : m,
+            ),
+          );
+          try {
+            const res = await getConversationMessages(convId);
+            if (activeIdRef.current !== convId) return;
+            const fresh = hydrateMessages(res.messages);
+            setMessages((prev) => {
+              const existingIds = new Set(prev.map((x) => x.id));
+              const newResults = fresh.filter(
+                (x) => x.content.startsWith('[Deep search result]') && !existingIds.has(x.id),
+              );
+              if (newResults.length === 0) return prev;
+              return [...prev, ...newResults];
+            });
+          } catch {}
+        }
       } catch {}
-    }, 18_000);
+    }, 12_000);
     return () => clearInterval(timer);
   }, [hasWaitingDeepSearch, activeId]);
 
@@ -748,7 +744,7 @@ export function ChatPage() {
           conversation_id: activeId ?? undefined,
           ...(isFirstMessage && ragEnabled ? { rag_enabled: true } : {}),
           ...(isFirstMessage && knowledgeEnabled ? { knowledge_enabled: true } : {}),
-          ...(alwaysAllowSearch ? { search_enabled: true } : {}),
+          ...(searchSuppressed ? { search_enabled: false } : alwaysAllowSearch ? { search_enabled: true } : {}),
           ...(searchMode !== 'normal' ? { search_mode: searchMode } : {}),
           ...(styleKey ? { response_style: styleKey } : {}),
         },
@@ -1157,6 +1153,8 @@ export function ChatPage() {
               },
             ] satisfies ComposerToggle[]
           }
+          searchSuppressed={searchSuppressed}
+          onToggleSearchSuppressed={() => setSearchSuppressed((v) => !v)}
         />
       </main>
 
@@ -1261,9 +1259,9 @@ export function ChatPage() {
               <label className="mt-3 flex items-center justify-between gap-2 text-[11px] font-sans text-fg cursor-pointer select-none">
                 <span>
                   <span className="text-muted uppercase tracking-[0.14em] text-[10px] block">
-                    Always allow web search
+                    Web search
                   </span>
-                  <span className="text-[10px] text-muted">skip the consent dialog</span>
+                  <span className="text-[10px] text-muted">Turn off to stop the model retrieving information from the internet</span>
                 </span>
                 <button
                   type="button"

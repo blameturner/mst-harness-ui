@@ -26,6 +26,16 @@ queueRoute.post('/submit', async (c) => {
   }
 });
 
+queueRoute.get('/active', async (c) => {
+  const qs = c.req.url.includes('?') ? `?${c.req.url.split('?')[1]}` : '';
+  try {
+    const res = await harnessClient.get(`/tool-queue/active${qs}`, TIMEOUT);
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'queue');
+  }
+});
+
 queueRoute.get('/status', async (c) => {
   try {
     const res = await harnessClient.get('/tool-queue/status', TIMEOUT);

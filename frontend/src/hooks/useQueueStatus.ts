@@ -1,18 +1,18 @@
 import { useEffect, useState } from 'react';
-import { getQueueStatus } from '../api/queue/getQueueStatus';
-import type { QueueStatus } from '../api/types/QueueStatus';
+import { getQueueActive } from '../api/queue/getQueueActive';
+import type { QueueActive } from '../api/types/QueueActive';
 
 const POLL_INTERVAL = 15_000;
 
 export function useQueueStatus() {
-  const [status, setStatus] = useState<QueueStatus | null>(null);
+  const [status, setStatus] = useState<QueueActive | null>(null);
 
   useEffect(() => {
     let active = true;
 
     async function poll() {
       try {
-        const s = await getQueueStatus();
+        const s = await getQueueActive();
         if (active) setStatus(s);
       } catch {}
     }

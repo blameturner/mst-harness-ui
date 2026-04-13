@@ -249,19 +249,16 @@ export function ChatBubble({ message, onRetry, onEdit }: Props) {
         <SearchStatusBadge status={message.searchStatus} />
         <MarkdownBody content={message.content} />
         {isStreaming && <span className="caret" />}
-        {message.deepSearchStatus && (
+        {message.deepSearchStatus === 'waiting' && (
           <div className="mt-2 flex items-center gap-1.5 text-[11px] font-sans text-muted bg-bg/60 border border-border rounded-md px-2.5 py-1.5">
-            {message.deepSearchStatus === 'waiting' ? (
-              <>
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                {message.deepSearchMessage || 'Deep research queued — results arriving in background'}
-              </>
-            ) : (
-              <>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                Deep search results delivered
-              </>
-            )}
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+            {message.deepSearchMessage || 'Researching in background...'}
+          </div>
+        )}
+        {message.deepSearchStatus === 'done' && (
+          <div className="mt-2 flex items-center gap-1.5 text-[11px] font-sans text-muted bg-bg/60 border border-border rounded-md px-2.5 py-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            Deep research complete — results added below
           </div>
         )}
         <SourcesPanel
@@ -278,23 +275,16 @@ export function ChatBubble({ message, onRetry, onEdit }: Props) {
   );
 }
 
-function parseDeepSearchContent(content: string): { url: string; summary: string } {
+function DeepSearchResultCard({ content }: { content: string }) {
+  const [open, setOpen] = useState(false);
   const lines = content.replace('[Deep search result]\n', '').split('\n');
   let url = '';
   const summaryLines: string[] = [];
   for (const line of lines) {
-    if (line.startsWith('Source: ')) {
-      url = line.slice('Source: '.length).trim();
-    } else if (line.trim()) {
-      summaryLines.push(line);
-    }
+    if (line.startsWith('Source: ')) url = line.slice('Source: '.length).trim();
+    else if (line.trim()) summaryLines.push(line);
   }
-  return { url, summary: summaryLines.join('\n') };
-}
-
-function DeepSearchResultCard({ content }: { content: string }) {
-  const { url, summary } = parseDeepSearchContent(content);
-  const [open, setOpen] = useState(false);
+  const summary = summaryLines.join('\n');
   const hostname = url ? (() => { try { return new URL(url).hostname; } catch { return url; } })() : '';
 
   return (
@@ -306,14 +296,8 @@ function DeepSearchResultCard({ content }: { content: string }) {
           className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-panelHi transition-colors"
         >
           <svg
-            width="10"
-            height="10"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+            width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
             className={`transition-transform shrink-0 text-muted ${open ? 'rotate-90' : ''}`}
           >
             <polyline points="9 6 15 12 9 18" />
@@ -322,20 +306,14 @@ function DeepSearchResultCard({ content }: { content: string }) {
             Deep search result
           </span>
           {hostname && (
-            <span className="text-[10px] font-sans text-muted truncate ml-auto">
-              {hostname}
-            </span>
+            <span className="text-[10px] font-sans text-muted truncate ml-auto">{hostname}</span>
           )}
         </button>
         {open && (
           <div className="px-3 pb-2.5 space-y-1.5">
             {url && (
-              <a
-                href={url}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="text-[11px] font-sans text-fg hover:underline underline-offset-2 break-all"
-              >
+              <a href={url} target="_blank" rel="noreferrer noopener"
+                className="text-[11px] font-sans text-fg hover:underline underline-offset-2 break-all">
                 {url}
               </a>
             )}

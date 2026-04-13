@@ -27,6 +27,6 @@ export interface DisplayMessage {
   thinkingStartTime?: number;
   thinkingEndTime?: number;
   isThinking?: boolean;
-  deepSearchStatus?: 'waiting' | 'complete';
+  deepSearchStatus?: 'waiting' | 'done';
   deepSearchMessage?: string;
 }

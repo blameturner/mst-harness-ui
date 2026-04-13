@@ -8,6 +8,7 @@ interface Props {
   onNewSession: () => void;
   onSelectSession: (c: CodeConversation) => void;
   onRenameSession: (c: CodeConversation, nextTitle: string) => Promise<void> | void;
+  onDeleteSession?: (id: number) => void;
   onPick?: () => void;
 }
 
@@ -18,6 +19,7 @@ export function SidebarBody({
   onNewSession,
   onSelectSession,
   onRenameSession,
+  onDeleteSession,
   onPick,
 }: Props) {
   const listRef = useRef<HTMLDivElement>(null);
@@ -168,15 +170,25 @@ export function SidebarBody({
                   </button>
                 )}
                 {!isRenaming && (
-                  <button
-                    onClick={() => {
-                      setRenameValue(c.title || '');
-                      setRenamingId(c.Id);
-                    }}
-                    className="mt-1 text-[9px] uppercase tracking-[0.14em] text-muted hover:text-fg md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                  >
-                    Rename
-                  </button>
+                  <div className="flex items-center gap-3 mt-1">
+                    <button
+                      onClick={() => {
+                        setRenameValue(c.title || '');
+                        setRenamingId(c.Id);
+                      }}
+                      className="text-[9px] uppercase tracking-[0.14em] text-muted hover:text-fg md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                    >
+                      Rename
+                    </button>
+                    {onDeleteSession && (
+                      <button
+                        onClick={() => onDeleteSession(c.Id)}
+                        className="text-[9px] uppercase tracking-[0.14em] text-muted hover:text-red-500 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             );
