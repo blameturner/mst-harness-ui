@@ -47,7 +47,8 @@ export function PlanApprovalCard({ model, searchStatus, searchContextText, onApp
 
   const awaiting = searchStatus === 'awaiting_approval';
   const approved = searchStatus === 'approved';
-  if (!awaiting && !approved) return null;
+  const queued = searchStatus === 'queued';
+  if (!awaiting && !approved && !queued) return null;
 
   const parsed = parsePlan(model, searchContextText);
   const isResearch = model === 'research_plan';
@@ -71,6 +72,12 @@ export function PlanApprovalCard({ model, searchStatus, searchContextText, onApp
           <span className="text-[10px] uppercase tracking-[0.14em] font-sans text-emerald-400 flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             Approved
+          </span>
+        )}
+        {queued && (
+          <span className="text-[10px] uppercase tracking-[0.14em] font-sans text-amber-400 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+            Executing
           </span>
         )}
       </div>

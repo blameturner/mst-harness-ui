@@ -4,6 +4,7 @@ export type SearchStatus =
   | 'completed'
   | 'awaiting_approval'
   | 'approved'
+  | 'queued'
   | 'no_results'
   | 'error'
   | 'consent_required'

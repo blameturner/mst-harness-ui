@@ -316,7 +316,9 @@ export function ChatPage() {
   });
 
   // Poll for deep search / research progress and results
-  const hasWaitingDeepSearch = messages.some((m) => m.deepSearchStatus === 'waiting');
+  const hasWaitingDeepSearch = messages.some(
+    (m) => m.deepSearchStatus === 'waiting' || m.searchStatus === 'queued',
+  );
   useEffect(() => {
     if (!hasWaitingDeepSearch || activeId == null) return;
     const convId = activeId;
@@ -336,13 +338,17 @@ export function ChatPage() {
             ),
           );
         } else {
-          // All done — mark banner as done and refetch messages for new results
+          // All done — mark banner as done, clear queued status, refetch messages for new results
           setMessages((ms) =>
-            ms.map((m) =>
-              m.deepSearchStatus === 'waiting'
-                ? { ...m, deepSearchStatus: 'done' as const, deepSearchMessage: undefined }
-                : m,
-            ),
+            ms.map((m) => {
+              if (m.deepSearchStatus === 'waiting') {
+                return { ...m, deepSearchStatus: 'done' as const, deepSearchMessage: undefined };
+              }
+              if (m.searchStatus === 'queued') {
+                return { ...m, searchStatus: 'completed' as const };
+              }
+              return m;
+            }),
           );
           try {
             const res = await getConversationMessages(convId);
@@ -532,7 +538,6 @@ export function ChatPage() {
                     ...x,
                     deepSearchStatus: 'waiting' as const,
                     deepSearchMessage: label,
-                    searchStatus: x.searchStatus === 'awaiting_approval' ? 'approved' as const : x.searchStatus,
                   }
                 : x,
             ),
