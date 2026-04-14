@@ -5,7 +5,7 @@ export const DATA_LAYER_INFO: Record<string, { role: string; detail: string }> =
   },
   postgres: {
     role: 'Primary database',
-    detail: 'Stores conversations, messages, agent runs, enrichment logs, and all persistent application data.',
+    detail: 'Stores conversations, messages, agent runs, and all persistent application data.',
   },
   nocodb: {
     role: 'Org / config store',

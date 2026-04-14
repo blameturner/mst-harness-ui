@@ -7,7 +7,7 @@ import type { ChatIntent } from './ChatIntent';
 
 export type StreamEvent =
   | { type: 'chunk'; text: string }
-  | { type: 'meta'; conversation_id?: number; mode?: 'plan' | 'execute' | 'debug'; estimate?: string; job_id?: string }
+  | { type: 'meta'; conversation_id?: number; mode?: 'plan' | 'execute' | 'explain' | 'review'; estimate?: string; job_id?: string }
   | {
       type: 'done';
       usage?: { prompt_tokens: number; completion_tokens: number };
@@ -17,7 +17,7 @@ export type StreamEvent =
       conversation_id?: number;
       context_chars?: number;
       duration_seconds?: number;
-      mode?: 'plan' | 'execute' | 'debug' | 'research';
+      mode?: 'plan' | 'execute' | 'explain' | 'review';
       output?: string;
       awaiting?: 'search_consent';
       search_used?: boolean;
@@ -29,7 +29,7 @@ export type StreamEvent =
   | { type: 'status'; phase: string; message?: string }
   | { type: 'summarised'; removed: number; summary_chars: number; topics?: string[]; fallback?: boolean }
   | { type: 'parsed'; output: AgentOutput | null }
-  | { type: 'searching'; queries?: string[]; mode?: 'normal' | 'deep' }
+  | { type: 'searching'; queries?: string[] }
   | {
       type: 'tool_status';
       phase: 'planning' | 'start' | 'end';
@@ -63,27 +63,5 @@ export type StreamEvent =
       confidence: number;
     }
   | { type: 'search_deferred'; entities: string[] }
-  | { type: 'deep_search_plan'; tool: string; message: string; status: 'awaiting_approval' }
-  | {
-      type: 'research_plan';
-      tool: string;
-      message: string;
-      status: 'awaiting_approval';
-      plan: {
-        question: string;
-        objective: string;
-        queries: string[];
-        lookout: string[];
-        completion_criteria: string[];
-      };
-    }
-  | { type: 'plan_approved'; tool: 'deep_search' | 'research' }
-  | { type: 'jobs_queued'; tool: string; message: string; status: string }
-  | {
-      type: 'research_status';
-      phase: 'classifying' | 'searching' | 'scraping' | 'summarising' | 'synthesising';
-      message: string;
-      queries?: string[];
-    }
   | { type: 'thinking'; text: string }
   | { type: 'error'; message: string };

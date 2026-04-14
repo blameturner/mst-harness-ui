@@ -1,15 +1,15 @@
 import type { SearchConfidence } from '../../api/types/SearchConfidence';
 
 export function ConfidenceBanner({ confidence }: { confidence?: SearchConfidence }) {
-  if (!confidence || confidence === 'high' || confidence === 'awaiting_approval') return null;
+  if (!confidence || confidence === 'high') return null;
 
-  const labels: Record<Exclude<SearchConfidence, 'high' | 'awaiting_approval'>, string> = {
+  const labels: Record<Exclude<SearchConfidence, 'high'>, string> = {
     medium: 'Some related sources found — results may not fully cover this topic',
     low: 'Limited relevant sources — answer may rely on general knowledge',
     none: 'No search results found',
   };
 
-  const styles: Record<Exclude<SearchConfidence, 'high' | 'awaiting_approval'>, string> = {
+  const styles: Record<Exclude<SearchConfidence, 'high'>, string> = {
     medium: 'border-amber-500/40 text-amber-600',
     low: 'border-amber-600/50 text-amber-600',
     none: 'border-border text-muted',

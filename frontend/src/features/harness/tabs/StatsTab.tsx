@@ -224,27 +224,6 @@ export function StatsTab() {
             </section>
           )}
 
-          <section>
-            <h3 className="font-display text-base mb-3">Enrichment</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-              <StatCard label="Cycles run" value={stats.enrichment.total_cycles.toLocaleString()} />
-              <StatCard label="Sources scraped" value={stats.enrichment.total_sources_scraped.toLocaleString()} />
-              <StatCard label="Tokens used" value={formatNumber(stats.enrichment.total_tokens_used)} />
-              <StatCard
-                label="Suggestions"
-                value={stats.enrichment.suggestions_generated.toLocaleString()}
-                sub={`${stats.enrichment.suggestions_approved} approved`}
-              />
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <StatCard
-                label="Approval rate"
-                value={stats.enrichment.suggestions_generated > 0
-                  ? `${((stats.enrichment.suggestions_approved / stats.enrichment.suggestions_generated) * 100).toFixed(0)}%`
-                  : '—'}
-              />
-            </div>
-          </section>
         </div>
       )}
     </div>

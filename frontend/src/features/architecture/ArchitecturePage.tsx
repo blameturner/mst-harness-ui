@@ -62,8 +62,8 @@ export function ArchitecturePage() {
           The harness is a self-hosted AI orchestration stack.
           Your browser loads a static frontend, which calls a gateway API.
           The gateway authenticates you, then proxies requests to the harness —
-          the core engine that manages models, agents, conversations, and
-          enrichment pipelines. Everything runs in Docker on a shared network.
+          the core engine that manages models, agents, and conversations.
+          Everything runs in Docker on a shared network.
         </p>
 
         <section>
@@ -95,7 +95,7 @@ export function ArchitecturePage() {
               from="Harness"
               to="Models"
               protocol="Inference"
-              detail={`The harness manages ${models.length || '—'} model endpoint${models.length !== 1 ? 's' : ''}. It orchestrates agents, handles context summarisation, runs enrichment pipelines, and streams structured output back.`}
+              detail={`The harness manages ${models.length || '—'} model endpoint${models.length !== 1 ? 's' : ''}. It orchestrates agents, handles context summarisation, and streams structured output back.`}
             />
           </div>
         </section>
@@ -243,7 +243,6 @@ export function ArchitecturePage() {
               <EndpointRow path="/api/stream/{id}" method="GET" purpose="SSE relay — proxies events from harness" />
               <EndpointRow path="/api/conversations" method="GET" purpose="List chat conversations" />
               <EndpointRow path="/api/agents" method="GET" purpose="List registered agents" />
-              <EndpointRow path="/api/enrichment/sources" method="GET" purpose="List enrichment scrape targets" />
               <EndpointRow path="/api/logs/stream" method="GET" purpose="SSE stream of Docker container logs" />
               <EndpointRow path="/api/logs/containers" method="GET" purpose="List all Docker containers" />
               <EndpointRow path="/api/schedules" method="GET" purpose="List agent cron schedules" />

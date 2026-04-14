@@ -37,11 +37,4 @@ export interface HarnessStats {
     avg_steps: number;
     by_agent: { agent_name: string; runs: number; success_rate: number; avg_steps: number }[];
   };
-  enrichment: {
-    total_cycles: number;
-    total_sources_scraped: number;
-    total_tokens_used: number;
-    suggestions_generated: number;
-    suggestions_approved: number;
-  };
 }

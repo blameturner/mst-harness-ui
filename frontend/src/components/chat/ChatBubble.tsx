@@ -9,7 +9,6 @@ import { ThinkingLabel } from './ThinkingLabel';
 import { ElapsedTimer } from './ElapsedTimer';
 import { OutputSection } from './OutputSection';
 import { MarkdownBody } from './MarkdownBody';
-import { PlanApprovalCard } from './PlanApprovalCard';
 import { resolveSourceLayout } from '../../lib/intent/resolveSourceLayout';
 import { typingLabelForIntent } from '../../lib/intent/typingLabelForIntent';
 
@@ -17,8 +16,6 @@ interface Props {
   message: DisplayMessage;
   onRetry?: (message: DisplayMessage) => void;
   onEdit?: (message: DisplayMessage) => void;
-  onPlanApprove?: (message: DisplayMessage) => void;
-  onPlanRevise?: (message: DisplayMessage, feedback: string) => void;
 }
 
 const BUBBLE_MAX = 'max-w-[92%] md:max-w-[80%]';
@@ -32,7 +29,7 @@ function formatTimestamp(ms: number | undefined): string | undefined {
   }
 }
 
-export function ChatBubble({ message, onRetry, onEdit, onPlanApprove, onPlanRevise }: Props) {
+export function ChatBubble({ message, onRetry, onEdit }: Props) {
   const [copied, setCopied] = useState(false);
 
   async function copyContent() {
@@ -67,34 +64,10 @@ export function ChatBubble({ message, onRetry, onEdit, onPlanApprove, onPlanRevi
   }
 
   if (message.role === 'system' || message.status === 'system') {
-    if (message.content.startsWith('[Deep search result]')) {
-      return <DeepSearchResultCard content={message.content} />;
-    }
     return (
       <div className="flex justify-center animate-fadeIn">
         <div className="text-[10px] uppercase tracking-[0.16em] font-sans text-muted px-3 py-1 rounded-full border border-border bg-panel/40">
           {message.content}
-        </div>
-      </div>
-    );
-  }
-
-  if (message.model === 'deep_search' || message.model === 'research') {
-    const isResearch = message.model === 'research';
-    const label = isResearch ? 'Research Report' : 'Deep Search Result';
-    const failed = message.searchStatus === 'failed';
-    return (
-      <div className="flex justify-start animate-fadeIn">
-        <div className={`${BUBBLE_MAX} rounded-lg border overflow-hidden ${failed ? 'border-red-600/40' : 'border-border'}`}>
-          <div className={`flex items-center gap-2 px-3 py-2 ${failed ? 'bg-red-500/10' : 'bg-panel/40'} border-b border-border`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${failed ? 'bg-red-500' : 'bg-emerald-500'}`} />
-            <span className="text-[10px] uppercase tracking-[0.14em] font-sans text-muted">
-              {label}{failed ? ' — Failed' : ''}
-            </span>
-          </div>
-          <div className="px-4 py-3 bg-panel/20 markdown-body">
-            <MarkdownBody content={message.content} />
-          </div>
         </div>
       </div>
     );
@@ -273,25 +246,6 @@ export function ChatBubble({ message, onRetry, onEdit, onPlanApprove, onPlanRevi
         <SearchStatusBadge status={message.searchStatus} />
         <MarkdownBody content={message.content} />
         {isStreaming && <span className="caret" />}
-        {message.deepSearchStatus === 'waiting' && (
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] font-sans text-muted bg-bg/60 border border-border rounded-md px-2.5 py-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-            {message.deepSearchMessage || 'Researching in background...'}
-          </div>
-        )}
-        {message.deepSearchStatus === 'done' && (
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] font-sans text-muted bg-bg/60 border border-border rounded-md px-2.5 py-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            Deep research complete — results added below
-          </div>
-        )}
-        <PlanApprovalCard
-          model={message.model}
-          searchStatus={message.searchStatus}
-          searchContextText={message.searchContextText}
-          onApprove={() => onPlanApprove?.(message)}
-          onRevise={(fb) => onPlanRevise?.(message, fb)}
-        />
         {message.status === 'complete' && message.errorMessage && (
           <div className="mt-2 text-[11px] font-sans text-amber-600 bg-amber-500/10 border border-amber-600/30 rounded-md px-2.5 py-1.5">
             <div className="flex items-center gap-1.5">
@@ -307,60 +261,6 @@ export function ChatBubble({ message, onRetry, onEdit, onPlanApprove, onPlanRevi
         {showCopy && (
           <div className="mt-2 -mb-1">
             <CopyButton copied={copied} onCopy={copyContent} />
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function DeepSearchResultCard({ content }: { content: string }) {
-  const [open, setOpen] = useState(false);
-  const lines = content.replace('[Deep search result]\n', '').split('\n');
-  let url = '';
-  const summaryLines: string[] = [];
-  for (const line of lines) {
-    if (line.startsWith('Source: ')) url = line.slice('Source: '.length).trim();
-    else if (line.trim()) summaryLines.push(line);
-  }
-  const summary = summaryLines.join('\n');
-  const hostname = url ? (() => { try { return new URL(url).hostname; } catch { return url; } })() : '';
-
-  return (
-    <div className="flex justify-start animate-fadeIn">
-      <div className="max-w-[92%] md:max-w-[80%] rounded-md border border-border bg-panel/40 overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-panelHi transition-colors"
-        >
-          <svg
-            width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-            className={`transition-transform shrink-0 text-muted ${open ? 'rotate-90' : ''}`}
-          >
-            <polyline points="9 6 15 12 9 18" />
-          </svg>
-          <span className="text-[11px] font-sans text-muted uppercase tracking-[0.12em]">
-            Deep search result
-          </span>
-          {hostname && (
-            <span className="text-[10px] font-sans text-muted truncate ml-auto">{hostname}</span>
-          )}
-        </button>
-        {open && (
-          <div className="px-3 pb-2.5 space-y-1.5">
-            {url && (
-              <a href={url} target="_blank" rel="noreferrer noopener"
-                className="text-[11px] font-sans text-fg hover:underline underline-offset-2 break-all">
-                {url}
-              </a>
-            )}
-            {summary && (
-              <p className="text-[11px] font-sans text-muted leading-relaxed whitespace-pre-wrap">
-                {summary}
-              </p>
-            )}
           </div>
         )}
       </div>

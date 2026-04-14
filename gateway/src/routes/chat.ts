@@ -22,7 +22,6 @@ const chatSchema = z.object({
   knowledge_enabled: z.boolean().optional(),
   search_enabled: z.boolean().optional(),
   search_consent_declined: z.boolean().optional(),
-  search_mode: z.enum(['normal', 'deep', 'deep_approved', 'research', 'research_approved']).optional(),
   response_style: z.string().optional(),
 });
 

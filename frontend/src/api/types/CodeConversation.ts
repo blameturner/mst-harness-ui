@@ -7,7 +7,7 @@ export interface CodeConversation {
   title: string;
   status?: ConversationStatus;
   // mode is stored in the rag_collection column on the backend
-  mode?: 'plan' | 'execute' | 'debug';
+  mode?: 'plan' | 'execute' | 'explain' | 'review';
   rag_collection?: string | null;
   CreatedAt?: string;
   UpdatedAt?: string;

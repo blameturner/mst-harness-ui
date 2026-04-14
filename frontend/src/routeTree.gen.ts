@@ -13,7 +13,6 @@ import { Route as SetupRouteImport } from './routes/setup'
 import { Route as LogsRouteImport } from './routes/logs'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as HarnessRouteImport } from './routes/harness'
-import { Route as EnrichmentRouteImport } from './routes/enrichment'
 import { Route as CodeRouteImport } from './routes/code'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as ArchitectureRouteImport } from './routes/architecture'
@@ -42,11 +41,6 @@ const LoginRoute = LoginRouteImport.update({
 const HarnessRoute = HarnessRouteImport.update({
   id: '/harness',
   path: '/harness',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EnrichmentRoute = EnrichmentRouteImport.update({
-  id: '/enrichment',
-  path: '/enrichment',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CodeRoute = CodeRouteImport.update({
@@ -101,7 +95,6 @@ export interface FileRoutesByFullPath {
   '/architecture': typeof ArchitectureRoute
   '/chat': typeof ChatRoute
   '/code': typeof CodeRoute
-  '/enrichment': typeof EnrichmentRoute
   '/harness': typeof HarnessRoute
   '/login': typeof LoginRoute
   '/logs': typeof LogsRoute
@@ -117,7 +110,6 @@ export interface FileRoutesByTo {
   '/architecture': typeof ArchitectureRoute
   '/chat': typeof ChatRoute
   '/code': typeof CodeRoute
-  '/enrichment': typeof EnrichmentRoute
   '/harness': typeof HarnessRoute
   '/login': typeof LoginRoute
   '/logs': typeof LogsRoute
@@ -134,7 +126,6 @@ export interface FileRoutesById {
   '/architecture': typeof ArchitectureRoute
   '/chat': typeof ChatRoute
   '/code': typeof CodeRoute
-  '/enrichment': typeof EnrichmentRoute
   '/harness': typeof HarnessRoute
   '/login': typeof LoginRoute
   '/logs': typeof LogsRoute
@@ -152,7 +143,6 @@ export interface FileRouteTypes {
     | '/architecture'
     | '/chat'
     | '/code'
-    | '/enrichment'
     | '/harness'
     | '/login'
     | '/logs'
@@ -168,7 +158,6 @@ export interface FileRouteTypes {
     | '/architecture'
     | '/chat'
     | '/code'
-    | '/enrichment'
     | '/harness'
     | '/login'
     | '/logs'
@@ -184,7 +173,6 @@ export interface FileRouteTypes {
     | '/architecture'
     | '/chat'
     | '/code'
-    | '/enrichment'
     | '/harness'
     | '/login'
     | '/logs'
@@ -201,7 +189,6 @@ export interface RootRouteChildren {
   ArchitectureRoute: typeof ArchitectureRoute
   ChatRoute: typeof ChatRoute
   CodeRoute: typeof CodeRoute
-  EnrichmentRoute: typeof EnrichmentRoute
   HarnessRoute: typeof HarnessRoute
   LoginRoute: typeof LoginRoute
   LogsRoute: typeof LogsRoute
@@ -236,13 +223,6 @@ declare module '@tanstack/react-router' {
       path: '/harness'
       fullPath: '/harness'
       preLoaderRoute: typeof HarnessRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/enrichment': {
-      id: '/enrichment'
-      path: '/enrichment'
-      fullPath: '/enrichment'
-      preLoaderRoute: typeof EnrichmentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/code': {
@@ -344,7 +324,6 @@ const rootRouteChildren: RootRouteChildren = {
   ArchitectureRoute: ArchitectureRoute,
   ChatRoute: ChatRoute,
   CodeRoute: CodeRoute,
-  EnrichmentRoute: EnrichmentRoute,
   HarnessRoute: HarnessRoute,
   LoginRoute: LoginRoute,
   LogsRoute: LogsRoute,

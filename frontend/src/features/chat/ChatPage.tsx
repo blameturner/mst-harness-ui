@@ -13,7 +13,6 @@ import { useAutoScrollToBottom } from './hooks/useAutoScrollToBottom';
 import { useChatConfig } from './hooks/useChatConfig';
 import { useConversations } from './hooks/useConversations';
 import { useChat } from './hooks/useChat';
-import { useDeepSearchPolling } from './hooks/useDeepSearchPolling';
 import { useStreamRecovery } from './hooks/useStreamRecovery';
 
 const EMPTY_STATE_PROMPTS = [
@@ -39,12 +38,10 @@ export function ChatPage() {
     activeIdRef,
     model: config.model,
     styleKey: config.styleKey,
-    searchMode: config.searchMode,
     searchSuppressed: config.searchSuppressed,
     alwaysAllowSearch: config.alwaysAllowSearch,
     ragEnabled: config.ragEnabled,
     knowledgeEnabled: config.knowledgeEnabled,
-    researchEnabled: config.researchEnabled,
     setActiveId: convs.setActiveId,
     setConversations: convs.setConversations,
     setConversationTopics: convs.setConversationTopics,
@@ -69,14 +66,6 @@ export function ChatPage() {
     streamAbortRef: chat.streamAbortRef,
     processStream: chat.processStream,
   });
-
-  useDeepSearchPolling(
-    chat.messages,
-    convs.activeId,
-    activeIdRef,
-    chat.setMessages,
-    convs.setConversationTopics,
-  );
 
   // Sync grounding from stats
   useEffect(() => {
@@ -228,24 +217,6 @@ export function ChatPage() {
                           }
                         : undefined
                     }
-                    onPlanApprove={(mm) => {
-                      const mode = mm.model === 'research_plan' ? 'research_approved' : 'deep_approved';
-                      chat.setMessages((ms) =>
-                        ms.map((x) =>
-                          x.id === mm.id ? { ...x, searchStatus: 'approved' as const } : x,
-                        ),
-                      );
-                      void chat.send('Approved', mode);
-                    }}
-                    onPlanRevise={(mm, feedback) => {
-                      const mode = mm.model === 'research_plan' ? 'research' : 'deep';
-                      chat.setMessages((ms) =>
-                        ms.map((x) =>
-                          x.id === mm.id ? { ...x, searchStatus: undefined } : x,
-                        ),
-                      );
-                      void chat.send(feedback, mode);
-                    }}
                   />
                   {m.role === 'assistant' && m.status === 'complete' && m.responseStyle && (
                     <div className="flex justify-start">

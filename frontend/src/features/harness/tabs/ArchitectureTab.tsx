@@ -114,10 +114,10 @@ export function ArchitectureTab() {
               The orchestration brain. When a prompt arrives, the harness:
               <ol className="list-decimal list-inside mt-2 space-y-1 text-xs text-muted">
                 <li>Selects the right model based on the task (chat, code, agent run)</li>
-                <li>Builds the prompt with system instructions, conversation history, and enrichment data</li>
+                <li>Builds the prompt with system instructions and conversation history</li>
                 <li>Sends inference requests to the appropriate model endpoint</li>
                 <li>Streams structured output back (chunks, metadata, tool calls, parsed results)</li>
-                <li>Manages agents, enrichment pipelines, scheduling, and conversation persistence</li>
+                <li>Manages agents, scheduling, and conversation persistence</li>
               </ol>
             </DetailPanel>
           )}
@@ -261,7 +261,7 @@ export function ArchitectureTab() {
             detail="Gateway validates the session cookie, resolves the org, and proxies the request to the harness over the Docker network."
           />
           <FlowStep n={3} title="Harness selects model & builds context" endpoint="internal"
-            detail={`The harness picks the right model based on the task type (${models.map((m) => m.role ?? m.name).join(', ') || 'reasoner, coder, fast, tool'}). It assembles the full prompt with system instructions, conversation history, and enrichment data.`}
+            detail={`The harness picks the right model based on the task type (${models.map((m) => m.role ?? m.name).join(', ') || 'reasoner, coder, fast, tool'}). It assembles the full prompt with system instructions and conversation history.`}
           />
           <FlowStep n={4} title="Inference request" endpoint="model endpoint"
             detail={`The assembled prompt is sent to the selected model endpoint. ${models.length > 0 ? `Currently ${models.length} model${models.length !== 1 ? 's' : ''} configured: ${models.map((m) => m.name).join(', ')}.` : ''}`}
@@ -269,8 +269,8 @@ export function ArchitectureTab() {
           <FlowStep n={5} title="Streaming response" endpoint="SSE /api/stream/{id}"
             detail="The model streams tokens back. The harness wraps them as SSE events (chunk, meta, searching, parsed, done) and relays through the gateway to the browser. Each event has an ID for cursor-based reconnection."
           />
-          <FlowStep n={6} title="Persistence & enrichment" endpoint="Postgres"
-            detail="Once complete, the conversation and messages are persisted. If enrichment is enabled, scraped content is processed and suggestions are generated for review."
+          <FlowStep n={6} title="Persistence" endpoint="Postgres"
+            detail="Once complete, the conversation and messages are persisted, and any post-turn work (summarisation, knowledge graph extraction) is dispatched."
           />
         </div>
       </section>

@@ -1,1 +1,1 @@
-export type Mode = 'plan' | 'execute' | 'debug';
+export type Mode = 'plan' | 'execute' | 'explain' | 'review';

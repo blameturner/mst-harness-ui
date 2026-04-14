@@ -39,10 +39,15 @@ const STARTER_PROMPTS: Record<Mode, string[]> = {
     'Write the tests for the happy path',
     'Apply the plan to server.js and show the full file',
   ],
-  debug: [
-    'The attached stack trace crashes on startup — find the cause',
-    'Why is this query returning no rows?',
+  explain: [
     'Explain what this function does line by line',
+    'Walk me through how this code handles auth',
+    'What does this regex pattern match?',
+  ],
+  review: [
+    'Review this code for security vulnerabilities',
+    'Suggest improvements for performance',
+    'Check for code smells and best practices',
   ],
 };
 
@@ -176,6 +181,7 @@ export function CodePage() {
       void resumeCodeStream(
         c,
         stored.jobId,
+        sessions.setConversationId,
         config.setMode,
         config.setModel,
         messaging.setMessages,
@@ -381,7 +387,7 @@ export function CodePage() {
           toggles={config.buildToggles()}
           leftRailSlot={
             <div className="flex items-center border border-border rounded overflow-hidden text-[11px] font-sans bg-panel/60">
-              {(['plan', 'execute', 'debug'] as Mode[]).map((m) => (
+              {(['plan', 'execute', 'explain', 'review'] as Mode[]).map((m) => (
                 <button
                   key={m}
                   type="button"

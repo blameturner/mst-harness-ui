@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import type { StreamEvent } from '../../../api/types/StreamEvent';
 import type { DisplayMessage } from '../../../components/chat/DisplayMessage';
 import { chatStream } from '../../../api/chat/chatStream';
-import { researchStream } from '../../../api/chat/researchStream';
 import { listConversations } from '../../../api/chat/listConversations';
 import { saveActiveStream, clearActiveStream } from '../../../lib/activeStream';
 import { isTransientNetworkError } from '../../../lib/network/isTransientNetworkError';
@@ -16,12 +15,10 @@ interface UseChatDeps {
   activeIdRef: React.RefObject<number | null>;
   model: string;
   styleKey: string;
-  searchMode: 'normal' | 'deep' | 'research';
   searchSuppressed: boolean;
   alwaysAllowSearch: boolean;
   ragEnabled: boolean;
   knowledgeEnabled: boolean;
-  researchEnabled: boolean;
   setActiveId: (id: number | null) => void;
   setConversations: React.Dispatch<React.SetStateAction<import('../../../api/types/Conversation').Conversation[]>>;
   setConversationTopics: (topics: string[]) => void;
@@ -42,8 +39,7 @@ export interface ChatState {
   setConsentRequest: (v: ConsentRequest | null) => void;
   streamAbortRef: React.RefObject<AbortController | null>;
 
-  send: (forcedText?: string, searchModeOverride?: 'deep' | 'deep_approved' | 'research' | 'research_approved') => Promise<void>;
-  sendResearch: () => Promise<void>;
+  send: (forcedText?: string) => Promise<void>;
   resolveConsent: (allow: boolean) => Promise<void>;
   processStream: (
     stream: AsyncGenerator<StreamEvent, void, void>,
@@ -51,13 +47,11 @@ export interface ChatState {
     userText: string,
     isFirstMessage: boolean,
     controller: AbortController,
-    ignorePlanEvents?: boolean,
   ) => Promise<{ conversationId: number | null; consentNeeded: boolean }>;
   runChatStream: (
     body: Parameters<typeof chatStream>[0],
     pendingId: string,
     userText: string,
-    ignorePlanEvents?: boolean,
   ) => Promise<{ conversationId: number | null; consentNeeded: boolean }>;
 }
 
@@ -69,32 +63,17 @@ export function useChat(deps: UseChatDeps): ChatState {
   const [consentRequest, setConsentRequest] = useState<ConsentRequest | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
 
-  // Dismiss pending approval cards when mode resets to normal
-  useEffect(() => {
-    if (deps.searchMode === 'normal') {
-      setMessages((ms) =>
-        ms.map((x) =>
-          x.searchStatus === 'awaiting_approval'
-            ? { ...x, searchStatus: undefined }
-            : x,
-        ),
-      );
-    }
-  }, [deps.searchMode]);
-
   async function processStreamFn(
     stream: AsyncGenerator<StreamEvent, void, void>,
     pendingId: string,
     userText: string,
     isFirstMessage: boolean,
     controller: AbortController,
-    ignorePlanEvents?: boolean,
   ): Promise<{ conversationId: number | null; consentNeeded: boolean }> {
     let newConversationId: number | null = null;
     let streamJobId: string | null = null;
     let consentNeeded = false;
     let consentArgs: { query: string; reason: string } | null = null;
-    let deepPlanQueries: string[] = [];
 
     try {
       for await (const ev of stream) {
@@ -118,24 +97,6 @@ export function useChat(deps: UseChatDeps): ChatState {
           );
           continue;
         }
-        if (ev.type === 'jobs_queued') {
-          const label =
-            ev.status === 'running'
-              ? ev.message || (ev.tool === 'research' ? 'Research is running...' : 'Analysing sources...')
-              : ev.message;
-          setMessages((ms) =>
-            ms.map((x) =>
-              x.id === pendingId
-                ? {
-                    ...x,
-                    deepSearchStatus: 'waiting' as const,
-                    deepSearchMessage: label,
-                  }
-                : x,
-            ),
-          );
-          continue;
-        }
         if (ev.type === 'search_deferred') {
           setMessages((ms) =>
             ms.map((x) =>
@@ -147,7 +108,6 @@ export function useChat(deps: UseChatDeps): ChatState {
           continue;
         }
         if (ev.type === 'searching') {
-          if (ev.queries?.length) deepPlanQueries = ev.queries;
           flushSync(() => {
             setMessages((ms) =>
               ms.map((x) => (x.id === pendingId ? { ...x, status: 'searching', toolStatus: undefined } : x)),
@@ -183,52 +143,6 @@ export function useChat(deps: UseChatDeps): ChatState {
                     }
                   : x,
               ),
-            );
-          });
-          continue;
-        }
-        if (ev.type === 'deep_search_plan') {
-          if (ignorePlanEvents) continue;
-          setMessages((ms) =>
-            ms.map((x) =>
-              x.id === pendingId
-                ? { ...x, model: 'deep_search_plan', searchStatus: 'awaiting_approval' as const }
-                : x,
-            ),
-          );
-          continue;
-        }
-        if (ev.type === 'research_plan') {
-          if (ignorePlanEvents) continue;
-          const planJson = JSON.stringify(ev.plan);
-          setMessages((ms) =>
-            ms.map((x) =>
-              x.id === pendingId
-                ? {
-                    ...x,
-                    model: 'research_plan',
-                    searchStatus: 'awaiting_approval' as const,
-                    searchContextText: planJson,
-                  }
-                : x,
-            ),
-          );
-          continue;
-        }
-        if (ev.type === 'plan_approved') {
-          setMessages((ms) =>
-            ms.map((x) =>
-              x.id === pendingId
-                ? { ...x, searchStatus: 'approved' as const }
-                : x,
-            ),
-          );
-          continue;
-        }
-        if (ev.type === 'research_status') {
-          flushSync(() => {
-            setMessages((ms) =>
-              ms.map((x) => (x.id === pendingId ? { ...x, toolStatus: ev.message } : x)),
             );
           });
           continue;
@@ -420,18 +334,14 @@ export function useChat(deps: UseChatDeps): ChatState {
     body: Parameters<typeof chatStream>[0],
     pendingId: string,
     userText: string,
-    ignorePlanEvents?: boolean,
   ) {
     const controller = new AbortController();
     streamAbortRef.current = controller;
     const stream = chatStream(body, controller.signal);
-    return processStreamFn(stream, pendingId, userText, body.conversation_id == null, controller, ignorePlanEvents);
+    return processStreamFn(stream, pendingId, userText, body.conversation_id == null, controller);
   }
 
-  async function send(forcedText?: string, searchModeOverride?: 'deep' | 'deep_approved' | 'research' | 'research_approved') {
-    if (deps.researchEnabled && !forcedText && !searchModeOverride) {
-      return sendResearchFn();
-    }
+  async function send(forcedText?: string) {
     const text = (forcedText ?? input).trim();
     if (!text || sending || !deps.model) return;
 
@@ -451,16 +361,7 @@ export function useChat(deps: UseChatDeps): ChatState {
       responseStyle: deps.styleKey || undefined,
       sourceUserText: text,
     };
-    setMessages((m) => {
-      const cleared = !searchModeOverride
-        ? m.map((x) =>
-            x.searchStatus === 'awaiting_approval'
-              ? { ...x, searchStatus: undefined }
-              : x,
-          )
-        : m;
-      return [...cleared, userMsg, pendingMsg];
-    });
+    setMessages((m) => [...m, userMsg, pendingMsg]);
     if (!forcedText) setInput('');
     setSending(true);
     setError(null);
@@ -468,7 +369,6 @@ export function useChat(deps: UseChatDeps): ChatState {
     const isFirstMessage = deps.activeId == null;
 
     try {
-      const isApproved = searchModeOverride === 'deep_approved' || searchModeOverride === 'research_approved';
       await runChatStreamFn(
         {
           model: deps.model,
@@ -477,50 +377,11 @@ export function useChat(deps: UseChatDeps): ChatState {
           ...(isFirstMessage && deps.ragEnabled ? { rag_enabled: true } : {}),
           ...(isFirstMessage && deps.knowledgeEnabled ? { knowledge_enabled: true } : {}),
           ...(deps.searchSuppressed ? { search_enabled: false } : deps.alwaysAllowSearch ? { search_enabled: true } : {}),
-          ...((searchModeOverride ?? deps.searchMode) !== 'normal' ? { search_mode: searchModeOverride ?? deps.searchMode } : {}),
           ...(deps.styleKey ? { response_style: deps.styleKey } : {}),
         },
         pendingId,
         text,
-        isApproved,
       );
-    } finally {
-      setSending(false);
-    }
-  }
-
-  async function sendResearchFn() {
-    const text = input.trim();
-    if (!text || sending || !deps.model) return;
-
-    const userMsg: DisplayMessage = {
-      id: uid(),
-      role: 'user',
-      content: text,
-      status: 'complete',
-    };
-    const pendingId = uid();
-    const pendingMsg: DisplayMessage = {
-      id: pendingId,
-      role: 'assistant',
-      content: '',
-      status: 'pending',
-      startedAt: Date.now(),
-      sourceUserText: text,
-    };
-    setMessages((m) => [...m, userMsg, pendingMsg]);
-    setInput('');
-    setSending(true);
-    setError(null);
-
-    try {
-      const controller = new AbortController();
-      streamAbortRef.current = controller;
-      const stream = researchStream(
-        { model: deps.model, question: text, conversation_id: deps.activeId ?? undefined },
-        controller.signal,
-      );
-      await processStreamFn(stream, pendingId, text, deps.activeId == null, controller);
     } finally {
       setSending(false);
     }
@@ -566,7 +427,6 @@ export function useChat(deps: UseChatDeps): ChatState {
     consentRequest, setConsentRequest,
     streamAbortRef,
     send,
-    sendResearch: sendResearchFn,
     resolveConsent,
     processStream: processStreamFn,
     runChatStream: runChatStreamFn,

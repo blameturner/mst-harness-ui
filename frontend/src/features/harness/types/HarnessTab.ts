@@ -1,1 +1,1 @@
-export type HarnessTab = 'architecture' | 'enrichment' | 'logs' | 'stats' | 'queue';
+export type HarnessTab = 'architecture' | 'logs' | 'stats' | 'queue';

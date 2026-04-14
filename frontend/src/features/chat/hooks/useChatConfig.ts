@@ -19,10 +19,7 @@ export interface ChatConfig {
   setRagEnabled: (fn: (v: boolean) => boolean) => void;
   knowledgeEnabled: boolean;
   setKnowledgeEnabled: (fn: (v: boolean) => boolean) => void;
-  researchEnabled: boolean;
 
-  searchMode: 'normal' | 'deep' | 'research';
-  setSearchMode: (fn: (m: 'normal' | 'deep' | 'research') => 'normal' | 'deep' | 'research') => void;
   searchSuppressed: boolean;
   setSearchSuppressed: (fn: (v: boolean) => boolean) => void;
 
@@ -44,9 +41,7 @@ export function useChatConfig(): ChatConfig {
 
   const [ragEnabled, setRagEnabled] = useState(false);
   const [knowledgeEnabled, setKnowledgeEnabled] = useState(false);
-  const [researchEnabled] = useState(false);
 
-  const [searchMode, setSearchMode] = useState<'normal' | 'deep' | 'research'>('normal');
   const [searchSuppressed, setSearchSuppressed] = useState(false);
 
   const [alwaysAllowSearch, setAlwaysAllowSearch] = useState(true);
@@ -76,28 +71,14 @@ export function useChatConfig(): ChatConfig {
             : 'Extract entities and write concept edges to the knowledge graph',
         onToggle: () => setKnowledgeEnabled((v) => !v),
       },
-      {
-        key: 'deep',
-        label: 'Deep Search',
-        active: searchMode === 'deep',
-        title: 'Search + model summarisation + reranking (slower, higher quality)',
-        onToggle: () => setSearchMode((m) => m === 'deep' ? 'normal' : 'deep'),
-      },
-      {
-        key: 'research',
-        label: 'Research',
-        active: searchMode === 'research',
-        title: 'Iterative multi-round research with plan approval (slower, comprehensive)',
-        onToggle: () => setSearchMode((m) => m === 'research' ? 'normal' : 'research'),
-      },
     ];
   }
 
   return {
     models, model, setModel, setModels,
     chatStyles, setChatStyles, styleKey, setStyleKey,
-    ragEnabled, setRagEnabled, knowledgeEnabled, setKnowledgeEnabled, researchEnabled,
-    searchMode, setSearchMode, searchSuppressed, setSearchSuppressed,
+    ragEnabled, setRagEnabled, knowledgeEnabled, setKnowledgeEnabled,
+    searchSuppressed, setSearchSuppressed,
     alwaysAllowSearch, setAlwaysAllowSearch,
     grounding, setGrounding,
     buildToggles,

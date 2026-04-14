@@ -5,7 +5,7 @@ export interface CodeMessageRow {
   conversation_id: number;
   role: ChatRole;
   content: string;
-  mode?: 'plan' | 'execute' | 'debug' | null;
+  mode?: 'plan' | 'execute' | 'explain' | 'review' | null;
   files_json?: string | null;
   response_style?: string | null;
   CreatedAt?: string;

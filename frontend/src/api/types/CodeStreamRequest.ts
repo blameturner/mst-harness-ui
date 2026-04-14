@@ -3,7 +3,7 @@ import type { CodeFilePayload } from './CodeFilePayload';
 export interface CodeStreamRequest {
   model: string;
   message: string;
-  mode: 'plan' | 'execute' | 'debug';
+  mode: 'plan' | 'execute' | 'explain' | 'review';
   approved_plan?: string | null;
   files?: CodeFilePayload[];
   conversation_id?: number | null;

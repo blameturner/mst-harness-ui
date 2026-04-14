@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { health as fetchHealth } from '../../api/health/health';
-import { EnrichmentContent } from '../enrichment/EnrichmentContent';
 import { LogsPage } from '../logs/LogsPage';
 import { ArchitectureTab } from './tabs/ArchitectureTab';
 import { StatsTab } from './tabs/StatsTab';
@@ -24,7 +23,6 @@ export function HarnessPage() {
 
   const tabs: { id: HarnessTab; label: string }[] = [
     { id: 'architecture', label: 'Architecture' },
-    { id: 'enrichment', label: 'Enrichment' },
     { id: 'logs', label: 'Logs' },
     { id: 'stats', label: 'Stats' },
     { id: 'queue', label: 'Queue' },
@@ -67,7 +65,6 @@ export function HarnessPage() {
 
       <div className="flex-1 min-h-0 overflow-y-auto">
         {tab === 'architecture' && <ArchitectureTab />}
-        {tab === 'enrichment' && <EnrichmentContent />}
         {tab === 'logs' && <LogsPage />}
         {tab === 'stats' && <StatsTab />}
         {tab === 'queue' && <QueueTab />}

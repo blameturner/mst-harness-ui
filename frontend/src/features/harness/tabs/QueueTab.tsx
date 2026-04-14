@@ -133,8 +133,8 @@ export function QueueTab() {
                   : status.backoff.state === 'active'
                   ? 'Backoff active — chat in progress'
                   : status.backoff.state === 'priority_1_only'
-                  ? 'Research only — 2min idle'
-                  : 'Research + deep search — 5min idle'}
+                  ? 'Priority 1 only'
+                  : 'Priority 1–2 only'}
               </span>
             </div>
           </div>

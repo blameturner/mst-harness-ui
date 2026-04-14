@@ -20,11 +20,7 @@ export function hydrateMessages(msgs: ChatMessageRow[]): HydrationResult {
   }
 
   const messages = msgs
-    .filter((m) => {
-      if (m.role !== 'system') return true;
-      if (m.content.startsWith('[Deep search result]')) return true;
-      return false;
-    })
+    .filter((m) => m.role !== 'system')
     .map<DisplayMessage>((m) => ({
       id: String(m.Id),
       role: m.role as 'user' | 'assistant' | 'system',

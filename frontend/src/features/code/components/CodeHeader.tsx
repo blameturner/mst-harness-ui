@@ -37,7 +37,7 @@ export function CodeHeader({
         <div className="min-w-0 flex-1">
           <p className="text-[10px] uppercase tracking-[0.18em] text-muted">Code worker</p>
           <h2 className="font-display text-base sm:text-xl font-semibold tracking-tightest truncate">
-            Plan / Run / Debug
+            Plan / Execute / Explain / Review
           </h2>
         </div>
         <div className="flex items-center gap-2 shrink-0">
