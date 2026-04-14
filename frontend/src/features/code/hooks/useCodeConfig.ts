@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import type { LlmModel } from '../../../api/types/LlmModel';
 import type { StyleSurface } from '../../../api/types/StyleSurface';
 import type { Mode } from '../types/Mode';
@@ -8,12 +9,12 @@ export interface CodeConfig {
   models: LlmModel[];
   setModels: (v: LlmModel[]) => void;
   model: string;
-  setModel: (v: string) => void;
+  setModel: Dispatch<SetStateAction<string>>;
 
   codeStyles: StyleSurface | null;
   setCodeStyles: (v: StyleSurface | null) => void;
   styleKey: string;
-  setStyleKey: (v: string) => void;
+  setStyleKey: Dispatch<SetStateAction<string>>;
 
   mode: Mode;
   setMode: (v: Mode) => void;

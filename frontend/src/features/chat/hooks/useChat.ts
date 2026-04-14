@@ -1,14 +1,17 @@
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import type { StreamEvent } from '../../../api/types/StreamEvent';
 import type { DisplayMessage } from '../../../components/chat/DisplayMessage';
 import { chatStream } from '../../../api/chat/chatStream';
 import { listConversations } from '../../../api/chat/listConversations';
+import { getConversationMessages } from '../../../api/chat/getConversationMessages';
 import { saveActiveStream, clearActiveStream } from '../../../lib/activeStream';
 import { isTransientNetworkError } from '../../../lib/network/isTransientNetworkError';
 import { uid } from '../../../lib/utils/uid';
 import { labelForTool } from '../../../lib/intent/labelForTool';
 import type { ConsentRequest } from '../types/ConsentRequest';
+import { parseProposal } from '../../../lib/plannedSearch/parseProposal';
+import { hydrateMessages } from '../lib/hydrateMessages';
 
 interface UseChatDeps {
   activeId: number | null;
@@ -41,6 +44,7 @@ export interface ChatState {
 
   send: (forcedText?: string) => Promise<void>;
   resolveConsent: (allow: boolean) => Promise<void>;
+  reloadMessages: () => Promise<void>;
   processStream: (
     stream: AsyncGenerator<StreamEvent, void, void>,
     pendingId: string,
@@ -268,6 +272,21 @@ export function useChat(deps: UseChatDeps): ChatState {
                 : x,
             ),
           );
+          setMessages((ms) =>
+            ms.map((x) => {
+              if (x.id !== pendingId) return x;
+              const parsed = parseProposal(x.content);
+              if (!parsed) return x;
+              return {
+                ...x,
+                plannedSearch: {
+                  proposalMessageId: parsed.messageId,
+                  queries: parsed.queries,
+                  status: 'proposed' as const,
+                },
+              };
+            }),
+          );
         } else if (ev.type === 'error') {
           let hadContent = false;
           setMessages((ms) => {
@@ -419,6 +438,17 @@ export function useChat(deps: UseChatDeps): ChatState {
     }
   }
 
+  const reloadMessages = useCallback(async () => {
+    const id = deps.activeIdRef.current;
+    if (id == null) return;
+    try {
+      const res = await getConversationMessages(id);
+      const hydrated = hydrateMessages(res.messages);
+      setMessages(hydrated.messages);
+      if (hydrated.topics.length) deps.setConversationTopics(hydrated.topics);
+    } catch {}
+  }, [deps]);
+
   return {
     messages, setMessages,
     sending, setSending,
@@ -428,6 +458,7 @@ export function useChat(deps: UseChatDeps): ChatState {
     streamAbortRef,
     send,
     resolveConsent,
+    reloadMessages,
     processStream: processStreamFn,
     runChatStream: runChatStreamFn,
   };

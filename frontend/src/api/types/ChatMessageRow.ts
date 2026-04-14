@@ -26,4 +26,5 @@ export interface ChatMessageRow {
   search_queries?: string[] | null;
   search_status_reason?: string | null;
   CreatedAt?: string;
+  pending_approval?: 0 | 1 | null;
 }

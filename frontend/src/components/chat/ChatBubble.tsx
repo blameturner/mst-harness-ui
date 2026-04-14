@@ -9,6 +9,9 @@ import { ThinkingLabel } from './ThinkingLabel';
 import { ElapsedTimer } from './ElapsedTimer';
 import { OutputSection } from './OutputSection';
 import { MarkdownBody } from './MarkdownBody';
+import { CitationMarkdown } from './CitationMarkdown';
+import { PlannedSearchCard } from './PlannedSearchCard';
+import { usePlannedSearchApproval } from '../../features/chat/hooks/usePlannedSearchApproval';
 import { resolveSourceLayout } from '../../lib/intent/resolveSourceLayout';
 import { typingLabelForIntent } from '../../lib/intent/typingLabelForIntent';
 
@@ -16,6 +19,9 @@ interface Props {
   message: DisplayMessage;
   onRetry?: (message: DisplayMessage) => void;
   onEdit?: (message: DisplayMessage) => void;
+  orgId?: number | null;
+  patchMessage?: (id: string, patch: Partial<DisplayMessage>) => void;
+  onPlannedSearchResolved?: () => void;
 }
 
 const BUBBLE_MAX = 'max-w-[92%] md:max-w-[80%]';
@@ -29,7 +35,14 @@ function formatTimestamp(ms: number | undefined): string | undefined {
   }
 }
 
-export function ChatBubble({ message, onRetry, onEdit }: Props) {
+export function ChatBubble({
+  message,
+  onRetry,
+  onEdit,
+  orgId,
+  patchMessage,
+  onPlannedSearchResolved,
+}: Props) {
   const [copied, setCopied] = useState(false);
 
   async function copyContent() {
@@ -38,6 +51,22 @@ export function ChatBubble({ message, onRetry, onEdit }: Props) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1400);
     } catch {}
+  }
+
+  if (
+    message.role === 'assistant' &&
+    message.plannedSearch &&
+    patchMessage &&
+    onPlannedSearchResolved
+  ) {
+    return (
+      <PlannedSearchCardContainer
+        message={message}
+        orgId={orgId ?? null}
+        patchMessage={patchMessage}
+        onResolved={onPlannedSearchResolved}
+      />
+    );
   }
 
   if (message.role === 'user') {
@@ -244,7 +273,14 @@ export function ChatBubble({ message, onRetry, onEdit }: Props) {
         )}
         <ConfidenceBanner confidence={message.searchConfidence} />
         <SearchStatusBadge status={message.searchStatus} />
-        <MarkdownBody content={message.content} />
+        {message.model === 'planned_search_answer' ? (
+          <CitationMarkdown
+            content={message.content}
+            anchorPrefix={`src-${message.id}`}
+          />
+        ) : (
+          <MarkdownBody content={message.content} />
+        )}
         {isStreaming && <span className="caret" />}
         {message.status === 'complete' && message.errorMessage && (
           <div className="mt-2 text-[11px] font-sans text-amber-600 bg-amber-500/10 border border-amber-600/30 rounded-md px-2.5 py-1.5">
@@ -256,7 +292,14 @@ export function ChatBubble({ message, onRetry, onEdit }: Props) {
         )}
         <SourcesPanel
           sources={message.sources ?? []}
-          layout={resolveSourceLayout(message.intent, !!message.sources?.length)}
+          layout={
+            message.model === 'planned_search_answer'
+              ? 'expanded'
+              : resolveSourceLayout(message.intent, !!message.sources?.length)
+          }
+          anchorPrefix={
+            message.model === 'planned_search_answer' ? `src-${message.id}` : undefined
+          }
         />
         {showCopy && (
           <div className="mt-2 -mb-1">
@@ -265,6 +308,33 @@ export function ChatBubble({ message, onRetry, onEdit }: Props) {
         )}
       </div>
     </div>
+  );
+}
+
+function PlannedSearchCardContainer({
+  message,
+  orgId,
+  patchMessage,
+  onResolved,
+}: {
+  message: DisplayMessage;
+  orgId: number | null;
+  patchMessage: (id: string, patch: Partial<DisplayMessage>) => void;
+  onResolved: () => void;
+}) {
+  const { approve, reject } = usePlannedSearchApproval({
+    message,
+    patchMessage,
+    orgId,
+    onApproved: onResolved,
+    onRejected: onResolved,
+  });
+  return (
+    <PlannedSearchCard
+      state={message.plannedSearch!}
+      onApprove={() => void approve()}
+      onReject={() => void reject()}
+    />
   );
 }
 

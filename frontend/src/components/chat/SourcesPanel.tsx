@@ -7,9 +7,10 @@ import { sortedByRelevance } from './sortedByRelevance';
 interface Props {
   sources: SearchSource[];
   layout: IntentSourceLayout;
+  anchorPrefix?: string;
 }
 
-export function SourcesPanel({ sources, layout }: Props) {
+export function SourcesPanel({ sources, layout, anchorPrefix }: Props) {
   const [open, setOpen] = useState(layout === 'expanded');
   const [showAll, setShowAll] = useState(false);
 
@@ -39,8 +40,13 @@ export function SourcesPanel({ sources, layout }: Props) {
     <div className="mt-4 pt-3 border-t border-border">
       <p className="text-[10px] uppercase tracking-[0.16em] font-sans text-muted mb-2">Sources</p>
       <div className="space-y-1.5">
-        {visible.map((src) => (
-          <SourceCard key={src.url} source={src} />
+        {visible.map((src, i) => (
+          <div
+            key={src.url}
+            id={anchorPrefix ? `${anchorPrefix}-${src.index ?? i + 1}` : undefined}
+          >
+            <SourceCard source={src} />
+          </div>
         ))}
       </div>
       <div>

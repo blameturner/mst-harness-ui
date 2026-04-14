@@ -1,10 +1,11 @@
 import { useState } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 
 export interface PlanChecklistState {
   checklist: string[];
   setChecklist: (v: string[]) => void;
   checked: Record<number, boolean>;
-  setChecked: (v: Record<number, boolean>) => void;
+  setChecked: Dispatch<SetStateAction<Record<number, boolean>>>;
   reset: () => void;
 }
 

@@ -3,6 +3,7 @@ import type { SearchConfidence } from '../../api/types/SearchConfidence';
 import type { ChatIntent } from '../../api/types/ChatIntent';
 import type { SearchStatus } from '../../api/types/SearchStatus';
 import type { MessageStatus } from './MessageStatus';
+import type { PlannedSearchState } from '../../lib/plannedSearch/types';
 
 export interface DisplayMessage {
   id: string;
@@ -30,4 +31,5 @@ export interface DisplayMessage {
   thinkingEndTime?: number;
   isThinking?: boolean;
   topics?: string[];
+  plannedSearch?: PlannedSearchState;
 }

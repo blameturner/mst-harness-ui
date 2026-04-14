@@ -190,6 +190,13 @@ export function ChatPage() {
                 <div key={m.id} className="space-y-1">
                   <ChatBubble
                     message={m}
+                    orgId={convs.activeConversation?.org_id ?? null}
+                    patchMessage={(id, patch) =>
+                      chat.setMessages((ms) =>
+                        ms.map((x) => (x.id === id ? { ...x, ...patch } : x)),
+                      )
+                    }
+                    onPlannedSearchResolved={() => void chat.reloadMessages()}
                     onRetry={(mm) => {
                       if (!mm.sourceUserText) return;
                       chat.setMessages((ms) => {
