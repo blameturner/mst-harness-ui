@@ -25,6 +25,29 @@ export interface ScraperNextResponse {
   error?: string;
 }
 
+export type ResearchStatus =
+  | 'pending'
+  | 'generating'
+  | 'synthesizing'
+  | 'critiquing'
+  | 'complete'
+  | 'completed'
+  | 'failed';
+
+export interface GapField {
+  field: string;
+  status: string;
+  needed?: string;
+}
+
+export interface GapReport {
+  gaps_found: GapField[];
+  new_search_requirements: string[];
+  confidence_score: number;
+  ready_for_completion: boolean;
+  notes?: string;
+}
+
 export interface ResearchPlan {
   Id: number;
   org_id: number;
@@ -33,7 +56,13 @@ export interface ResearchPlan {
   sub_topics: string[];
   queries: string[];
   schema: Record<string, string>;
-  status: 'pending' | 'generating' | 'complete' | 'failed';
+  status: ResearchStatus;
+  iterations?: number;
+  max_iterations?: number;
+  confidence_score?: number;
+  confidence_threshold?: number;
+  gap_report?: string | null;
+  paper_content?: string | null;
   created_at: string;
 }
 
