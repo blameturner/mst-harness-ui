@@ -4,6 +4,9 @@ import { LogsPage } from '../logs/LogsPage';
 import { ArchitectureTab } from './tabs/ArchitectureTab';
 import { StatsTab } from './tabs/StatsTab';
 import { QueueTab } from './tabs/QueueTab';
+import { DiscoveryTab } from './tabs/DiscoveryTab';
+import { ScraperTab } from './tabs/ScraperTab';
+import { ResearchTab } from './tabs/ResearchTab';
 import type { HarnessTab } from './types/HarnessTab';
 import type { HealthStatus } from './types/HealthStatus';
 
@@ -26,6 +29,9 @@ export function HarnessPage() {
     { id: 'logs', label: 'Logs' },
     { id: 'stats', label: 'Stats' },
     { id: 'queue', label: 'Queue' },
+    { id: 'discovery', label: 'Discovery' },
+    { id: 'scraper', label: 'Scraper' },
+    { id: 'research', label: 'Research' },
   ];
 
   return (
@@ -68,6 +74,9 @@ export function HarnessPage() {
         {tab === 'logs' && <LogsPage />}
         {tab === 'stats' && <StatsTab />}
         {tab === 'queue' && <QueueTab />}
+        {tab === 'discovery' && <DiscoveryTab />}
+        {tab === 'scraper' && <ScraperTab />}
+        {tab === 'research' && <ResearchTab />}
       </div>
     </div>
   );
