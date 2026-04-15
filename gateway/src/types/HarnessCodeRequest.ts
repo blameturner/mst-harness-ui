@@ -4,7 +4,7 @@ export interface HarnessCodeRequest {
   org_id: number;
   model: string;
   message: string;
-  mode: 'plan' | 'execute' | 'debug';
+  mode: 'plan' | 'execute' | 'explain' | 'review';
   approved_plan?: string | null;
   files?: HarnessCodeFile[];
   conversation_id?: number | null;

@@ -4,7 +4,7 @@ import { fileSchema } from './fileSchema.js';
 export const codeSchema = z.object({
   model: z.string().min(1),
   message: z.string().min(1),
-  mode: z.enum(['plan', 'execute', 'debug']),
+  mode: z.enum(['plan', 'execute', 'explain', 'review']),
   approved_plan: z.string().optional().nullable(),
   files: z.array(fileSchema).optional(),
   conversation_id: z.number().int().positive().optional().nullable(),
