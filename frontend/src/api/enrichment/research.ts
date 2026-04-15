@@ -42,5 +42,5 @@ export function updateResearchPlanQueries(planId: number, queries: string[]) {
 export function listResearchPlans(params?: { status?: string }) {
   const searchParams = new URLSearchParams();
   if (params?.status) searchParams.set('status', params.status);
-  return http.get(`api/enrichment/research-plans-list?${searchParams}`).json<ResearchPlansListResponse>();
+  return http.get(`api/enrichment/research-plans/list?${searchParams}`).json<ResearchPlansListResponse>();
 }

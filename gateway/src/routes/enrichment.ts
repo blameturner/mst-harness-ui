@@ -182,13 +182,15 @@ enrichmentRoute.post('/research/agent/next', async (_c) => {
   }
 });
 
-enrichmentRoute.get('/research-plans-list', async (c) => {
+enrichmentRoute.get('/research-plans/list', async (c) => {
   const { orgId } = getAuthContext(c);
   const status = c.req.query('status');
+  const limit = c.req.query('limit');
   let qs = `org_id=${orgId}`;
   if (status) qs += `&status=${status}`;
+  if (limit) qs += `&limit=${limit}`;
   try {
-    const res = await harnessClient.get(`/enrichment/research-plans-list?${qs}`, TIMEOUT);
+    const res = await harnessClient.get(`/enrichment/research-plans/list?${qs}`, TIMEOUT);
     return forwardResponse(res);
   } catch (err) {
     return mapHarnessError(err, 'enrichment');
