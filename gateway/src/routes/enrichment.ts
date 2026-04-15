@@ -55,7 +55,11 @@ enrichmentRoute.post('/pathfinder/mark-processed', async (c) => {
     return c.json({ error: 'invalid_body', details: parsed.error.errors }, 400);
   }
   try {
-    const res = await harnessClient.post('/enrichment/pathfinder/mark-processed', parsed.data, TIMEOUT);
+    const res = await harnessClient.post(
+      `/enrichment/pathfinder/mark-processed?url_id=${parsed.data.url_id}`,
+      {},
+      TIMEOUT,
+    );
     return forwardResponse(res);
   } catch (err) {
     return mapHarnessError(err, 'enrichment');
@@ -186,7 +190,11 @@ enrichmentRoute.post('/research/complete', async (c) => {
     return c.json({ error: 'invalid_body', details: parsed.error.errors }, 400);
   }
   try {
-    const res = await harnessClient.post('/enrichment/research/complete', parsed.data, TIMEOUT);
+    const res = await harnessClient.post(
+      `/enrichment/research/complete?plan_id=${parsed.data.plan_id}`,
+      {},
+      TIMEOUT,
+    );
     return forwardResponse(res);
   } catch (err) {
     return mapHarnessError(err, 'enrichment');

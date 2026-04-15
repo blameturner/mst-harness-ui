@@ -2,6 +2,34 @@ import { http } from '../../lib/http';
 import type { ResearchPlan, ResearchPlansListResponse } from '../types/Enrichment';
 import { normalizeList } from './_normalizeList';
 
+// Harness stores JSON-encoded strings in these columns. Parse at the boundary so
+// the rest of the UI can rely on the shapes declared in ResearchPlan.
+function parseJson<T>(value: unknown, fallback: T): T {
+  if (typeof value !== 'string' || value.length === 0) {
+    return (value as T) ?? fallback;
+  }
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function parsePlan(raw: unknown): ResearchPlan {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  return {
+    ...(r as unknown as ResearchPlan),
+    hypotheses: parseJson<string[]>(r.hypotheses, []),
+    sub_topics: parseJson<string[]>(r.sub_topics, []),
+    queries: parseJson<string[]>(r.queries, []),
+    schema: parseJson<Record<string, string>>(r.schema, {}),
+    gap_report:
+      typeof r.gap_report === 'string' && r.gap_report.length > 0
+        ? (r.gap_report as string)
+        : null,
+  };
+}
+
 export interface CreatePlanRequest {
   topic: string;
 }
@@ -59,9 +87,15 @@ export async function listResearchPlans(params?: { status?: string }): Promise<R
   const searchParams = new URLSearchParams();
   if (params?.status) searchParams.set('status', params.status);
   const raw = await http.get(`api/enrichment/research-plans/list?${searchParams}`).json<unknown>();
-  return normalizeList<ResearchPlan>(raw, 'research-plans/list') as ResearchPlansListResponse;
+  const normalized = normalizeList<unknown>(raw, 'research-plans/list');
+  return { items: normalized.items.map(parsePlan), total: normalized.total };
 }
 
-export function getResearchPlan(planId: number) {
-  return http.get(`api/enrichment/research-plans/${planId}`).json<ResearchPlan>();
+export async function getResearchPlan(planId: number): Promise<ResearchPlan | null> {
+  const raw = await http
+    .get(`api/enrichment/research-plans/${planId}`)
+    .json<{ status?: string; row?: unknown } | unknown>();
+  const r = (raw ?? {}) as Record<string, unknown>;
+  if (r.status === 'not_found' || r.row == null) return null;
+  return parsePlan(r.row);
 }

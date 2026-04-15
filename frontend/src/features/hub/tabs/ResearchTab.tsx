@@ -46,7 +46,10 @@ export function ResearchTab() {
     setLoading(true);
     listResearchPlans()
       .then((res) => setPlans(res?.items ?? []))
-      .catch(() => {})
+      .catch((err) => {
+        console.error('[research] listResearchPlans failed', err);
+        setError((err as Error)?.message ?? 'Failed to load research plans');
+      })
       .finally(() => setLoading(false));
   }
 
