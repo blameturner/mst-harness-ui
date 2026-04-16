@@ -6,6 +6,7 @@ const TOOL_LABELS: Record<string, string> = {
   python: 'Running code',
   file_search: 'Searching files',
   knowledge_search: 'Checking memory',
+  url_scraper: 'Reading an Article'
 };
 
 export function labelForTool(tool: string | undefined): string {
