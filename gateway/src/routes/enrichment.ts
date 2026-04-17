@@ -75,6 +75,35 @@ enrichmentRoute.post('/pathfinder/start', async (c) => {
   }
 });
 
+enrichmentRoute.post('/discover-agent/start', async (c) => {
+  try {
+    const res = await harnessClient.post('/enrichment/discover-agent/start', {}, TIMEOUT);
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'enrichment');
+  }
+});
+
+enrichmentRoute.get('/discovery/:id', async (c) => {
+  const id = c.req.param('id');
+  try {
+    const res = await harnessClient.get(`/enrichment/discovery/${encodeURIComponent(id)}`, TIMEOUT);
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'enrichment');
+  }
+});
+
+enrichmentRoute.get('/scrape-targets/:id', async (c) => {
+  const id = c.req.param('id');
+  try {
+    const res = await harnessClient.get(`/enrichment/scrape-targets/${encodeURIComponent(id)}`, TIMEOUT);
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'enrichment');
+  }
+});
+
 enrichmentRoute.get('/discovery/list', async (c) => {
   const { orgId } = getAuthContext(c);
   const status = c.req.query('status');

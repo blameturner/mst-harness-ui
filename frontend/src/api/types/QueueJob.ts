@@ -12,6 +12,8 @@ export interface QueueJob {
   started_at: string;
   completed_at: string;
   depends_on: string;
+  task?: string;
+  result_status?: string | null;
   payload?: Record<string, unknown>;
   result?: Record<string, unknown>;
   claimed_by?: string;
