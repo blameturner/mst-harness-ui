@@ -79,9 +79,15 @@ enrichmentRoute.get('/discovery/list', async (c) => {
   const { orgId } = getAuthContext(c);
   const status = c.req.query('status');
   const limit = c.req.query('limit');
+  const offset = c.req.query('offset');
+  const sortBy = c.req.query('sort_by');
+  const sortDir = c.req.query('sort_dir');
   let qs = `org_id=${orgId}`;
-  if (status) qs += `&status=${status}`;
-  if (limit) qs += `&limit=${limit}`;
+  if (status) qs += `&status=${encodeURIComponent(status)}`;
+  if (limit) qs += `&limit=${encodeURIComponent(limit)}`;
+  if (offset) qs += `&offset=${encodeURIComponent(offset)}`;
+  if (sortBy) qs += `&sort_by=${encodeURIComponent(sortBy)}`;
+  if (sortDir) qs += `&sort_dir=${encodeURIComponent(sortDir)}`;
   try {
     const res = await harnessClient.get(`/enrichment/discovery/list?${qs}`, TIMEOUT);
     return forwardResponse(res);
@@ -95,10 +101,20 @@ enrichmentRoute.get('/scrape-targets/list', async (c) => {
   const status = c.req.query('status');
   const activeOnly = c.req.query('active_only');
   const limit = c.req.query('limit');
+  const offset = c.req.query('offset');
+  const sortBy = c.req.query('sort_by');
+  const sortDir = c.req.query('sort_dir');
+  const category = c.req.query('category');
+  const q = c.req.query('q');
   let qs = `org_id=${orgId}`;
-  if (status) qs += `&status=${status}`;
-  if (activeOnly) qs += `&active_only=${activeOnly}`;
-  if (limit) qs += `&limit=${limit}`;
+  if (status) qs += `&status=${encodeURIComponent(status)}`;
+  if (activeOnly) qs += `&active_only=${encodeURIComponent(activeOnly)}`;
+  if (limit) qs += `&limit=${encodeURIComponent(limit)}`;
+  if (offset) qs += `&offset=${encodeURIComponent(offset)}`;
+  if (sortBy) qs += `&sort_by=${encodeURIComponent(sortBy)}`;
+  if (sortDir) qs += `&sort_dir=${encodeURIComponent(sortDir)}`;
+  if (category) qs += `&category=${encodeURIComponent(category)}`;
+  if (q) qs += `&q=${encodeURIComponent(q)}`;
   try {
     const res = await harnessClient.get(`/enrichment/scrape-targets/list?${qs}`, TIMEOUT);
     return forwardResponse(res);

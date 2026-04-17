@@ -7,6 +7,8 @@ import type { ChainKickResponse } from '../../../api/enrichment/chainKick';
 const POLL_MS = 10_000;
 
 type StatusFilter = 'all' | 'ok' | 'error' | 'rejected';
+type SortField = 'url' | 'name' | 'category' | 'status' | 'last_scraped_at' | 'chunk_count' | 'consecutive_failures';
+type SortDir = 'asc' | 'desc';
 
 function formatKick(r: ChainKickResponse): string {
   switch (r.status) {
@@ -63,12 +65,18 @@ function statusPill(status: ScrapeTargetStatus | undefined) {
 
 export function ScrapeTargetsTab() {
   const [rows, setRows] = useState<ScrapeTargetRow[]>([]);
+  const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [activeOnly, setActiveOnly] = useState(true);
-  const [limit, setLimit] = useState(100);
+  const [categoryFilter, setCategoryFilter] = useState<'all' | ScrapeTargetRow['category']>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortField, setSortField] = useState<SortField>('last_scraped_at');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [pageSize, setPageSize] = useState(50);
+  const [page, setPage] = useState(1);
 
   const [kickBusy, setKickBusy] = useState(false);
   const [kickStatus, setKickStatus] = useState<string | null>(null);
@@ -77,12 +85,21 @@ export function ScrapeTargetsTab() {
 
   function load() {
     setLoading(true);
+    setError(null);
     listScrapeTargets({
       status: statusFilter === 'all' ? undefined : statusFilter,
       active_only: activeOnly,
-      limit,
+      category: categoryFilter === 'all' ? undefined : categoryFilter,
+      q: searchQuery.trim() || undefined,
+      sort_by: sortField,
+      sort_dir: sortDir,
+      limit: pageSize,
+      offset: (page - 1) * pageSize,
     })
-      .then((res) => setRows(res?.rows ?? []))
+      .then((res) => {
+        setRows(res?.rows ?? []);
+        setTotalRows(typeof res?.total === 'number' ? res.total : 0);
+      })
       .catch((err) => setError((err as Error).message))
       .finally(() => setLoading(false));
   }
@@ -95,7 +112,13 @@ export function ScrapeTargetsTab() {
       if (pollRef.current != null) window.clearInterval(pollRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, activeOnly, limit]);
+  }, [statusFilter, activeOnly, categoryFilter, searchQuery, sortField, sortDir, pageSize, page]);
+
+  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   async function handleKick() {
     setKickBusy(true);
@@ -132,7 +155,10 @@ export function ScrapeTargetsTab() {
           <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-1.5">Status</label>
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+            onChange={(e) => {
+              setStatusFilter(e.target.value as StatusFilter);
+              setPage(1);
+            }}
             className="w-full px-3 py-2 rounded border border-border bg-panel text-fg text-sm font-sans focus:outline-none focus:border-fg"
           >
             <option value="all">all</option>
@@ -145,20 +171,94 @@ export function ScrapeTargetsTab() {
           <input
             type="checkbox"
             checked={activeOnly}
-            onChange={(e) => setActiveOnly(e.target.checked)}
+            onChange={(e) => {
+              setActiveOnly(e.target.checked);
+              setPage(1);
+            }}
           />
           active only
         </label>
-        <div className="w-28">
-          <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-1.5">Limit</label>
+        <div className="w-40">
+          <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-1.5">Category</label>
+          <select
+            value={categoryFilter}
+            onChange={(e) => {
+              setCategoryFilter(e.target.value as 'all' | ScrapeTargetRow['category']);
+              setPage(1);
+            }}
+            className="w-full px-3 py-2 rounded border border-border bg-panel text-fg text-sm font-sans focus:outline-none focus:border-fg"
+          >
+            <option value="all">all</option>
+            <option value="documentation">documentation</option>
+            <option value="news">news</option>
+            <option value="competitive">competitive</option>
+            <option value="regulatory">regulatory</option>
+            <option value="research">research</option>
+            <option value="security">security</option>
+            <option value="model_releases">model_releases</option>
+            <option value="auto">auto</option>
+          </select>
+        </div>
+        <div className="w-56">
+          <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-1.5">Search</label>
           <input
-            type="number"
-            min={1}
-            max={1000}
-            value={limit}
-            onChange={(e) => setLimit(Number(e.target.value) || 100)}
+            type="text"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setPage(1);
+            }}
+            placeholder="URL or name"
             className="w-full px-3 py-2 rounded border border-border bg-panel text-fg text-sm font-sans focus:outline-none focus:border-fg"
           />
+        </div>
+        <div className="w-40">
+          <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-1.5">Sort</label>
+          <select
+            value={sortField}
+            onChange={(e) => {
+              setSortField(e.target.value as SortField);
+              setPage(1);
+            }}
+            className="w-full px-3 py-2 rounded border border-border bg-panel text-fg text-sm font-sans focus:outline-none focus:border-fg"
+          >
+            <option value="last_scraped_at">last scraped</option>
+            <option value="url">url</option>
+            <option value="name">name</option>
+            <option value="category">category</option>
+            <option value="status">status</option>
+            <option value="chunk_count">chunks</option>
+            <option value="consecutive_failures">fails</option>
+          </select>
+        </div>
+        <div className="w-32">
+          <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-1.5">Direction</label>
+          <select
+            value={sortDir}
+            onChange={(e) => {
+              setSortDir(e.target.value as SortDir);
+              setPage(1);
+            }}
+            className="w-full px-3 py-2 rounded border border-border bg-panel text-fg text-sm font-sans focus:outline-none focus:border-fg"
+          >
+            <option value="desc">desc</option>
+            <option value="asc">asc</option>
+          </select>
+        </div>
+        <div className="w-28">
+          <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-1.5">Per page</label>
+          <select
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setPage(1);
+            }}
+            className="w-full px-3 py-2 rounded border border-border bg-panel text-fg text-sm font-sans focus:outline-none focus:border-fg"
+          >
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
         </div>
         <button
           onClick={load}
@@ -171,6 +271,33 @@ export function ScrapeTargetsTab() {
       </div>
 
       {error && <p className="text-xs text-red-500">{error}</p>}
+
+      <div className="flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.14em] font-sans text-muted">
+        <span>
+          Showing {(page - 1) * pageSize + (rows.length ? 1 : 0)}-{(page - 1) * pageSize + rows.length} of {totalRows}
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1 || loading}
+            className="px-2 py-1 rounded border border-border hover:bg-panel disabled:opacity-50"
+          >
+            Prev
+          </button>
+          <span>
+            Page {page} / {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages || loading}
+            className="px-2 py-1 rounded border border-border hover:bg-panel disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      </div>
 
       <div className="overflow-x-auto border border-border rounded">
         <table className="w-full text-sm font-sans">

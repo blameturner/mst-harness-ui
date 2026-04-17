@@ -32,6 +32,9 @@ export function DiscoveryTab() {
   const [seedUrl, setSeedUrl] = useState('');
   const [maxDepth, setMaxDepth] = useState(3);
   const [items, setItems] = useState<DiscoveryRow[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const [targets, setTargets] = useState<ScrapeTargetRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -49,6 +52,9 @@ export function DiscoveryTab() {
 
   useEffect(() => {
     loadItems();
+  }, [page, pageSize]);
+
+  useEffect(() => {
     loadTargets();
     return () => {
       stopPolling();
@@ -65,8 +71,16 @@ export function DiscoveryTab() {
 
   function loadItems() {
     setLoading(true);
-    listDiscovery({ limit: 100 })
-      .then((res) => setItems(res?.items ?? []))
+    listDiscovery({
+      limit: pageSize,
+      offset: (page - 1) * pageSize,
+      sort_by: 'Id',
+      sort_dir: 'desc',
+    })
+      .then((res) => {
+        setItems(res?.items ?? []);
+        setTotalItems(typeof res?.total === 'number' ? res.total : 0);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }
@@ -114,6 +128,7 @@ export function DiscoveryTab() {
     try {
       const res = await discover({ seed_url: seedUrl, max_depth: maxDepth });
       setQueuedBanner(`queued discovery #${res.discovery_id} (job ${res.job_id})`);
+      setPage(1);
       loadItems();
       loadTargets();
       startPolling(res.discovery_id);
@@ -130,6 +145,8 @@ export function DiscoveryTab() {
 
   async function handleClear() {
     setItems([]);
+    setTotalItems(0);
+    setPage(1);
     setTargets([]);
     setQueuedBanner(null);
     setActiveDiscoveryId(null);
@@ -161,6 +178,11 @@ export function DiscoveryTab() {
   const activeRow =
     activeDiscoveryId != null ? items.find((r) => r.Id === activeDiscoveryId) : undefined;
   const activeTerminal = !!activeRow && TERMINAL.includes(activeRow.status as TerminalStatus);
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   return (
     <div className="p-6 space-y-6">
@@ -243,6 +265,48 @@ export function DiscoveryTab() {
             {status}: {count}
           </span>
         ))}
+      </div>
+
+      <div className="flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.14em] font-sans text-muted">
+        <span>
+          Showing {(page - 1) * pageSize + (items.length ? 1 : 0)}-
+          {(page - 1) * pageSize + items.length} of {totalItems}
+        </span>
+        <div className="flex items-center gap-2">
+          <label htmlFor="discovery-page-size" className="text-muted">Per page</label>
+          <select
+            id="discovery-page-size"
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setPage(1);
+            }}
+            className="px-2 py-1 rounded border border-border bg-panel text-fg text-[11px]"
+          >
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1 || loading}
+            className="px-2 py-1 rounded border border-border hover:bg-panel disabled:opacity-50"
+          >
+            Prev
+          </button>
+          <span>
+            Page {page} / {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages || loading}
+            className="px-2 py-1 rounded border border-border hover:bg-panel disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto border border-border rounded">

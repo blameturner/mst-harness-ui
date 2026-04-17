@@ -7,8 +7,8 @@ export interface QueueStatus {
     state: BackoffState;
     idle_seconds: number;
     thresholds: {
-      research: number;
-      deep_search: number;
+      priority_1: number;
+      priority_2: number;
       background: number;
     };
   };
