@@ -1,5 +1,6 @@
 import type { QueueJob } from './QueueJob';
 import type { QueueStatus } from './QueueStatus';
+import type { PipelineSummary } from './PipelineSummary';
 
 export interface HueyRuntime {
   enabled?: boolean;
@@ -49,6 +50,7 @@ export interface OpsDashboardResponse {
     running?: number;
     org_id?: number;
   };
+  pipeline?: PipelineSummary;
 }
 
 export interface EnrichmentRowResponse {
