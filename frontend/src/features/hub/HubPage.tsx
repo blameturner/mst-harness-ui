@@ -7,7 +7,7 @@ import { DiscoveryTab } from './tabs/DiscoveryTab';
 import { ScrapeTargetsTab } from './tabs/ScrapeTargetsTab';
 import { ResearchTab } from './tabs/ResearchTab';
 import { HomeTab } from './tabs/HomeTab';
-import { OpsTab } from './tabs/OpsTab';
+import { OpsTab } from './tabs/ops/OpsTab';
 import type { HubTab } from './types/HubTab';
 import type { HealthStatus } from './types/HealthStatus';
 
