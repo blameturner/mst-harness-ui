@@ -10,6 +10,6 @@ export interface RetryQueueJobResponse {
 
 export function retryQueueJob(jobId: string) {
   return http
-    .post(`api/queue/jobs/${encodeURIComponent(jobId)}/retry`)
+    .post(`api/tool-queue/jobs/${encodeURIComponent(jobId)}/retry`)
     .json<RetryQueueJobResponse>();
 }

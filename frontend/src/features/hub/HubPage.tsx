@@ -7,7 +7,6 @@ import { DiscoveryTab } from './tabs/DiscoveryTab';
 import { ScrapeTargetsTab } from './tabs/ScrapeTargetsTab';
 import { ResearchTab } from './tabs/ResearchTab';
 import { HomeTab } from './tabs/HomeTab';
-import { OpsTab } from './tabs/ops/OpsTab';
 import type { HubTab } from './types/HubTab';
 import type { HealthStatus } from './types/HealthStatus';
 
@@ -27,10 +26,9 @@ export function HubPage() {
 
   const tabs: { id: HubTab; label: string }[] = [
     { id: 'home', label: 'Home' },
-    { id: 'ops', label: 'Ops' },
     { id: 'logs', label: 'Logs' },
     { id: 'stats', label: 'Stats' },
-    { id: 'queue', label: 'Queue' },
+    { id: 'queue', label: 'Queue Center' },
     { id: 'discovery', label: 'Discovery' },
     { id: 'scrape-targets', label: 'Scrape Targets' },
     { id: 'research', label: 'Research' },
@@ -73,7 +71,6 @@ export function HubPage() {
 
       <div className="flex-1 min-h-0 overflow-y-auto">
         {tab === 'home' && <HomeTab />}
-        {tab === 'ops' && <OpsTab />}
         {tab === 'logs' && <LogsPage />}
         {tab === 'stats' && <StatsTab />}
         {tab === 'queue' && <QueueTab />}

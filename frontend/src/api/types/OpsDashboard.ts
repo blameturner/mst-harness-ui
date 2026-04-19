@@ -50,6 +50,17 @@ export interface OpsDashboardResponse {
     running?: number;
     org_id?: number;
   };
+  queue_center?: {
+    backoff?: QueueStatus['backoff'];
+    health?: {
+      tool_queue_ready?: boolean;
+      huey_consumer_running?: boolean;
+      huey_workers?: number;
+      [k: string]: unknown;
+    };
+    actions?: Record<string, unknown>;
+    [k: string]: unknown;
+  };
   pipeline?: PipelineSummary;
 }
 

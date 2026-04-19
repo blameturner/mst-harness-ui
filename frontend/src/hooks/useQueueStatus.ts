@@ -21,7 +21,7 @@ export function useQueueStatus() {
     void fetchActive();
 
     function connect() {
-      const es = new EventSource(`${gatewayUrl()}/api/queue/events`, { withCredentials: true });
+      const es = new EventSource(`${gatewayUrl()}/api/tool-queue/events`, { withCredentials: true });
       esRef.current = es;
 
       es.onmessage = (e) => {

@@ -11,5 +11,5 @@ export function getQueueActive(params?: {
   if (params?.conversation_id != null) sp.set('conversation_id', String(params.conversation_id));
   if (params?.source) sp.set('source', params.source);
   const qs = sp.toString();
-  return http.get(`api/queue/active${qs ? `?${qs}` : ''}`).json<QueueActive>();
+  return http.get(`api/tool-queue/active${qs ? `?${qs}` : ''}`).json<QueueActive>();
 }

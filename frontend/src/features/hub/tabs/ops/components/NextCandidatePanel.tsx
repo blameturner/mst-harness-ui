@@ -12,10 +12,6 @@ import { StatusChip } from './StatusChip';
 export interface NextCandidatePanelProps {
   pathfinder: PathfinderPreviewResponse | null;
   scraper: ScraperPreviewResponse | null;
-  loadingPath: boolean;
-  loadingScrape: boolean;
-  errorPath: string | null;
-  errorScrape: string | null;
   lastEvaluatedAt: number | null;
   onReevaluate: () => void;
 }
@@ -24,10 +20,6 @@ export function NextCandidatePanel(props: NextCandidatePanelProps) {
   const {
     pathfinder,
     scraper,
-    loadingPath,
-    loadingScrape,
-    errorPath,
-    errorScrape,
     lastEvaluatedAt,
     onReevaluate,
   } = props;
@@ -59,9 +51,7 @@ export function NextCandidatePanel(props: NextCandidatePanelProps) {
             docs are not re-used as seeds endlessly.
           </HelpTooltip>
         </div>
-        {loadingPath && <p className="text-xs text-muted">Loading…</p>}
-        {errorPath && <p className="text-xs text-red-500">{errorPath}</p>}
-        {!loadingPath && !errorPath && renderPathfinder(pathfinder)}
+        {renderPathfinder(pathfinder)}
       </section>
 
       <section className="space-y-2">
@@ -73,9 +63,7 @@ export function NextCandidatePanel(props: NextCandidatePanelProps) {
             before fresh ones.
           </HelpTooltip>
         </div>
-        {loadingScrape && <p className="text-xs text-muted">Loading…</p>}
-        {errorScrape && <p className="text-xs text-red-500">{errorScrape}</p>}
-        {!loadingScrape && !errorScrape && renderScraper(scraper)}
+        {renderScraper(scraper)}
       </section>
     </aside>
   );

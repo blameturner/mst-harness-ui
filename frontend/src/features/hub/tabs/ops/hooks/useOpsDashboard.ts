@@ -97,7 +97,7 @@ export function useOpsDashboard(orgId: number | null, limit = 20): UseOpsDashboa
 
     function connect() {
       if (!active) return;
-      const es = new EventSource(`${gatewayUrl()}/api/queue/events`, { withCredentials: true });
+      const es = new EventSource(`${gatewayUrl()}/api/tool-queue/events`, { withCredentials: true });
       esRef.current = es;
       es.onmessage = (e) => {
         try {
