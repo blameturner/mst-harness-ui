@@ -4,7 +4,4 @@ export type HubTab =
   | 'logs'
   | 'stats'
   | 'queue'
-  | 'discovery'
-  | 'scraper'
-  | 'scrape-targets'
   | 'research';

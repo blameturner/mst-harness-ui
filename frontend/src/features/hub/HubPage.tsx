@@ -3,8 +3,6 @@ import { health as fetchHealth } from '../../api/health/health';
 import { LogsPage } from '../logs/LogsPage';
 import { StatsTab } from './tabs/StatsTab';
 import { QueueTab } from './tabs/QueueTab';
-import { DiscoveryTab } from './tabs/DiscoveryTab';
-import { ScrapeTargetsTab } from './tabs/ScrapeTargetsTab';
 import { ResearchTab } from './tabs/ResearchTab';
 import { HomeTab } from './tabs/HomeTab';
 import type { HubTab } from './types/HubTab';
@@ -29,8 +27,6 @@ export function HubPage() {
     { id: 'logs', label: 'Logs' },
     { id: 'stats', label: 'Stats' },
     { id: 'queue', label: 'Queue Center' },
-    { id: 'discovery', label: 'Discovery' },
-    { id: 'scrape-targets', label: 'Scrape Targets' },
     { id: 'research', label: 'Research' },
   ];
 
@@ -74,8 +70,6 @@ export function HubPage() {
         {tab === 'logs' && <LogsPage />}
         {tab === 'stats' && <StatsTab />}
         {tab === 'queue' && <QueueTab />}
-        {tab === 'discovery' && <DiscoveryTab />}
-        {tab === 'scrape-targets' && <ScrapeTargetsTab />}
         {tab === 'research' && <ResearchTab />}
       </div>
     </div>
