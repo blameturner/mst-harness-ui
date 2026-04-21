@@ -10,11 +10,11 @@ import { extractApiFailure, asNumber, formatKick } from './lib/formatters';
 import { useOpsDashboard } from './hooks/useOpsDashboard';
 import { PipelineRibbon } from './components/PipelineRibbon';
 import { NextCandidatePanel } from './components/NextCandidatePanel';
-import { DiscoveryPanel } from './components/DiscoveryPanel';
+import { SuggestionsPanel } from './components/SuggestionsPanel';
 import { ScrapeTargetsPanel } from './components/ScrapeTargetsPanel';
 import { QueueJobsPanel } from './components/QueueJobsPanel';
 
-type SubTab = 'discovery' | 'scrape-targets' | 'queue';
+type SubTab = 'suggestions' | 'scrape-targets' | 'queue';
 
 function getOrgIdFromMe(payload: unknown): number | null {
   if (!payload || typeof payload !== 'object') return null;
@@ -27,7 +27,7 @@ function getOrgIdFromMe(payload: unknown): number | null {
 export function OpsTab() {
   const [orgId, setOrgId] = useState<number | null>(null);
   const [orgInput, setOrgInput] = useState('');
-  const [subTab, setSubTab] = useState<SubTab>('discovery');
+  const [subTab, setSubTab] = useState<SubTab>('suggestions');
 
   const dashboard = useOpsDashboard(orgId);
 
@@ -216,7 +216,7 @@ export function OpsTab() {
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_22rem] gap-4">
         <div className="space-y-3 min-w-0">
           <nav className="flex gap-1 border-b border-border">
-            {(['discovery', 'scrape-targets', 'queue'] as const).map((id) => (
+            {(['suggestions', 'scrape-targets', 'queue'] as const).map((id) => (
               <button
                 key={id}
                 type="button"
@@ -226,13 +226,17 @@ export function OpsTab() {
                   subTab === id ? 'border-fg text-fg' : 'border-transparent text-muted hover:text-fg',
                 ].join(' ')}
               >
-                {id === 'discovery' ? 'Discovery' : id === 'scrape-targets' ? 'Scrape targets' : 'Queue jobs'}
+                {id === 'suggestions' ? 'Suggestions' : id === 'scrape-targets' ? 'Scrape targets' : 'Queue jobs'}
               </button>
             ))}
           </nav>
 
-          {subTab === 'discovery' && (
-            <DiscoveryPanel discovery={dashboard.data?.discovery} loading={dashboard.loading} />
+          {subTab === 'suggestions' && (
+            <SuggestionsPanel
+              orgId={orgId}
+              onActionComplete={dashboard.reload}
+              loading={dashboard.loading}
+            />
           )}
           {subTab === 'scrape-targets' && (
             <ScrapeTargetsPanel
