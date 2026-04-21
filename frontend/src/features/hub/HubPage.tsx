@@ -3,7 +3,6 @@ import { health as fetchHealth } from '../../api/health/health';
 import { LogsPage } from '../logs/LogsPage';
 import { StatsTab } from './tabs/StatsTab';
 import { QueueTab } from './tabs/QueueTab';
-import { ResearchTab } from './tabs/ResearchTab';
 import { HomeTab } from './tabs/HomeTab';
 import type { HubTab } from './types/HubTab';
 import type { HealthStatus } from './types/HealthStatus';
@@ -27,7 +26,6 @@ export function HubPage() {
     { id: 'logs', label: 'Logs' },
     { id: 'stats', label: 'Stats' },
     { id: 'queue', label: 'Queue Center' },
-    { id: 'research', label: 'Research' },
   ];
 
   return (
@@ -70,7 +68,6 @@ export function HubPage() {
         {tab === 'logs' && <LogsPage />}
         {tab === 'stats' && <StatsTab />}
         {tab === 'queue' && <QueueTab />}
-        {tab === 'research' && <ResearchTab />}
       </div>
     </div>
   );

@@ -74,7 +74,7 @@ export function ResearchPlanCard({
           <div className="flex items-center gap-2 shrink-0">
             {hasPaper ? (
               <Link
-                to="/hub/research/$id"
+                to="/research/$id"
                 params={{ id: String(plan.Id) }}
                 className="px-3 py-1 rounded border border-border text-[10px] uppercase tracking-[0.14em] hover:bg-panel"
                 title="View paper"

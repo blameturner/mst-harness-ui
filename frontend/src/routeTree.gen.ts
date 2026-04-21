@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SetupRouteImport } from './routes/setup'
+import { Route as ResearchRouteImport } from './routes/research'
 import { Route as LogsRouteImport } from './routes/logs'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as HubRouteImport } from './routes/hub'
@@ -18,6 +19,7 @@ import { Route as ChatRouteImport } from './routes/chat'
 import { Route as ArchitectureRouteImport } from './routes/architecture'
 import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ResearchIdRouteImport } from './routes/research.$id'
 import { Route as AgentsNewRouteImport } from './routes/agents.new'
 import { Route as AgentsIdRouteImport } from './routes/agents.$id'
 import { Route as HubResearchIdRouteImport } from './routes/hub_.research.$id'
@@ -27,6 +29,11 @@ import { Route as AgentsIdRunsRunIdRouteImport } from './routes/agents.$id.runs.
 const SetupRoute = SetupRouteImport.update({
   id: '/setup',
   path: '/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResearchRoute = ResearchRouteImport.update({
+  id: '/research',
+  path: '/research',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LogsRoute = LogsRouteImport.update({
@@ -69,6 +76,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResearchIdRoute = ResearchIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ResearchRoute,
+} as any)
 const AgentsNewRoute = AgentsNewRouteImport.update({
   id: '/new',
   path: '/new',
@@ -104,9 +116,11 @@ export interface FileRoutesByFullPath {
   '/hub': typeof HubRoute
   '/login': typeof LoginRoute
   '/logs': typeof LogsRoute
+  '/research': typeof ResearchRouteWithChildren
   '/setup': typeof SetupRoute
   '/agents/$id': typeof AgentsIdRouteWithChildren
   '/agents/new': typeof AgentsNewRoute
+  '/research/$id': typeof ResearchIdRoute
   '/agents/edit/$id': typeof AgentsEditIdRoute
   '/hub/research/$id': typeof HubResearchIdRoute
   '/agents/$id/runs/$runId': typeof AgentsIdRunsRunIdRoute
@@ -120,9 +134,11 @@ export interface FileRoutesByTo {
   '/hub': typeof HubRoute
   '/login': typeof LoginRoute
   '/logs': typeof LogsRoute
+  '/research': typeof ResearchRouteWithChildren
   '/setup': typeof SetupRoute
   '/agents/$id': typeof AgentsIdRouteWithChildren
   '/agents/new': typeof AgentsNewRoute
+  '/research/$id': typeof ResearchIdRoute
   '/agents/edit/$id': typeof AgentsEditIdRoute
   '/hub/research/$id': typeof HubResearchIdRoute
   '/agents/$id/runs/$runId': typeof AgentsIdRunsRunIdRoute
@@ -137,9 +153,11 @@ export interface FileRoutesById {
   '/hub': typeof HubRoute
   '/login': typeof LoginRoute
   '/logs': typeof LogsRoute
+  '/research': typeof ResearchRouteWithChildren
   '/setup': typeof SetupRoute
   '/agents/$id': typeof AgentsIdRouteWithChildren
   '/agents/new': typeof AgentsNewRoute
+  '/research/$id': typeof ResearchIdRoute
   '/agents/edit/$id': typeof AgentsEditIdRoute
   '/hub_/research/$id': typeof HubResearchIdRoute
   '/agents/$id/runs/$runId': typeof AgentsIdRunsRunIdRoute
@@ -155,9 +173,11 @@ export interface FileRouteTypes {
     | '/hub'
     | '/login'
     | '/logs'
+    | '/research'
     | '/setup'
     | '/agents/$id'
     | '/agents/new'
+    | '/research/$id'
     | '/agents/edit/$id'
     | '/hub/research/$id'
     | '/agents/$id/runs/$runId'
@@ -171,9 +191,11 @@ export interface FileRouteTypes {
     | '/hub'
     | '/login'
     | '/logs'
+    | '/research'
     | '/setup'
     | '/agents/$id'
     | '/agents/new'
+    | '/research/$id'
     | '/agents/edit/$id'
     | '/hub/research/$id'
     | '/agents/$id/runs/$runId'
@@ -187,9 +209,11 @@ export interface FileRouteTypes {
     | '/hub'
     | '/login'
     | '/logs'
+    | '/research'
     | '/setup'
     | '/agents/$id'
     | '/agents/new'
+    | '/research/$id'
     | '/agents/edit/$id'
     | '/hub_/research/$id'
     | '/agents/$id/runs/$runId'
@@ -204,6 +228,7 @@ export interface RootRouteChildren {
   HubRoute: typeof HubRoute
   LoginRoute: typeof LoginRoute
   LogsRoute: typeof LogsRoute
+  ResearchRoute: typeof ResearchRouteWithChildren
   SetupRoute: typeof SetupRoute
   HubResearchIdRoute: typeof HubResearchIdRoute
 }
@@ -215,6 +240,13 @@ declare module '@tanstack/react-router' {
       path: '/setup'
       fullPath: '/setup'
       preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/research': {
+      id: '/research'
+      path: '/research'
+      fullPath: '/research'
+      preLoaderRoute: typeof ResearchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/logs': {
@@ -272,6 +304,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/research/$id': {
+      id: '/research/$id'
+      path: '/$id'
+      fullPath: '/research/$id'
+      preLoaderRoute: typeof ResearchIdRouteImport
+      parentRoute: typeof ResearchRoute
     }
     '/agents/new': {
       id: '/agents/new'
@@ -338,6 +377,18 @@ const AgentsRouteChildren: AgentsRouteChildren = {
 const AgentsRouteWithChildren =
   AgentsRoute._addFileChildren(AgentsRouteChildren)
 
+interface ResearchRouteChildren {
+  ResearchIdRoute: typeof ResearchIdRoute
+}
+
+const ResearchRouteChildren: ResearchRouteChildren = {
+  ResearchIdRoute: ResearchIdRoute,
+}
+
+const ResearchRouteWithChildren = ResearchRoute._addFileChildren(
+  ResearchRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgentsRoute: AgentsRouteWithChildren,
@@ -347,6 +398,7 @@ const rootRouteChildren: RootRouteChildren = {
   HubRoute: HubRoute,
   LoginRoute: LoginRoute,
   LogsRoute: LogsRoute,
+  ResearchRoute: ResearchRouteWithChildren,
   SetupRoute: SetupRoute,
   HubResearchIdRoute: HubResearchIdRoute,
 }

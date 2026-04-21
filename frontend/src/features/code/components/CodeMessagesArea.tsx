@@ -175,7 +175,43 @@ export function CodeMessagesArea({
                             {m.reconnecting ? 'Reconnecting…' : 'Thinking…'}
                           </div>
                         )}
-                        <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{m.content}</ReactMarkdown>
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm, remarkMath]}
+                          rehypePlugins={[rehypeKatex]}
+                          components={{
+                            table: (props) => (
+                              <div className="my-3 overflow-x-auto">
+                                <table {...props} className="w-full text-[13px] border-collapse" />
+                              </div>
+                            ),
+                            code: ({ className, children, ...rest }) => {
+                              const isBlock = /language-/.test(className ?? '');
+                              if (isBlock) {
+                                return (
+                                  <code {...rest} className={`${className ?? ''} block min-w-max`}>
+                                    {children}
+                                  </code>
+                                );
+                              }
+                              return (
+                                <code
+                                  {...rest}
+                                  className="font-mono text-[13px] bg-panelHi border border-border rounded px-1 py-0.5"
+                                >
+                                  {children}
+                                </code>
+                              );
+                            },
+                            pre: (props) => (
+                              <pre
+                                {...props}
+                                className="font-mono text-[12.5px] leading-relaxed bg-panelHi border border-border rounded-md p-3 my-3 overflow-x-auto whitespace-pre"
+                              />
+                            ),
+                          }}
+                        >
+                          {m.content}
+                        </ReactMarkdown>
                         <div className="flex flex-wrap gap-2 mt-3">
                           {m.mode === 'plan' && m.status === 'complete' && (
                             <button

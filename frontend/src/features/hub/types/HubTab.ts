@@ -3,5 +3,4 @@ export type HubTab =
   | 'ops'
   | 'logs'
   | 'stats'
-  | 'queue'
-  | 'research';
+  | 'queue';

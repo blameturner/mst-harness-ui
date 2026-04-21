@@ -12,6 +12,8 @@ const NAV: NavItem[] = [
   { to: '/chat', label: 'Chat' },
   { to: '/code', label: 'Code' },
   { to: '/agents', label: 'Agents', matchPrefix: '/agents' },
+  { to: '/research', label: 'Research', matchPrefix: '/research' },
+  { to: '/hub', label: 'Hub', matchPrefix: '/hub' },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -58,17 +60,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <div className="flex items-center gap-4">
-          <Link
-            to="/hub"
-            className={[
-              'px-2.5 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap',
-              pathname === '/hub' || pathname.startsWith('/hub/')
-                ? 'bg-fg text-bg'
-                : 'text-muted hover:text-fg hover:bg-panelHi',
-            ].join(' ')}
-          >
-            Hub
-          </Link>
           <button
             onClick={() => void logout()}
             className="text-[11px] uppercase tracking-[0.16em] font-sans text-muted hover:text-fg transition-colors"
