@@ -1,12 +1,18 @@
 import type { ConversationSummary } from '../../../api/types/ConversationSummary';
+import type { SearchMode } from '../../../api/types/SearchMode';
+
+const SEARCH_MODE_LABEL: Record<SearchMode, string> = {
+  standard: 'standard',
+  basic: 'basic',
+  disabled: 'off',
+};
 
 interface Props {
   activeId: number | null;
   model: string;
   ragEnabled: boolean;
   knowledgeEnabled: boolean;
-  alwaysAllowSearch: boolean;
-  setAlwaysAllowSearch: (fn: (v: boolean) => boolean) => void;
+  searchMode: SearchMode;
   grounding: boolean;
   toggleGrounding: () => void;
   stats: ConversationSummary | null;
@@ -27,8 +33,7 @@ export function PropertiesDrawer({
   model,
   ragEnabled,
   knowledgeEnabled,
-  alwaysAllowSearch,
-  setAlwaysAllowSearch,
+  searchMode,
   grounding,
   toggleGrounding,
   stats,
@@ -124,21 +129,12 @@ export function PropertiesDrawer({
                 {activeId == null ? (knowledgeEnabled ? 'on (first turn)' : 'off') : 'sticky'}
               </dd>
               <dt className="text-muted">Search</dt>
-              <dd className="text-right">
-                {alwaysAllowSearch ? 'always on' : 'auto-detected'}
-              </dd>
+              <dd className="text-right">{SEARCH_MODE_LABEL[searchMode]}</dd>
             </dl>
             <p className="text-[10px] font-sans text-muted mt-2 leading-relaxed">
               Memory / Knowledge are captured when the chat is first created.
-              Search is auto-detected by the harness.
+              Change search mode from the composer.
             </p>
-
-            <ToggleSwitch
-              label="Web search"
-              description="Turn off to stop the model retrieving information from the internet"
-              checked={alwaysAllowSearch}
-              onToggle={() => setAlwaysAllowSearch((v) => !v)}
-            />
 
             <ToggleSwitch
               label="Contextual grounding"

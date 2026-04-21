@@ -9,11 +9,13 @@ import { useWasRecentlyHidden } from '../../hooks/useWasRecentlyHidden';
 import { SidebarBody } from './SidebarBody';
 import { ChatHeader } from './components/ChatHeader';
 import { PropertiesDrawer } from './components/PropertiesDrawer';
+import { SearchModeSelector } from './components/SearchModeSelector';
 import { useAutoScrollToBottom } from './hooks/useAutoScrollToBottom';
 import { useChatConfig } from './hooks/useChatConfig';
 import { useConversations } from './hooks/useConversations';
 import { useChat } from './hooks/useChat';
 import { useStreamRecovery } from './hooks/useStreamRecovery';
+import { loadSearchMode, saveSearchMode } from './lib/searchModeStorage';
 
 const EMPTY_STATE_PROMPTS = [
   'Summarise the last week of my work',
@@ -38,9 +40,7 @@ export function ChatPage() {
     activeIdRef,
     model: config.model,
     styleKey: config.styleKey,
-    searchSuppressed: config.searchSuppressed,
-    alwaysAllowSearch: config.alwaysAllowSearch,
-    planSearch: config.planSearch,
+    searchMode: config.searchMode,
     ragEnabled: config.ragEnabled,
     knowledgeEnabled: config.knowledgeEnabled,
     setActiveId: convs.setActiveId,
@@ -49,6 +49,12 @@ export function ChatPage() {
     visIsHidden: vis.isHidden,
     visJustResumed: vis.justResumed,
   });
+
+  // Load persisted search mode when the active conversation changes.
+  useEffect(() => {
+    config.setSearchMode(loadSearchMode(convs.activeId));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [convs.activeId]);
 
   const recovery = useStreamRecovery({
     activeIdRef,
@@ -95,9 +101,34 @@ export function ChatPage() {
   const newChatOpts = {
     setMessages: chat.setMessages,
     setError: chat.setError,
-    setConsentRequest: chat.setConsentRequest,
     clearRetryTimer: recovery.clearRetryTimer,
   };
+
+  function changeSearchMode(mode: typeof config.searchMode) {
+    config.setSearchMode(mode);
+    saveSearchMode(convs.activeId, mode);
+  }
+
+  async function handleConsentRun(m: import('../../components/chat/DisplayMessage').DisplayMessage) {
+    if (!m.sourceUserText) return;
+    await chat.retryWithConsent({
+      pendingAssistantId: m.id,
+      userText: m.sourceUserText,
+      mode: config.searchMode,
+      confirmed: true,
+    });
+  }
+
+  async function handleConsentSkip(m: import('../../components/chat/DisplayMessage').DisplayMessage) {
+    if (!m.sourceUserText) return;
+    changeSearchMode('disabled');
+    await chat.retryWithConsent({
+      pendingAssistantId: m.id,
+      userText: m.sourceUserText,
+      mode: 'disabled',
+      confirmed: false,
+    });
+  }
 
   return (
     <>
@@ -191,13 +222,8 @@ export function ChatPage() {
                 <div key={m.id} className="space-y-1">
                   <ChatBubble
                     message={m}
-                    orgId={convs.activeConversation?.org_id ?? null}
-                    patchMessage={(id, patch) =>
-                      chat.setMessages((ms) =>
-                        ms.map((x) => (x.id === id ? { ...x, ...patch } : x)),
-                      )
-                    }
-                    onPlannedSearchResolved={() => void chat.reloadMessages()}
+                    onConsentRun={handleConsentRun}
+                    onConsentSkip={handleConsentSkip}
                     onRetry={(mm) => {
                       if (!mm.sourceUserText) return;
                       chat.setMessages((ms) => {
@@ -282,33 +308,6 @@ export function ChatPage() {
           </div>
         )}
 
-        {/* Search consent banner */}
-        {chat.consentRequest && (
-          <div className="px-3 sm:px-6 pb-2">
-            <div className="max-w-3xl mx-auto flex flex-wrap items-center gap-2 sm:gap-3 text-[13px] font-sans text-muted bg-panel border border-border rounded-lg px-4 py-2.5">
-              <span className="w-full sm:w-auto sm:flex-1 min-w-0">
-                This might benefit from a web search
-              </span>
-              <div className="flex items-center gap-2 ml-auto">
-                <button
-                  type="button"
-                  onClick={() => void chat.resolveConsent(true)}
-                  className="text-[11px] uppercase tracking-[0.14em] font-sans px-3 py-1.5 rounded-md bg-fg text-bg hover:bg-fg/85 transition-colors"
-                >
-                  Search
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void chat.resolveConsent(false)}
-                  className="text-[11px] uppercase tracking-[0.14em] font-sans px-3 py-1.5 rounded-md border border-border text-fg hover:bg-panelHi transition-colors"
-                >
-                  Skip
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Error banner */}
         {chat.error && (
           <div className="px-3 sm:px-6 pb-2">
@@ -339,8 +338,12 @@ export function ChatPage() {
             }
           }}
           toggles={config.buildToggles(convs.activeId)}
-          searchSuppressed={config.searchSuppressed}
-          onToggleSearchSuppressed={() => config.setSearchSuppressed((v) => !v)}
+          searchSlot={
+            <SearchModeSelector
+              value={config.searchMode}
+              onChange={changeSearchMode}
+            />
+          }
         />
       </main>
 
@@ -351,8 +354,7 @@ export function ChatPage() {
           model={config.model}
           ragEnabled={config.ragEnabled}
           knowledgeEnabled={config.knowledgeEnabled}
-          alwaysAllowSearch={config.alwaysAllowSearch}
-          setAlwaysAllowSearch={config.setAlwaysAllowSearch}
+          searchMode={config.searchMode}
           grounding={config.grounding}
           toggleGrounding={toggleGrounding}
           stats={convs.stats}

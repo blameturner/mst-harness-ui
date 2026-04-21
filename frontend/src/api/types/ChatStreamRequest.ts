@@ -1,3 +1,5 @@
+import type { SearchMode } from './SearchMode';
+
 export interface ChatStreamRequest {
   model: string;
   message: string;
@@ -8,8 +10,7 @@ export interface ChatStreamRequest {
   rag_enabled?: boolean;
   rag_collection?: string | null;
   knowledge_enabled?: boolean;
-  search_enabled?: boolean;
-  search_consent_declined?: boolean;
-  search_mode?: 'normal' | 'planned' | 'planned_search';
+  search_mode?: SearchMode;
+  search_consent_confirmed?: boolean;
   response_style?: string;
 }

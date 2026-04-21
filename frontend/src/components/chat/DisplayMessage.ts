@@ -2,8 +2,13 @@ import type { SearchSource } from '../../api/types/SearchSource';
 import type { SearchConfidence } from '../../api/types/SearchConfidence';
 import type { ChatIntent } from '../../api/types/ChatIntent';
 import type { SearchStatus } from '../../api/types/SearchStatus';
+import type { SearchMode } from '../../api/types/SearchMode';
 import type { MessageStatus } from './MessageStatus';
-import type { PlannedSearchState } from '../../lib/plannedSearch/types';
+
+export interface AwaitingConsent {
+  query: string;
+  reason: string;
+}
 
 export interface DisplayMessage {
   id: string;
@@ -18,6 +23,8 @@ export interface DisplayMessage {
   errorMessage?: string;
   sources?: SearchSource[];
   searchConfidence?: SearchConfidence;
+  searchMode?: SearchMode;
+  searchQueryCount?: number;
   intent?: ChatIntent | null;
   searchStatus?: SearchStatus;
   searchContextText?: string;
@@ -31,5 +38,5 @@ export interface DisplayMessage {
   thinkingEndTime?: number;
   isThinking?: boolean;
   topics?: string[];
-  plannedSearch?: PlannedSearchState;
+  awaitingConsent?: AwaitingConsent;
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { SearchSource } from '../../api/types/SearchSource';
+import type { SearchMode } from '../../api/types/SearchMode';
 import type { IntentSourceLayout } from '../../api/types/IntentSourceLayout';
 import { SourceCard } from './SourceCard';
 import { sortedByRelevance } from './sortedByRelevance';
@@ -8,9 +9,25 @@ interface Props {
   sources: SearchSource[];
   layout: IntentSourceLayout;
   anchorPrefix?: string;
+  searchMode?: SearchMode;
+  queryCount?: number;
 }
 
-export function SourcesPanel({ sources, layout, anchorPrefix }: Props) {
+const SEARCH_MODE_LABEL: Record<SearchMode, string> = {
+  standard: 'Standard',
+  basic: 'Basic',
+  disabled: 'Off',
+};
+
+function headerSuffix(mode: SearchMode | undefined, queries: number | undefined, sources: number): string {
+  const parts: string[] = [];
+  if (mode) parts.push(SEARCH_MODE_LABEL[mode]);
+  if (queries && queries > 0) parts.push(`${queries} queries`);
+  parts.push(`${sources} sources`);
+  return parts.join(' · ');
+}
+
+export function SourcesPanel({ sources, layout, anchorPrefix, searchMode, queryCount }: Props) {
   const [open, setOpen] = useState(layout === 'expanded');
   const [showAll, setShowAll] = useState(false);
 
@@ -25,7 +42,7 @@ export function SourcesPanel({ sources, layout, anchorPrefix }: Props) {
           onClick={() => setOpen(true)}
           className="text-[10px] uppercase tracking-[0.16em] font-sans text-muted hover:text-fg transition-colors inline-flex items-center gap-1"
         >
-          {sources.length} sources
+          {headerSuffix(searchMode, queryCount, sources.length)}
           <span aria-hidden>▾</span>
         </button>
       </div>
@@ -38,7 +55,9 @@ export function SourcesPanel({ sources, layout, anchorPrefix }: Props) {
 
   return (
     <div className="mt-4 pt-3 border-t border-border">
-      <p className="text-[10px] uppercase tracking-[0.16em] font-sans text-muted mb-2">Sources</p>
+      <p className="text-[10px] uppercase tracking-[0.16em] font-sans text-muted mb-2">
+        Sources · {headerSuffix(searchMode, queryCount, sources.length)}
+      </p>
       <div className="space-y-1.5">
         {visible.map((src, i) => (
           <div

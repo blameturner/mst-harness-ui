@@ -51,14 +51,12 @@ export interface ConversationsState {
   newChat: (opts: {
     setMessages: React.Dispatch<React.SetStateAction<DisplayMessage[]>>;
     setError: (e: string | null) => void;
-    setConsentRequest: (v: null) => void;
     clearRetryTimer: () => void;
   }) => void;
   saveRename: () => Promise<void>;
   deleteChat: (opts: {
     setMessages: React.Dispatch<React.SetStateAction<DisplayMessage[]>>;
     setError: (e: string | null) => void;
-    setConsentRequest: (v: null) => void;
     clearRetryTimer: () => void;
   }) => Promise<void>;
   setLoadingConversations: (v: boolean) => void;
@@ -160,7 +158,6 @@ export function useConversations(): ConversationsState {
   function newChat(opts: {
     setMessages: React.Dispatch<React.SetStateAction<DisplayMessage[]>>;
     setError: (e: string | null) => void;
-    setConsentRequest: (v: null) => void;
     clearRetryTimer: () => void;
   }) {
     opts.clearRetryTimer();
@@ -169,7 +166,6 @@ export function useConversations(): ConversationsState {
     opts.setError(null);
     setStats(null);
     setRenameTitle('');
-    opts.setConsentRequest(null);
     setConversationTopics([]);
   }
 
@@ -201,7 +197,6 @@ export function useConversations(): ConversationsState {
   async function deleteChat(opts: {
     setMessages: React.Dispatch<React.SetStateAction<DisplayMessage[]>>;
     setError: (e: string | null) => void;
-    setConsentRequest: (v: null) => void;
     clearRetryTimer: () => void;
   }) {
     if (activeId == null) return;

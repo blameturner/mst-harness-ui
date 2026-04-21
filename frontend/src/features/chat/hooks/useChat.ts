@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import type { StreamEvent } from '../../../api/types/StreamEvent';
+import type { SearchMode } from '../../../api/types/SearchMode';
 import type { DisplayMessage } from '../../../components/chat/DisplayMessage';
 import { chatStream } from '../../../api/chat/chatStream';
 import { listConversations } from '../../../api/chat/listConversations';
@@ -9,8 +10,6 @@ import { saveActiveStream, clearActiveStream } from '../../../lib/activeStream';
 import { isTransientNetworkError } from '../../../lib/network/isTransientNetworkError';
 import { uid } from '../../../lib/utils/uid';
 import { labelForTool } from '../../../lib/intent/labelForTool';
-import type { ConsentRequest } from '../types/ConsentRequest';
-import { parseProposal } from '../../../lib/plannedSearch/parseProposal';
 import { hydrateMessages } from '../lib/hydrateMessages';
 
 interface UseChatDeps {
@@ -18,9 +17,7 @@ interface UseChatDeps {
   activeIdRef: React.RefObject<number | null>;
   model: string;
   styleKey: string;
-  searchSuppressed: boolean;
-  alwaysAllowSearch: boolean;
-  planSearch: boolean;
+  searchMode: SearchMode;
   ragEnabled: boolean;
   knowledgeEnabled: boolean;
   setActiveId: (id: number | null) => void;
@@ -28,6 +25,13 @@ interface UseChatDeps {
   setConversationTopics: (topics: string[]) => void;
   visIsHidden: () => boolean;
   visJustResumed: () => boolean;
+}
+
+export interface RetryConsentArgs {
+  pendingAssistantId: string;
+  userText: string;
+  mode: SearchMode;
+  confirmed: boolean;
 }
 
 export interface ChatState {
@@ -39,12 +43,10 @@ export interface ChatState {
   setError: (e: string | null) => void;
   input: string;
   setInput: (v: string) => void;
-  consentRequest: ConsentRequest | null;
-  setConsentRequest: (v: ConsentRequest | null) => void;
   streamAbortRef: React.RefObject<AbortController | null>;
 
   send: (forcedText?: string) => Promise<void>;
-  resolveConsent: (allow: boolean) => Promise<void>;
+  retryWithConsent: (args: RetryConsentArgs) => Promise<void>;
   reloadMessages: () => Promise<void>;
   processStream: (
     stream: AsyncGenerator<StreamEvent, void, void>,
@@ -65,70 +67,12 @@ export function useChat(deps: UseChatDeps): ChatState {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [consentRequest, setConsentRequest] = useState<ConsentRequest | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
-
-  async function hydratePlannedSearchApproval(conversationId: number, pendingId: string) {
-    // Poll the conversation for the newly persisted proposal row; give up after ~20s.
-    const deadline = Date.now() + 20_000;
-    while (Date.now() < deadline) {
-      try {
-        const res = await getConversationMessages(conversationId);
-        const rows = res.messages ?? [];
-        const proposal = [...rows]
-          .reverse()
-          .find(
-            (m) =>
-              m.role === 'assistant' &&
-              (m.pending_approval === 1 || m.search_status === 'awaiting_approval'),
-          );
-        if (proposal) {
-          let queries: { query: string; reason: string }[] = [];
-          try {
-            const maybeParsed = JSON.parse(proposal.content);
-            if (Array.isArray(maybeParsed)) {
-              queries = maybeParsed
-                .map((q) => {
-                  if (typeof q === 'string') return { query: q, reason: '' };
-                  if (q && typeof q === 'object') {
-                    return {
-                      query: String((q as { query?: unknown }).query ?? ''),
-                      reason: String((q as { reason?: unknown }).reason ?? ''),
-                    };
-                  }
-                  return { query: '', reason: '' };
-                })
-                .filter((q) => q.query);
-            }
-          } catch {
-            const parsedFromMarker = parseProposal(proposal.content);
-            if (parsedFromMarker) queries = parsedFromMarker.queries;
-          }
-          setMessages((ms) =>
-            ms.map((x) =>
-              x.id === pendingId
-                ? {
-                    ...x,
-                    plannedSearch: {
-                      proposalMessageId: proposal.Id,
-                      queries,
-                      status: 'proposed' as const,
-                    },
-                  }
-                : x,
-            ),
-          );
-          return;
-        }
-      } catch {}
-      await new Promise((r) => setTimeout(r, 1500));
-    }
-  }
 
   async function processStreamFn(
     stream: AsyncGenerator<StreamEvent, void, void>,
     pendingId: string,
-    userText: string,
+    _userText: string,
     isFirstMessage: boolean,
     controller: AbortController,
   ): Promise<{ conversationId: number | null; consentNeeded: boolean }> {
@@ -159,20 +103,20 @@ export function useChat(deps: UseChatDeps): ChatState {
           );
           continue;
         }
-        if (ev.type === 'search_deferred') {
-          setMessages((ms) =>
-            ms.map((x) =>
-              x.id === pendingId
-                ? { ...x, searchStatus: 'deferred' }
-                : x,
-            ),
-          );
-          continue;
-        }
         if (ev.type === 'searching') {
           flushSync(() => {
             setMessages((ms) =>
-              ms.map((x) => (x.id === pendingId ? { ...x, status: 'searching', toolStatus: undefined } : x)),
+              ms.map((x) =>
+                x.id === pendingId
+                  ? {
+                      ...x,
+                      status: 'searching',
+                      toolStatus: undefined,
+                      searchMode: ev.mode,
+                      searchQueryCount: ev.queries?.length,
+                    }
+                  : x,
+              ),
             );
           });
           continue;
@@ -302,29 +246,19 @@ export function useChat(deps: UseChatDeps): ChatState {
           clearActiveStream();
           if (ev.conversation_id != null) newConversationId = ev.conversation_id;
           if (ev.awaiting === 'search_consent') {
+            const consent = consentArgs;
             setMessages((ms) =>
               ms.map((x) =>
                 x.id === pendingId
-                  ? { ...x, status: 'pending', startedAt: undefined }
+                  ? {
+                      ...x,
+                      status: 'pending',
+                      startedAt: undefined,
+                      awaitingConsent: consent ?? { query: '', reason: 'This looks like a factual lookup — run a web search?' },
+                    }
                   : x,
               ),
             );
-            break;
-          }
-          if (ev.awaiting === 'planned_search_approval') {
-            // Parallel path to search_consent: hand the pending bubble off to
-            // PlannedSearchCard once the backend-persisted proposal message is found.
-            const convIdForPoll = ev.conversation_id ?? newConversationId;
-            setMessages((ms) =>
-              ms.map((x) =>
-                x.id === pendingId
-                  ? { ...x, status: 'pending', startedAt: undefined }
-                  : x,
-              ),
-            );
-            if (convIdForPoll != null) {
-              void hydratePlannedSearchApproval(convIdForPoll, pendingId);
-            }
             break;
           }
           const tokIn = ev.usage?.prompt_tokens ?? ev.tokens_input;
@@ -345,23 +279,6 @@ export function useChat(deps: UseChatDeps): ChatState {
                   }
                 : x,
             ),
-          );
-          setMessages((ms) =>
-            ms.map((x) => {
-              if (x.id !== pendingId) return x;
-              const parsed = parseProposal(x.content);
-              // If messageId is 0 (raw JSON format) we don't know the DB id yet —
-              // hydratePlannedSearchApproval will set plannedSearch once the row is found.
-              if (!parsed || parsed.messageId === 0) return x;
-              return {
-                ...x,
-                plannedSearch: {
-                  proposalMessageId: parsed.messageId,
-                  queries: parsed.queries,
-                  status: 'proposed' as const,
-                },
-              };
-            }),
           );
         } else if (ev.type === 'error') {
           let hadContent = false;
@@ -413,15 +330,6 @@ export function useChat(deps: UseChatDeps): ChatState {
       }
     }
 
-    if (consentNeeded && consentArgs) {
-      setConsentRequest({
-        query: consentArgs.query,
-        reason: consentArgs.reason,
-        pendingUserText: userText,
-        pendingAssistantId: pendingId,
-      });
-    }
-
     return { conversationId: newConversationId, consentNeeded };
   }
 
@@ -471,8 +379,7 @@ export function useChat(deps: UseChatDeps): ChatState {
           conversation_id: deps.activeId ?? undefined,
           ...(isFirstMessage && deps.ragEnabled ? { rag_enabled: true } : {}),
           ...(isFirstMessage && deps.knowledgeEnabled ? { knowledge_enabled: true } : {}),
-          ...(deps.searchSuppressed ? { search_enabled: false } : deps.alwaysAllowSearch ? { search_enabled: true } : {}),
-          ...(deps.planSearch ? { search_mode: 'planned' as const } : {}),
+          search_mode: deps.searchMode,
           ...(deps.styleKey ? { response_style: deps.styleKey } : {}),
         },
         pendingId,
@@ -483,15 +390,22 @@ export function useChat(deps: UseChatDeps): ChatState {
     }
   }
 
-  async function resolveConsent(allow: boolean) {
-    if (!consentRequest) return;
-    const { pendingUserText, pendingAssistantId } = consentRequest;
-    setConsentRequest(null);
-
+  async function retryWithConsent({
+    pendingAssistantId,
+    userText,
+    mode,
+    confirmed,
+  }: RetryConsentArgs) {
     setMessages((ms) =>
       ms.map((x) =>
         x.id === pendingAssistantId
-          ? { ...x, status: 'pending', content: '', startedAt: Date.now() }
+          ? {
+              ...x,
+              status: 'pending',
+              content: '',
+              startedAt: Date.now(),
+              awaitingConsent: undefined,
+            }
           : x,
       ),
     );
@@ -502,13 +416,14 @@ export function useChat(deps: UseChatDeps): ChatState {
       await runChatStreamFn(
         {
           model: deps.model,
-          message: pendingUserText,
+          message: userText,
           conversation_id: deps.activeId ?? undefined,
-          ...(allow ? { search_enabled: true } : { search_consent_declined: true }),
+          search_mode: mode,
+          ...(confirmed ? { search_consent_confirmed: true } : {}),
           ...(deps.styleKey ? { response_style: deps.styleKey } : {}),
         },
         pendingAssistantId,
-        pendingUserText,
+        userText,
       );
     } finally {
       setSending(false);
@@ -531,10 +446,9 @@ export function useChat(deps: UseChatDeps): ChatState {
     sending, setSending,
     error, setError,
     input, setInput,
-    consentRequest, setConsentRequest,
     streamAbortRef,
     send,
-    resolveConsent,
+    retryWithConsent,
     reloadMessages,
     processStream: processStreamFn,
     runChatStream: runChatStreamFn,

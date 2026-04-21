@@ -13,4 +13,4 @@ export type SearchStatus =
   | 'declined';
 
 /** Shared relevance scale used for search sources and related message metadata. */
-export type Relevance = 'high' | 'medium' | 'low' | 'unknown';
+export type Relevance = 'high' | 'medium' | 'low';

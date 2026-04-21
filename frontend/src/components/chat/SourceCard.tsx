@@ -11,8 +11,8 @@ export function SourceCard({ source }: { source: SearchSource }) {
     dimmed ? ' opacity-60' : ''
   }`;
 
-  const relevance = source.relevance ?? 'unknown';
-  const relClass = RELEVANCE_COLORS[relevance] ?? RELEVANCE_COLORS.unknown;
+  const relevance = source.relevance;
+  const relClass = RELEVANCE_COLORS[relevance];
 
   return (
     <a href={source.url} target="_blank" rel="noreferrer noopener" className={outerClass}>

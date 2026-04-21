@@ -9,9 +9,7 @@ import { ThinkingLabel } from './ThinkingLabel';
 import { ElapsedTimer } from './ElapsedTimer';
 import { OutputSection } from './OutputSection';
 import { MarkdownBody } from './MarkdownBody';
-import { CitationMarkdown } from './CitationMarkdown';
-import { PlannedSearchCard } from './PlannedSearchCard';
-import { usePlannedSearchApproval } from '../../features/chat/hooks/usePlannedSearchApproval';
+import { SearchConsentPrompt } from '../../features/chat/components/SearchConsentPrompt';
 import { resolveSourceLayout } from '../../lib/intent/resolveSourceLayout';
 import { typingLabelForIntent } from '../../lib/intent/typingLabelForIntent';
 
@@ -19,9 +17,8 @@ interface Props {
   message: DisplayMessage;
   onRetry?: (message: DisplayMessage) => void;
   onEdit?: (message: DisplayMessage) => void;
-  orgId?: number | null;
-  patchMessage?: (id: string, patch: Partial<DisplayMessage>) => void;
-  onPlannedSearchResolved?: () => void;
+  onConsentRun?: (message: DisplayMessage) => void | Promise<void>;
+  onConsentSkip?: (message: DisplayMessage) => void | Promise<void>;
 }
 
 const BUBBLE_MAX = 'max-w-[92%] md:max-w-[80%]';
@@ -39,9 +36,8 @@ export function ChatBubble({
   message,
   onRetry,
   onEdit,
-  orgId,
-  patchMessage,
-  onPlannedSearchResolved,
+  onConsentRun,
+  onConsentSkip,
 }: Props) {
   const [copied, setCopied] = useState(false);
 
@@ -53,18 +49,12 @@ export function ChatBubble({
     } catch {}
   }
 
-  if (
-    message.role === 'assistant' &&
-    message.plannedSearch &&
-    patchMessage &&
-    onPlannedSearchResolved
-  ) {
+  if (message.role === 'assistant' && message.awaitingConsent && onConsentRun && onConsentSkip) {
     return (
-      <PlannedSearchCardContainer
-        message={message}
-        orgId={orgId ?? null}
-        patchMessage={patchMessage}
-        onResolved={onPlannedSearchResolved}
+      <SearchConsentPrompt
+        reason={message.awaitingConsent.reason || 'This looks like a factual lookup — run a web search?'}
+        onRun={() => onConsentRun(message)}
+        onSkip={() => onConsentSkip(message)}
       />
     );
   }
@@ -273,14 +263,7 @@ export function ChatBubble({
         )}
         <ConfidenceBanner confidence={message.searchConfidence} />
         <SearchStatusBadge status={message.searchStatus} />
-        {message.model === 'planned_search_answer' ? (
-          <CitationMarkdown
-            content={message.content}
-            anchorPrefix={`src-${message.id}`}
-          />
-        ) : (
-          <MarkdownBody content={message.content} />
-        )}
+        <MarkdownBody content={message.content} />
         {isStreaming && <span className="caret" />}
         {message.status === 'complete' && message.errorMessage && (
           <div className="mt-2 text-[11px] font-sans text-amber-600 bg-amber-500/10 border border-amber-600/30 rounded-md px-2.5 py-1.5">
@@ -292,14 +275,9 @@ export function ChatBubble({
         )}
         <SourcesPanel
           sources={message.sources ?? []}
-          layout={
-            message.model === 'planned_search_answer'
-              ? 'expanded'
-              : resolveSourceLayout(message.intent, !!message.sources?.length)
-          }
-          anchorPrefix={
-            message.model === 'planned_search_answer' ? `src-${message.id}` : undefined
-          }
+          layout={resolveSourceLayout(message.intent, !!message.sources?.length)}
+          searchMode={message.searchMode}
+          queryCount={message.searchQueryCount}
         />
         {showCopy && (
           <div className="mt-2 -mb-1">
@@ -308,33 +286,6 @@ export function ChatBubble({
         )}
       </div>
     </div>
-  );
-}
-
-function PlannedSearchCardContainer({
-  message,
-  orgId,
-  patchMessage,
-  onResolved,
-}: {
-  message: DisplayMessage;
-  orgId: number | null;
-  patchMessage: (id: string, patch: Partial<DisplayMessage>) => void;
-  onResolved: () => void;
-}) {
-  const { approve, reject } = usePlannedSearchApproval({
-    message,
-    patchMessage,
-    orgId,
-    onApproved: onResolved,
-    onRejected: onResolved,
-  });
-  return (
-    <PlannedSearchCard
-      state={message.plannedSearch!}
-      onApprove={() => void approve()}
-      onReject={() => void reject()}
-    />
   );
 }
 

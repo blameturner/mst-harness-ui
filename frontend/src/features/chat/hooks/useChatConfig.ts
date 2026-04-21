@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import type { LlmModel } from '../../../api/types/LlmModel';
-import type { StyleOption } from '../../../api/types/StyleOption';
 import type { StyleSurface } from '../../../api/types/StyleSurface';
+import type { SearchMode } from '../../../api/types/SearchMode';
+import { SEARCH_MODE_DEFAULT } from '../../../api/types/SearchMode';
 import type { ComposerToggle } from '../../../components/ComposerToggle';
 
 export interface ChatConfig {
@@ -20,14 +21,8 @@ export interface ChatConfig {
   knowledgeEnabled: boolean;
   setKnowledgeEnabled: (fn: (v: boolean) => boolean) => void;
 
-  searchSuppressed: boolean;
-  setSearchSuppressed: (fn: (v: boolean) => boolean) => void;
-
-  planSearch: boolean;
-  setPlanSearch: (fn: (v: boolean) => boolean) => void;
-
-  alwaysAllowSearch: boolean;
-  setAlwaysAllowSearch: (fn: (v: boolean) => boolean) => void;
+  searchMode: SearchMode;
+  setSearchMode: (v: SearchMode) => void;
 
   grounding: boolean;
   setGrounding: (v: boolean) => void;
@@ -45,10 +40,8 @@ export function useChatConfig(): ChatConfig {
   const [ragEnabled, setRagEnabled] = useState(false);
   const [knowledgeEnabled, setKnowledgeEnabled] = useState(false);
 
-  const [searchSuppressed, setSearchSuppressed] = useState(false);
-  const [planSearch, setPlanSearch] = useState(false);
+  const [searchMode, setSearchMode] = useState<SearchMode>(SEARCH_MODE_DEFAULT);
 
-  const [alwaysAllowSearch, setAlwaysAllowSearch] = useState(true);
   const [grounding, setGrounding] = useState(true);
 
   function buildToggles(activeId: number | null): ComposerToggle[] {
@@ -75,14 +68,6 @@ export function useChatConfig(): ChatConfig {
             : 'Extract entities and write concept edges to the knowledge graph',
         onToggle: () => setKnowledgeEnabled((v) => !v),
       },
-      {
-        key: 'plan_search',
-        label: 'Plan Search',
-        active: planSearch,
-        title:
-          'Propose a set of web searches before answering — requires approval before queries run',
-        onToggle: () => setPlanSearch((v) => !v),
-      },
     ];
   }
 
@@ -90,9 +75,7 @@ export function useChatConfig(): ChatConfig {
     models, model, setModel, setModels,
     chatStyles, setChatStyles, styleKey, setStyleKey,
     ragEnabled, setRagEnabled, knowledgeEnabled, setKnowledgeEnabled,
-    searchSuppressed, setSearchSuppressed,
-    planSearch, setPlanSearch,
-    alwaysAllowSearch, setAlwaysAllowSearch,
+    searchMode, setSearchMode,
     grounding, setGrounding,
     buildToggles,
   };

@@ -31,8 +31,7 @@ interface ComposerDockProps {
   leftRailSlot?: ReactNode;
   onAttach?: (files: File[]) => void;
   attachmentPreview?: ReactNode;
-  searchSuppressed?: boolean;
-  onToggleSearchSuppressed?: () => void;
+  searchSlot?: ReactNode;
 }
 
 export function ComposerDock({
@@ -53,8 +52,7 @@ export function ComposerDock({
   leftRailSlot,
   onAttach,
   attachmentPreview,
-  searchSuppressed,
-  onToggleSearchSuppressed,
+  searchSlot,
 }: ComposerDockProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -167,6 +165,13 @@ export function ComposerDock({
             </>
           )}
 
+          {searchSlot && (
+            <>
+              <Divider />
+              <DockZone label="Search">{searchSlot}</DockZone>
+            </>
+          )}
+
           <div className="flex-1" />
         </div>
       </div>
@@ -229,35 +234,14 @@ export function ComposerDock({
               <span className="hidden sm:inline">Stop</span>
             </button>
           ) : (
-            <div className="flex items-center gap-1.5 shrink-0">
-              {onToggleSearchSuppressed && (
-                <button
-                  type="button"
-                  onClick={onToggleSearchSuppressed}
-                  title={searchSuppressed ? 'Search disabled for this message — click to re-enable' : 'Skip web search for this message'}
-                  className={[
-                    'px-2.5 py-2 rounded-md text-[11px] font-sans tracking-wide transition-colors border',
-                    searchSuppressed
-                      ? 'border-red-600/50 text-red-500 bg-red-500/10 hover:bg-red-500/20'
-                      : 'border-border text-muted hover:border-fg hover:text-fg',
-                  ].join(' ')}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={searchSuppressed ? 'opacity-100' : 'opacity-60'}>
-                    <circle cx="11" cy="11" r="8" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                    {searchSuppressed && <line x1="4" y1="4" x2="18" y2="18" />}
-                  </svg>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={onSend}
-                disabled={disabled || sending || !value.trim()}
-                className="shrink-0 px-4 py-2 rounded-md bg-fg text-bg text-sm font-medium tracking-wide hover:bg-fg/85 transition-colors disabled:opacity-40"
-              >
-                Send
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={onSend}
+              disabled={disabled || sending || !value.trim()}
+              className="shrink-0 px-4 py-2 rounded-md bg-fg text-bg text-sm font-medium tracking-wide hover:bg-fg/85 transition-colors disabled:opacity-40"
+            >
+              Send
+            </button>
           )}
         </div>
         <p className="hidden sm:block text-[10px] uppercase tracking-[0.14em] text-muted font-sans mt-2">

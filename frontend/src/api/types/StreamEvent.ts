@@ -2,6 +2,7 @@ import type { AgentOutput } from './AgentOutput';
 import type { SearchStatus } from './SearchStatus';
 import type { SearchConfidence } from './SearchConfidence';
 import type { SearchSource } from './SearchSource';
+import type { SearchMode } from './SearchMode';
 import type { ChatRoute } from './ChatRoute';
 import type { ChatIntent } from './ChatIntent';
 
@@ -19,7 +20,7 @@ export type StreamEvent =
       duration_seconds?: number;
       mode?: 'plan' | 'execute' | 'explain' | 'review';
       output?: string;
-      awaiting?: 'search_consent' | 'planned_search_approval';
+      awaiting?: 'search_consent';
       search_used?: boolean;
       search_status?: SearchStatus;
       search_confidence?: SearchConfidence;
@@ -29,7 +30,7 @@ export type StreamEvent =
   | { type: 'status'; phase: string; message?: string }
   | { type: 'summarised'; removed: number; summary_chars: number; topics?: string[]; fallback?: boolean }
   | { type: 'parsed'; output: AgentOutput | null }
-  | { type: 'searching'; queries?: string[] }
+  | { type: 'searching'; queries?: string[]; mode?: SearchMode }
   | {
       type: 'tool_status';
       phase: 'planning' | 'start' | 'end';
@@ -62,6 +63,5 @@ export type StreamEvent =
       entities: string[];
       confidence: number;
     }
-  | { type: 'search_deferred'; entities: string[] }
   | { type: 'thinking'; text: string }
   | { type: 'error'; message: string };
