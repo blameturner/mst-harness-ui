@@ -4,10 +4,9 @@ import { orgMe } from '../../../../api/auth/orgMe';
 import { startScraper } from '../../../../api/enrichment/scraper';
 import { startPathfinder } from '../../../../api/enrichment/pathfinder';
 import { startDiscoverAgent } from '../../../../api/enrichment/startDiscoverAgent';
-import { retryQueueJob } from '../../../../api/queue/retryQueueJob';
-import type { QueueJob } from '../../../../api/types/QueueJob';
 import { extractApiFailure, asNumber, formatKick } from './lib/formatters';
 import { useOpsDashboard } from './hooks/useOpsDashboard';
+import { BackoffLight } from './components/BackoffLight';
 import { PipelineRibbon } from './components/PipelineRibbon';
 import { NextCandidatePanel } from './components/NextCandidatePanel';
 import { SuggestionsPanel } from './components/SuggestionsPanel';
@@ -33,8 +32,6 @@ export function OpsTab() {
 
   const [busyKick, setBusyKick] = useState<'scraper' | 'pathfinder' | 'discover' | null>(null);
   const [kickStatus, setKickStatus] = useState<string | null>(null);
-  const [retryBusy, setRetryBusy] = useState<string | null>(null);
-  const [retryStatus, setRetryStatus] = useState<string | null>(null);
 
   const triggersDisabled = !!dashboard.queueUnavailable;
 
@@ -70,26 +67,6 @@ export function OpsTab() {
     }
   }
 
-  async function retry(jobId: string) {
-    setRetryBusy(jobId);
-    setRetryStatus(null);
-    try {
-      const res = await retryQueueJob(jobId);
-      setRetryStatus(res.status === 'queued' ? `Retried ${jobId}` : `Retry ${res.status}${res.error ? `: ${res.error}` : ''}`);
-      dashboard.reload();
-    } catch (err) {
-      setRetryStatus(`Retry failed: ${extractApiFailure(err).message}`);
-    } finally {
-      setRetryBusy(null);
-      window.setTimeout(() => setRetryStatus(null), 6000);
-    }
-  }
-
-  const queueRows = dashboard.data?.queue_jobs?.rows ?? [];
-  const activeRows = queueRows.filter((j) => j.status === 'queued' || j.status === 'running');
-  const failedRows = queueRows.filter((j) => j.status === 'failed').slice(0, 8);
-  const groupedActive = groupActive(activeRows);
-
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-end gap-3 flex-wrap">
@@ -119,11 +96,9 @@ export function OpsTab() {
         >
           Refresh
         </button>
+        <BackoffLight backoff={dashboard.data?.queue_center?.backoff ?? dashboard.data?.queue?.backoff} />
         {kickStatus && (
           <span className="ml-auto text-[11px] uppercase tracking-[0.14em] text-muted">{kickStatus}</span>
-        )}
-        {retryStatus && (
-          <span className="text-[11px] uppercase tracking-[0.14em] text-muted">{retryStatus}</span>
         )}
       </div>
 
@@ -142,76 +117,6 @@ export function OpsTab() {
         busy={busyKick}
         onKick={kick}
       />
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <section className="border border-border rounded p-3 space-y-2">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-muted">Runtime health</p>
-          <p className="text-sm">tool_queue_ready: {String(dashboard.runtime?.tool_queue_ready ?? '-')}</p>
-          <p className="text-sm">huey enabled: {String(dashboard.runtime?.huey?.enabled ?? '-')}</p>
-          <p className="text-sm">consumer: {dashboard.runtime?.huey?.consumer_running ? 'running' : 'stopped'}</p>
-          <p className="text-sm">workers: {dashboard.runtime?.huey?.workers ?? '-'}</p>
-          <p className="text-sm">backoff: {dashboard.data?.queue?.backoff?.state ?? '-'}</p>
-          <p className="text-sm">idle seconds: {dashboard.data?.queue?.backoff?.idle_seconds ?? '-'}</p>
-        </section>
-
-        <section className="border border-border rounded p-3 space-y-2">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-muted">Scheduler</p>
-          <p className="text-sm">next agent run: {dashboard.data?.scheduler?.next_run ?? '-'}</p>
-          <p className="text-sm">next enrichment run: {dashboard.data?.scheduler?.next_enrichment_run ?? '-'}</p>
-          <p className="text-[11px] uppercase tracking-[0.14em] text-muted pt-1">Agent schedules</p>
-          {(dashboard.data?.scheduler?.agent_schedules ?? []).slice(0, 4).map((s) => (
-            <p key={`agent-${s.id}`} className="text-xs">{s.id}: {s.next_run ?? '-'}</p>
-          ))}
-          <p className="text-[11px] uppercase tracking-[0.14em] text-muted pt-1">Enrichment schedules</p>
-          {(dashboard.data?.scheduler?.enrichment_schedules ?? []).slice(0, 4).map((s) => (
-            <p key={`enrich-${s.id}`} className="text-xs">{s.id}: {s.next_run ?? '-'}</p>
-          ))}
-        </section>
-
-        <section className="border border-border rounded p-3 space-y-2">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-muted">Active summary</p>
-          <p className="text-sm">active: {dashboard.data?.active_summary?.active ?? 0}</p>
-          <p className="text-sm">queued: {dashboard.data?.active_summary?.queued ?? 0}</p>
-          <p className="text-sm">running: {dashboard.data?.active_summary?.running ?? 0}</p>
-          <p className="text-[11px] uppercase tracking-[0.14em] text-muted pt-1">Active by type/source</p>
-          {groupedActive.length === 0 ? (
-            <p className="text-xs text-muted">No queued/running jobs</p>
-          ) : (
-            groupedActive.slice(0, 8).map((g) => (
-              <p key={`${g.type}-${g.source}`} className="text-xs">
-                {g.type} / {g.source}: {g.count}
-              </p>
-            ))
-          )}
-        </section>
-      </div>
-
-      <section className="border border-border rounded p-3 space-y-2">
-        <div className="flex items-center justify-between">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-muted">Recent failures</p>
-        </div>
-        {failedRows.length === 0 ? (
-          <p className="text-xs text-muted">No failed jobs in current slice.</p>
-        ) : (
-          <div className="space-y-1">
-            {failedRows.map((job) => (
-              <div key={job.job_id} className="flex items-center gap-2 text-xs">
-                <span className="font-mono text-muted">{job.job_id.slice(0, 8)}</span>
-                <span>{job.type}</span>
-                <span className="text-muted">{job.error || '-'}</span>
-                <button
-                  type="button"
-                  onClick={() => void retry(job.job_id)}
-                  disabled={triggersDisabled || retryBusy === job.job_id}
-                  className="ml-auto px-2 py-1 rounded border border-border text-[10px] uppercase tracking-[0.12em] hover:bg-panel disabled:opacity-50"
-                >
-                  {retryBusy === job.job_id ? 'Retrying…' : 'Retry'}
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_22rem] gap-4">
         <div className="space-y-3 min-w-0">
@@ -266,23 +171,5 @@ export function OpsTab() {
       </div>
     </div>
   );
-}
-
-function groupActive(rows: QueueJob[]) {
-  const map = new Map<string, { type: string; source: string; count: number }>();
-  for (const row of rows) {
-    const key = `${row.type}::${row.source}`;
-    const prev = map.get(key);
-    if (prev) {
-      prev.count += 1;
-      continue;
-    }
-    map.set(key, {
-      type: row.type || 'unknown',
-      source: row.source || 'unknown',
-      count: 1,
-    });
-  }
-  return Array.from(map.values()).sort((a, b) => b.count - a.count);
 }
 
