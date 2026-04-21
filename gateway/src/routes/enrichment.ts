@@ -13,6 +13,13 @@ export const enrichmentRoute = new Hono<{ Variables: AuthVariables }>();
 
 enrichmentRoute.use('*', requireAuth);
 
+function scopedSearch(url: string, orgId: number | string): string {
+  const parsedUrl = new URL(url);
+  parsedUrl.searchParams.set('org_id', String(orgId));
+  const qs = parsedUrl.searchParams.toString();
+  return qs ? `?${qs}` : '';
+}
+
 // ========== Pathfinder (URL Discovery) ==========
 
 enrichmentRoute.post('/pathfinder/discover', async (c) => {
@@ -67,8 +74,10 @@ enrichmentRoute.post('/pathfinder/mark-processed', async (c) => {
 });
 
 enrichmentRoute.post('/pathfinder/start', async (c) => {
+  const { orgId } = getAuthContext(c);
+  const qs = scopedSearch(c.req.url, orgId);
   try {
-    const res = await harnessClient.post('/enrichment/pathfinder/start', {}, TIMEOUT);
+    const res = await harnessClient.post(`/enrichment/pathfinder/start${qs}`, {}, TIMEOUT);
     return forwardResponse(res);
   } catch (err) {
     return mapHarnessError(err, 'enrichment');
@@ -76,8 +85,10 @@ enrichmentRoute.post('/pathfinder/start', async (c) => {
 });
 
 enrichmentRoute.post('/discover-agent/start', async (c) => {
+  const { orgId } = getAuthContext(c);
+  const qs = scopedSearch(c.req.url, orgId);
   try {
-    const res = await harnessClient.post('/enrichment/discover-agent/start', {}, TIMEOUT);
+    const res = await harnessClient.post(`/enrichment/discover-agent/start${qs}`, {}, TIMEOUT);
     return forwardResponse(res);
   } catch (err) {
     return mapHarnessError(err, 'enrichment');
@@ -89,19 +100,9 @@ enrichmentRoute.post('/discover-agent/start', async (c) => {
 
 enrichmentRoute.get('/discovery/list', async (c) => {
   const { orgId } = getAuthContext(c);
-  const status = c.req.query('status');
-  const limit = c.req.query('limit');
-  const offset = c.req.query('offset');
-  const sortBy = c.req.query('sort_by');
-  const sortDir = c.req.query('sort_dir');
-  let qs = `org_id=${orgId}`;
-  if (status) qs += `&status=${encodeURIComponent(status)}`;
-  if (limit) qs += `&limit=${encodeURIComponent(limit)}`;
-  if (offset) qs += `&offset=${encodeURIComponent(offset)}`;
-  if (sortBy) qs += `&sort_by=${encodeURIComponent(sortBy)}`;
-  if (sortDir) qs += `&sort_dir=${encodeURIComponent(sortDir)}`;
+  const qs = scopedSearch(c.req.url, orgId);
   try {
-    const res = await harnessClient.get(`/enrichment/discovery/list?${qs}`, TIMEOUT);
+    const res = await harnessClient.get(`/enrichment/discovery/list${qs}`, TIMEOUT);
     return forwardResponse(res);
   } catch (err) {
     return mapHarnessError(err, 'enrichment');
@@ -110,25 +111,52 @@ enrichmentRoute.get('/discovery/list', async (c) => {
 
 enrichmentRoute.get('/scrape-targets/list', async (c) => {
   const { orgId } = getAuthContext(c);
-  const status = c.req.query('status');
-  const activeOnly = c.req.query('active_only');
-  const limit = c.req.query('limit');
-  const offset = c.req.query('offset');
-  const sortBy = c.req.query('sort_by');
-  const sortDir = c.req.query('sort_dir');
-  const category = c.req.query('category');
-  const q = c.req.query('q');
-  let qs = `org_id=${orgId}`;
-  if (status) qs += `&status=${encodeURIComponent(status)}`;
-  if (activeOnly) qs += `&active_only=${encodeURIComponent(activeOnly)}`;
-  if (limit) qs += `&limit=${encodeURIComponent(limit)}`;
-  if (offset) qs += `&offset=${encodeURIComponent(offset)}`;
-  if (sortBy) qs += `&sort_by=${encodeURIComponent(sortBy)}`;
-  if (sortDir) qs += `&sort_dir=${encodeURIComponent(sortDir)}`;
-  if (category) qs += `&category=${encodeURIComponent(category)}`;
-  if (q) qs += `&q=${encodeURIComponent(q)}`;
+  const qs = scopedSearch(c.req.url, orgId);
   try {
-    const res = await harnessClient.get(`/enrichment/scrape-targets/list?${qs}`, TIMEOUT);
+    const res = await harnessClient.get(`/enrichment/scrape-targets/list${qs}`, TIMEOUT);
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'enrichment');
+  }
+});
+
+enrichmentRoute.get('/discovery/suggestions', async (c) => {
+  const { orgId } = getAuthContext(c);
+  const qs = scopedSearch(c.req.url, orgId);
+  try {
+    const res = await harnessClient.get(`/enrichment/discovery/suggestions${qs}`, TIMEOUT);
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'enrichment');
+  }
+});
+
+enrichmentRoute.post('/discovery/suggestions/:id/approve', async (c) => {
+  const id = c.req.param('id');
+  const { orgId } = getAuthContext(c);
+  const qs = scopedSearch(c.req.url, orgId);
+  try {
+    const res = await harnessClient.post(
+      `/enrichment/discovery/suggestions/${encodeURIComponent(id)}/approve${qs}`,
+      {},
+      TIMEOUT,
+    );
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'enrichment');
+  }
+});
+
+enrichmentRoute.post('/discovery/suggestions/:id/reject', async (c) => {
+  const id = c.req.param('id');
+  const { orgId } = getAuthContext(c);
+  const qs = scopedSearch(c.req.url, orgId);
+  try {
+    const res = await harnessClient.post(
+      `/enrichment/discovery/suggestions/${encodeURIComponent(id)}/reject${qs}`,
+      {},
+      TIMEOUT,
+    );
     return forwardResponse(res);
   } catch (err) {
     return mapHarnessError(err, 'enrichment');
@@ -173,11 +201,9 @@ enrichmentRoute.post('/scrape-targets/:id/run-now', async (c) => {
 
 enrichmentRoute.get('/dashboard', async (c) => {
   const { orgId } = getAuthContext(c);
-  const limit = c.req.query('limit');
-  let qs = `org_id=${orgId}`;
-  if (limit) qs += `&limit=${encodeURIComponent(limit)}`;
+  const qs = scopedSearch(c.req.url, orgId);
   try {
-    const res = await harnessClient.get(`/enrichment/dashboard?${qs}`, TIMEOUT);
+    const res = await harnessClient.get(`/enrichment/dashboard${qs}`, TIMEOUT);
     return forwardResponse(res);
   } catch (err) {
     return mapHarnessError(err, 'enrichment');
@@ -218,8 +244,10 @@ enrichmentRoute.post('/scraper/scrape-next', async (c) => {
 });
 
 enrichmentRoute.post('/scraper/start', async (c) => {
+  const { orgId } = getAuthContext(c);
+  const qs = scopedSearch(c.req.url, orgId);
   try {
-    const res = await harnessClient.post('/enrichment/scraper/start', {}, TIMEOUT);
+    const res = await harnessClient.post(`/enrichment/scraper/start${qs}`, {}, TIMEOUT);
     return forwardResponse(res);
   } catch (err) {
     return mapHarnessError(err, 'enrichment');
@@ -304,13 +332,9 @@ enrichmentRoute.post('/research/agent/next', async (_c) => {
 
 enrichmentRoute.get('/research-plans/list', async (c) => {
   const { orgId } = getAuthContext(c);
-  const status = c.req.query('status');
-  const limit = c.req.query('limit');
-  let qs = `org_id=${orgId}`;
-  if (status) qs += `&status=${status}`;
-  if (limit) qs += `&limit=${limit}`;
+  const qs = scopedSearch(c.req.url, orgId);
   try {
-    const res = await harnessClient.get(`/enrichment/research-plans/list?${qs}`, TIMEOUT);
+    const res = await harnessClient.get(`/enrichment/research-plans/list${qs}`, TIMEOUT);
     return forwardResponse(res);
   } catch (err) {
     return mapHarnessError(err, 'enrichment');
@@ -320,9 +344,10 @@ enrichmentRoute.get('/research-plans/list', async (c) => {
 enrichmentRoute.get('/research-plans/:id', async (c) => {
   const id = c.req.param('id');
   const { orgId } = getAuthContext(c);
+  const qs = scopedSearch(c.req.url, orgId);
   try {
     const res = await harnessClient.get(
-      `/enrichment/research-plans/${encodeURIComponent(id)}?org_id=${orgId}`,
+      `/enrichment/research-plans/${encodeURIComponent(id)}${qs}`,
       TIMEOUT,
     );
     return forwardResponse(res);

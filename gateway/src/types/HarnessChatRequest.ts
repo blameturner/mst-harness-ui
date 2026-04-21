@@ -9,7 +9,7 @@ export interface HarnessChatRequest {
   rag_enabled?: boolean;
   rag_collection?: string | null;
   knowledge_enabled?: boolean;
-  search_enabled?: boolean;
-  search_consent_declined?: boolean;
+  search_mode?: 'disabled' | 'basic' | 'standard';
+  search_consent_confirmed?: boolean;
   response_style?: string;
 }
