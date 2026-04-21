@@ -10,7 +10,7 @@ import { RowDrawer } from './RowDrawer';
 import { RelativeTime } from './RelativeTime';
 import { StatusChip } from './StatusChip';
 
-type Filter = 'all' | 'due' | 'never' | 'auto' | 'manual' | 'failed' | 'unchanged';
+type Filter = 'all' | 'ok' | 'error' | 'scraping' | 'rejected';
 
 export interface ScrapeTargetsPanelProps {
   scrapeTargets?: OpsDashboardResponse['scrape_targets'];
@@ -29,7 +29,12 @@ export function ScrapeTargetsPanel({
 }: ScrapeTargetsPanelProps) {
   const rows = (scrapeTargets?.rows ?? []) as Array<Record<string, unknown>>;
   const [filter, setFilter] = useState<Filter>('all');
-  const filtered = useMemo(() => filterRows(rows, filter), [rows, filter]);
+  const [activeOnly, setActiveOnly] = useState(true);
+  const filtered = useMemo(() => {
+    const stageOne = activeOnly ? rows.filter((r) => valueAt(r, 'active') === 1) : rows;
+    const stageTwo = filterRows(stageOne, filter);
+    return [...stageTwo].sort(compareByNextCrawlAt);
+  }, [rows, filter, activeOnly]);
 
   // Map id → bucket from the latest preview, if any.
   const previewBucket = useMemo(() => {
@@ -89,19 +94,27 @@ export function ScrapeTargetsPanel({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <FilterChips
-          value={filter}
-          onChange={setFilter}
-          options={[
-            { id: 'all', label: 'All' },
-            { id: 'due', label: 'Due now' },
-            { id: 'never', label: 'Never scraped' },
-            { id: 'auto', label: 'Auto' },
-            { id: 'manual', label: 'Manual' },
-            { id: 'failed', label: 'Failed' },
-            { id: 'unchanged', label: 'Unchanged' },
-          ]}
-        />
+        <div className="flex items-center gap-3 flex-wrap">
+          <FilterChips
+            value={filter}
+            onChange={setFilter}
+            options={[
+              { id: 'all', label: 'All' },
+              { id: 'ok', label: 'Ok' },
+              { id: 'scraping', label: 'Scraping' },
+              { id: 'error', label: 'Error' },
+              { id: 'rejected', label: 'Rejected' },
+            ]}
+          />
+          <label className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.14em] text-muted">
+            <input
+              type="checkbox"
+              checked={activeOnly}
+              onChange={(e) => setActiveOnly(e.target.checked)}
+            />
+            Active only
+          </label>
+        </div>
         {actionMessage && (
           <span className="text-[11px] uppercase tracking-[0.14em] text-muted">{actionMessage}</span>
         )}
@@ -146,7 +159,12 @@ export function ScrapeTargetsPanel({
                   <td className="px-3 py-2">{fmt(valueAt(r, 'frequency_hours'))}</td>
                   <td className="px-3 py-2"><RelativeTime iso={valueAt(r, 'last_scraped_at') as string | null | undefined} /></td>
                   <td className="px-3 py-2"><RelativeTime iso={valueAt(r, 'next_crawl_at') as string | null | undefined} /></td>
-                  <td className="px-3 py-2">{fmt(valueAt(r, 'consecutive_failures'))}</td>
+                  <td className="px-3 py-2">
+                    {(() => {
+                      const n = Number(valueAt(r, 'consecutive_failures') ?? 0);
+                      return <span className={n >= 3 ? 'text-red-400 font-medium' : ''}>{n}</span>;
+                    })()}
+                  </td>
                   <td className="px-3 py-2">{fmt(valueAt(r, 'consecutive_unchanged'))}</td>
                   <td className="px-3 py-2">{fmt(valueAt(r, 'chunk_count'))}</td>
                   <td className="px-3 py-2">
@@ -204,6 +222,7 @@ export function ScrapeTargetsPanel({
         loading={drawerLoading}
         error={drawerError}
         data={drawerData}
+        extra={renderTargetExtra(drawerData)}
       />
     </div>
   );
@@ -211,24 +230,44 @@ export function ScrapeTargetsPanel({
 
 function filterRows(rows: Array<Record<string, unknown>>, filter: Filter) {
   if (filter === 'all') return rows;
-  const now = Date.now();
-  switch (filter) {
-    case 'due':
-      return rows.filter((r) => {
-        const t = Date.parse(String(valueAt(r, 'next_crawl_at') ?? ''));
-        return !Number.isNaN(t) && t <= now;
-      });
-    case 'never':
-      return rows.filter((r) => !valueAt(r, 'last_scraped_at'));
-    case 'auto':
-      return rows.filter((r) => valueAt(r, 'auto_crawled') === 1);
-    case 'manual':
-      return rows.filter((r) => valueAt(r, 'auto_crawled') !== 1);
-    case 'failed':
-      return rows.filter((r) => valueAt(r, 'status') === 'error' || (valueAt(r, 'consecutive_failures') as number) > 0);
-    case 'unchanged':
-      return rows.filter((r) => (valueAt(r, 'consecutive_unchanged') as number) > 0);
+  return rows.filter((r) => String(valueAt(r, 'status') ?? '') === filter);
+}
+
+function compareByNextCrawlAt(
+  a: Record<string, unknown>,
+  b: Record<string, unknown>,
+): number {
+  const av = valueAt(a, 'next_crawl_at');
+  const bv = valueAt(b, 'next_crawl_at');
+  const ae = av == null || av === '';
+  const be = bv == null || bv === '';
+  if (ae && be) {
+    const ca = Date.parse(String(valueAt(a, 'CreatedAt') ?? ''));
+    const cb = Date.parse(String(valueAt(b, 'CreatedAt') ?? ''));
+    return (Number.isNaN(ca) ? 0 : ca) - (Number.isNaN(cb) ? 0 : cb);
   }
+  if (ae) return -1;
+  if (be) return 1;
+  const aT = Date.parse(String(av));
+  const bT = Date.parse(String(bv));
+  return (Number.isNaN(aT) ? 0 : aT) - (Number.isNaN(bT) ? 0 : bT);
+}
+
+function renderTargetExtra(data: unknown): React.ReactNode {
+  if (!data || typeof data !== 'object') return null;
+  const row = data as Record<string, unknown>;
+  const summary = row.summary;
+  if (typeof summary !== 'string' || summary.trim() === '') return null;
+  return (
+    <details open>
+      <summary className="text-[11px] uppercase tracking-[0.14em] text-muted cursor-pointer">
+        Summary
+      </summary>
+      <p className="mt-2 p-3 rounded border border-border bg-panel/60 text-sm whitespace-pre-wrap">
+        {summary}
+      </p>
+    </details>
+  );
 }
 
 interface FilterOpt<T extends string> {
