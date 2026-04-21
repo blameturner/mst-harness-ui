@@ -1,30 +1,3 @@
-export interface DiscoveryRow {
-  Id: number;
-  org_id: number;
-  url: string;
-  url_hash: string;
-  source_url: string;
-  depth: number;
-  domain: string;
-  status: 'discovered' | 'scraping' | 'scraped' | 'processed' | 'failed';
-  error_message?: string;
-}
-
-export interface DiscoveryListResponse {
-  items: DiscoveryRow[];
-  total: number;
-}
-
-export interface ScraperRunRequest {
-  batch_size: number;
-}
-
-export interface ScraperNextResponse {
-  url?: string;
-  url_id?: number;
-  error?: string;
-}
-
 /** Scrape-target row status. `null` means the target has never been scraped. */
 export type ScrapeTargetStatus = 'ok' | 'error' | 'rejected' | null;
 
@@ -70,6 +43,10 @@ export interface ScrapeTargetRow {
   discovered_from?: string;
   /** Same NocoDB Boolean quirk as `use_playwright`. */
   auto_crawled?: 0 | 1;
+  /** Populated by the summarise_page job. */
+  summary?: string | null;
+  /** FK back to suggested_scrape_targets if discovered via pathfinder. */
+  suggested_id?: number | null;
   /** ISO timestamp, auto-populated by NocoDB. */
   CreatedAt: string;
 }

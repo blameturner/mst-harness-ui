@@ -32,9 +32,9 @@ export interface OpsDashboardResponse {
     agent_schedules?: SchedulerEntry[];
     enrichment_schedules?: SchedulerEntry[];
   };
-  discovery?: {
+  suggestions?: {
     count?: number;
-    rows?: Array<Record<string, unknown>>;
+    rows?: import('./Suggestion').Suggestion[];
   };
   scrape_targets?: {
     count?: number;
