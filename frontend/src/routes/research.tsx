@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { ResearchTab } from '../features/hub/tabs/ResearchTab';
+import { ResearchTab } from '../features/home/tabs/ResearchTab';
 import { authClient } from '../lib/auth-client';
 
 export const Route = createFileRoute('/research')({

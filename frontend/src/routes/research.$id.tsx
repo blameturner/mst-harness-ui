@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import type { ResearchPlan } from '../api/types/Enrichment';
 import { getResearchPlan } from '../api/enrichment/research';
 import { authClient } from '../lib/auth-client';
-import { ResearchPaperPage } from '../features/hub/tabs/research/ResearchPaperPage';
+import { ResearchPaperPage } from '../features/home/legacy/research/ResearchPaperPage';
 
 function ResearchPaperRoute() {
   const { id } = useParams({ from: '/research/$id' });

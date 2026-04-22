@@ -9,7 +9,7 @@ import {
   updateResearchPlanQueries,
 } from '../../../api/enrichment/research';
 import type { ResearchPlan } from '../../../api/types/Enrichment';
-import { ResearchPlanCard } from './research/ResearchPlanCard';
+import { ResearchPlanCard } from '../legacy/research/ResearchPlanCard';
 
 type StatusFilter = 'all' | 'active' | 'complete' | 'failed';
 
