@@ -26,7 +26,7 @@ export async function patchConversation(c: Context) {
 
   try {
     // Ownership check: fetch the existing conversation and verify org_id.
-    const existingRes = await harnessGetSummary(conversationId);
+    const existingRes = await harnessGetSummary(conversationId, Number(orgId));
     if (!existingRes.ok) return forwardResponse(existingRes);
     const existing = (await existingRes.json()) as {
       conversation?: { org_id?: number } | null;
@@ -35,7 +35,7 @@ export async function patchConversation(c: Context) {
       return c.json({ error: 'not_found' }, 404);
     }
 
-    const res = await harnessUpdateConversation(conversationId, parsed.data);
+    const res = await harnessUpdateConversation(conversationId, Number(orgId), parsed.data);
     return forwardResponse(res);
   } catch (err) {
     return mapHarnessError(err, 'conversations');

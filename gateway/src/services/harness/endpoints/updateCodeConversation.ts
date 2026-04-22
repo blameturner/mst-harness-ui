@@ -3,10 +3,11 @@ import { HARNESS_CONVERSATIONS_TIMEOUT_MS } from '../../../constants/timeouts/HA
 
 export function updateCodeConversation(
   conversationId: number,
+  orgId: number,
   body: { title?: string },
 ): Promise<Response> {
   return harnessClient.patch(
-    `/code/conversations/${conversationId}`,
+    `/code/conversations/${conversationId}?org_id=${orgId}`,
     body,
     HARNESS_CONVERSATIONS_TIMEOUT_MS,
   );

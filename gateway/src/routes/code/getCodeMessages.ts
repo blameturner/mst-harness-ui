@@ -17,7 +17,7 @@ export async function getCodeMessages(c: Context) {
   try {
     const owned = await findOwnedCodeConversation(conversationId, Number(orgId));
     if (!owned.ok) return owned.response;
-    const res = await getCodeConversationMessages(conversationId);
+    const res = await getCodeConversationMessages(conversationId, Number(orgId));
     return forwardResponse(res);
   } catch (err) {
     return mapHarnessError(err, 'code');

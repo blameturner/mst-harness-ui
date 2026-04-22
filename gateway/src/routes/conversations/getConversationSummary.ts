@@ -14,7 +14,7 @@ export async function getConversationSummary(c: Context) {
     return c.json({ error: 'invalid_id' }, 400);
   }
   try {
-    const res = await harnessGetSummary(conversationId);
+    const res = await harnessGetSummary(conversationId, Number(orgId));
     if (!res.ok) return forwardResponse(res);
     const body = (await res.json()) as {
       conversation?: { org_id?: number } | null;

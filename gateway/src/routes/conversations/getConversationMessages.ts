@@ -15,7 +15,7 @@ export async function getConversationMessages(c: Context) {
   }
 
   try {
-    const res = await harnessGetMessages(conversationId);
+    const res = await harnessGetMessages(conversationId, Number(orgId));
     if (!res.ok) return forwardResponse(res);
     const body = (await res.json()) as {
       conversation?: { org_id?: number } | null;

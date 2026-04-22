@@ -23,7 +23,7 @@ export async function patchCodeConversation(c: Context) {
   try {
     const owned = await findOwnedCodeConversation(conversationId, Number(orgId));
     if (!owned.ok) return owned.response;
-    const res = await updateCodeConversation(conversationId, parsed.data);
+    const res = await updateCodeConversation(conversationId, Number(orgId), parsed.data);
     return forwardResponse(res);
   } catch (err) {
     return mapHarnessError(err, 'code');
