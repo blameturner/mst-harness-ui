@@ -9,11 +9,11 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
+  { to: '/home', label: 'Home' },
   { to: '/chat', label: 'Chat' },
   { to: '/code', label: 'Code' },
   { to: '/agents', label: 'Agents', matchPrefix: '/agents' },
   { to: '/research', label: 'Research', matchPrefix: '/research' },
-  { to: '/hub', label: 'Hub', matchPrefix: '/hub' },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -30,7 +30,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="shrink-0 h-14 border-b border-border bg-bg/90 backdrop-blur flex items-center justify-between px-3 sm:px-6">
         <div className="flex items-center gap-3 sm:gap-8 min-w-0">
           <Link
-            to="/chat"
+            to="/home"
             className="font-display text-lg sm:text-xl font-semibold tracking-tightest leading-none select-none whitespace-nowrap"
           >
             Jeff<span className="italic">GPT</span>
