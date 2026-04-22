@@ -1,4 +1,4 @@
-import { OpsTab } from './ops/OpsTab';
+import { OpsTab } from '../legacy/ops/OpsTab';
 
 export function QueueTab() {
   return <OpsTab />;

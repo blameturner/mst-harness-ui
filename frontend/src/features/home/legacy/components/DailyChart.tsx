@@ -1,5 +1,5 @@
 import type { HarnessStats } from '../../../api/types/HarnessStats';
-import { formatNumber } from '../../../lib/utils/formatNumber';
+import { formatNumber } from '../../../../lib/utils/formatNumber';
 
 export function DailyChart({ days }: { days: HarnessStats['by_day'] }) {
   const max = Math.max(...days.map((d) => d.requests), 1);

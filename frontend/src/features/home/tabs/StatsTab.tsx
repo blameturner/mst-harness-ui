@@ -3,10 +3,10 @@ import { getHarnessStats } from '../../../api/harness/getHarnessStats';
 import type { HarnessStats } from '../../../api/types/HarnessStats';
 import { formatNumber } from '../../../lib/utils/formatNumber';
 import { styleLabel } from '../../../lib/styles/styleLabel';
-import { StatCard } from '../components/StatCard';
-import { DailyChart } from '../components/DailyChart';
-import { Heatmap } from '../components/Heatmap';
-import { relDate } from '../utils/relDate';
+import { StatCard } from '../legacy/components/StatCard';
+import { DailyChart } from '../legacy/components/DailyChart';
+import { Heatmap } from '../legacy/components/Heatmap';
+import { relDate } from '../legacy/utils/relDate';
 
 export function StatsTab() {
   const [stats, setStats] = useState<HarnessStats | null>(null);

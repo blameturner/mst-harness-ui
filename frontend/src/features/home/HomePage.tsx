@@ -1,8 +1,66 @@
+// frontend/src/features/home/HomePage.tsx
+import { useState } from 'react';
+import { useOverview } from './hooks/useOverview';
+import { UnhealthyBanner } from './dashboard/UnhealthyBanner';
+import { DashboardTab } from './tabs/DashboardTab';
+import { LogsTab } from './tabs/LogsTab';
+import { StatsTab } from './tabs/StatsTab';
+import { QueueTab } from './tabs/QueueTab';
+
+type Tab = 'dashboard' | 'logs' | 'stats' | 'queue';
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'logs', label: 'Logs' },
+  { id: 'stats', label: 'Stats' },
+  { id: 'queue', label: 'Queue' },
+];
+
 export function HomePage() {
+  const [tab, setTab] = useState<Tab>('dashboard');
+  const { overview, health, loading, refetch } = useOverview();
+
+  const ok = health && health.scheduler_running;
+
   return (
-    <div className="bg-bg text-fg font-sans min-h-screen flex flex-col items-center justify-center gap-2">
-      <h1 className="font-display tracking-tightest text-2xl font-semibold">Home</h1>
-      <p className="text-fg/50">Dashboard coming online…</p>
+    <div className="h-full flex flex-col bg-bg text-fg font-sans">
+      <header className="shrink-0 border-b border-border px-8 py-4 flex items-center justify-between">
+        <h1 className="font-display text-2xl tracking-tightest">Home</h1>
+        <div className="flex items-center gap-3">
+          <span
+            className={`inline-block w-2 h-2 rounded-full ${
+              ok ? 'bg-fg' : health ? 'bg-muted' : 'bg-border animate-blink'
+            }`}
+          />
+          <span className="text-[11px] uppercase tracking-[0.14em] text-muted">
+            {loading ? 'Checking' : ok ? 'All connected' : health ? 'Degraded' : 'Gateway unreachable'}
+          </span>
+        </div>
+      </header>
+
+      <UnhealthyBanner health={health} />
+
+      <nav className="shrink-0 border-b border-border px-8 flex gap-1">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={[
+              'px-4 py-3 text-[11px] uppercase tracking-[0.18em] font-sans border-b-2 -mb-px transition-colors',
+              tab === t.id ? 'border-fg text-fg' : 'border-transparent text-muted hover:text-fg',
+            ].join(' ')}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        {tab === 'dashboard' && <DashboardTab overview={overview} health={health} refetch={refetch} />}
+        {tab === 'logs' && <LogsTab />}
+        {tab === 'stats' && <StatsTab />}
+        {tab === 'queue' && <QueueTab />}
+      </div>
     </div>
   );
 }
