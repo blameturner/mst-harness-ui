@@ -12,6 +12,7 @@ import { listStyles } from '../../../api/styles/listStyles';
 import { hydrateMessages } from '../lib/hydrateMessages';
 import { useOnVisibilityResume } from '../../../hooks/useOnVisibilityResume';
 import type { Conversation } from '../../../api/types/Conversation';
+import { registerStyleOptions } from '../../../lib/styles/styleLabel';
 
 interface UseStreamRecoveryDeps {
   activeIdRef: React.RefObject<number | null>;
@@ -90,6 +91,7 @@ export function useStreamRecovery(deps: UseStreamRecoveryDeps) {
       const defaultModel = reasoner?.name || modelsRes.models[0]?.name || '';
       if (defaultModel) deps.setModel(defaultModel);
       if (stylesRes?.chat) {
+        registerStyleOptions(stylesRes.chat.styles);
         deps.setChatStyles(stylesRes.chat);
         deps.setStyleKey(stylesRes.chat.default);
       }

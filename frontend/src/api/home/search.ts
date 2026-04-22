@@ -19,7 +19,7 @@ export function searchHome(opts: {
   nResults?: number;
 }) {
   return http
-    .post('home/search', {
+    .post('api/home/search', {
       json: {
         org_id: opts.orgId ?? defaultOrgId(),
         query: opts.query,

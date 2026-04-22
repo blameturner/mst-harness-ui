@@ -3,7 +3,7 @@ import { defaultOrgId } from './config';
 import { gatewayUrl } from '../../lib/runtime-env';
 
 export function homeConversationExportUrl(orgId: number = defaultOrgId()): string {
-  return `${gatewayUrl()}/home/conversation/export?org_id=${orgId}`;
+  return `${gatewayUrl()}/api/home/conversation/export?org_id=${orgId}`;
 }
 
 export async function downloadHomeConversation(orgId: number = defaultOrgId()) {

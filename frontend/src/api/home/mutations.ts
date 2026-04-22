@@ -12,7 +12,7 @@ export interface QueuedResponse {
 }
 
 export async function runDigest(orgId: number = defaultOrgId()): Promise<QueuedResponse> {
-  return http.post('home/digest/run', { json: { org_id: orgId } }).json<QueuedResponse>();
+  return http.post('api/home/digest/run', { json: { org_id: orgId } }).json<QueuedResponse>();
 }
 
 export type FeedbackSignal = 'up' | 'down';
@@ -26,7 +26,7 @@ export async function postDigestFeedback(args: {
 }): Promise<{ ok: boolean; notConfigured?: boolean; id?: number }> {
   try {
     const json = await http
-      .post(`home/digest/${args.digestId}/feedback`, {
+      .post(`api/home/digest/${args.digestId}/feedback`, {
         json: {
           org_id: args.orgId ?? defaultOrgId(),
           signal: args.signal,
@@ -49,7 +49,7 @@ export async function produceInsight(opts: {
   topicHint?: string | null;
 } = {}): Promise<QueuedResponse> {
   return http
-    .post('home/insights/produce', {
+    .post('api/home/insights/produce', {
       json: {
         org_id: opts.orgId ?? defaultOrgId(),
         topic_hint: opts.topicHint ?? null,
@@ -65,7 +65,7 @@ export async function answerQuestion(args: {
   orgId?: number;
 }): Promise<JobResponse> {
   return http
-    .post(`home/questions/${args.id}/answer`, {
+    .post(`api/home/questions/${args.id}/answer`, {
       json: {
         org_id: args.orgId ?? defaultOrgId(),
         selected_option: args.selectedOption,
@@ -83,7 +83,7 @@ export async function dismissQuestion(args: {
   orgId?: number;
 }): Promise<{ status: 'dismissed' }> {
   return http
-    .post(`home/questions/${args.id}/dismiss`, {
+    .post(`api/home/questions/${args.id}/dismiss`, {
       json: { org_id: args.orgId ?? defaultOrgId(), reason: args.reason ?? '' },
     })
     .json<{ status: 'dismissed' }>();
@@ -94,7 +94,7 @@ export async function retractQuestion(args: {
   orgId?: number;
 }): Promise<{ status: 'pending' }> {
   return http
-    .post(`home/questions/${args.id}/retract`, {
+    .post(`api/home/questions/${args.id}/retract`, {
       json: { org_id: args.orgId ?? defaultOrgId() },
     })
     .json<{ status: 'pending' }>();
@@ -107,7 +107,7 @@ export async function sendHomeChat(args: {
   searchConsentConfirmed?: boolean;
 }): Promise<JobResponse> {
   return http
-    .post('home/chat', {
+    .post('api/home/chat', {
       json: {
         org_id: args.orgId ?? defaultOrgId(),
         model: 'chat',
@@ -124,7 +124,7 @@ export async function sendHomeChat(args: {
 
 export async function runBriefing(orgId: number = defaultOrgId()): Promise<JobResponse> {
   return http
-    .post('home/briefing', { searchParams: { org_id: orgId } })
+    .post('api/home/briefing', { searchParams: { org_id: orgId } })
     .json<JobResponse>();
 }
 
@@ -134,7 +134,7 @@ export async function runSchedule(args: {
   product?: string | null;
 }): Promise<{ status: 'dispatched'; agent_name: string; org_id: number }> {
   return http
-    .post(`home/schedules/${args.id}/run-now`, {
+    .post(`api/home/schedules/${args.id}/run-now`, {
       json: { task: args.task ?? null, product: args.product ?? null },
     })
     .json<{ status: 'dispatched'; agent_name: string; org_id: number }>();

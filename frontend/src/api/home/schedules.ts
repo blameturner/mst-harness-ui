@@ -5,6 +5,6 @@ import type { Schedule } from './types';
 
 export function listSchedules(orgId: number = defaultOrgId()) {
   return http
-    .get('home/schedules', { searchParams: { org_id: orgId } })
+    .get('api/home/schedules', { searchParams: { org_id: orgId } })
     .json<{ schedules: Schedule[] }>();
 }

@@ -12,6 +12,6 @@ export function listQuestions(opts: {
   const status = opts.status ?? 'pending';
   const limit = opts.limit ?? 20;
   return http
-    .get('home/questions', { searchParams: { org_id: orgId, status, limit } })
+    .get('api/home/questions', { searchParams: { org_id: orgId, status, limit } })
     .json<{ questions: Question[] }>();
 }

@@ -5,6 +5,6 @@ import type { HomeOverview } from './types';
 
 export function getHomeOverview(orgId: number = defaultOrgId()) {
   return http
-    .get('home/overview', { searchParams: { org_id: orgId } })
+    .get('api/home/overview', { searchParams: { org_id: orgId } })
     .json<HomeOverview>();
 }

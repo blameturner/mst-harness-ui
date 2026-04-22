@@ -9,6 +9,6 @@ export function listHomeFeed(opts: { orgId?: number; limit?: number; before?: st
   const searchParams: Record<string, string | number> = { org_id: orgId, limit };
   if (opts.before) searchParams.before = opts.before;
   return http
-    .get('home/feed', { searchParams })
+    .get('api/home/feed', { searchParams })
     .json<{ items: FeedItem[] }>();
 }

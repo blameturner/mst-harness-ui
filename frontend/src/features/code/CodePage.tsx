@@ -30,6 +30,7 @@ import { groupCodeBlocksByMessage } from './utils/groupCodeBlocksByMessage';
 import { hydrateCodeMessages } from './utils/hydrateCodeMessages';
 import { parseCodeBlocks } from './utils/parseCodeBlocks';
 import { utf8ToB64 } from './utils/utf8ToB64';
+import { registerStyleOptions } from '../../lib/styles/styleLabel';
 
 const STARTER_PROMPTS: Record<Mode, string[]> = {
   plan: [
@@ -116,6 +117,7 @@ export function CodePage() {
           config.setModel((prev: string) => prev || coder?.name || res.models[0].name);
         }
         if (stylesRes?.code) {
+          registerStyleOptions(stylesRes.code.styles);
           config.setCodeStyles(stylesRes.code);
           config.setStyleKey((prev: string) => prev || stylesRes.code!.default);
         }
@@ -148,6 +150,7 @@ export function CodePage() {
           const coder = res.models.find((m) => m.role === 'coder');
           config.setModel((prev: string) => prev || coder?.name || res.models[0]?.name || '');
           if (stylesRes?.code) {
+            registerStyleOptions(stylesRes.code.styles);
             config.setCodeStyles(stylesRes.code);
             config.setStyleKey((prev: string) => prev || stylesRes.code!.default);
           }
