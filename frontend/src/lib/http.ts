@@ -6,3 +6,5 @@ export const http = ky.create({
   credentials: 'include',
   timeout: 300_000,
 });
+
+export { HTTPError } from 'ky';
