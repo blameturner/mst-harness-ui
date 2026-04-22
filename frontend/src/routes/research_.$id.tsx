@@ -6,7 +6,7 @@ import { authClient } from '../lib/auth-client';
 import { ResearchPaperPage } from '../features/home/legacy/research/ResearchPaperPage';
 
 function ResearchPaperRoute() {
-  const { id } = useParams({ from: '/research/$id' });
+  const { id } = useParams({ from: '/research_/$id' });
   const planId = Number(id);
   const [plan, setPlan] = useState<ResearchPlan | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,7 +60,7 @@ function ResearchPaperRoute() {
   );
 }
 
-export const Route = createFileRoute('/research/$id')({
+export const Route = createFileRoute('/research_/$id')({
   beforeLoad: async () => {
     const session = await authClient.getSession();
     if (!session.data?.user) {

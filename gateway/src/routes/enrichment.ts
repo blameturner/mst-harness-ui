@@ -167,8 +167,12 @@ enrichmentRoute.post('/discovery/suggestions/:id/reject', async (c) => {
 
 enrichmentRoute.get('/discovery/:id', async (c) => {
   const id = c.req.param('id');
+  const { orgId } = getAuthContext(c);
   try {
-    const res = await harnessClient.get(`/enrichment/discovery/${encodeURIComponent(id)}`, TIMEOUT);
+    const res = await harnessClient.get(
+      `/enrichment/discovery/${encodeURIComponent(id)}?org_id=${Number(orgId)}`,
+      TIMEOUT,
+    );
     return forwardResponse(res);
   } catch (err) {
     return mapHarnessError(err, 'enrichment');
@@ -177,8 +181,12 @@ enrichmentRoute.get('/discovery/:id', async (c) => {
 
 enrichmentRoute.get('/scrape-targets/:id', async (c) => {
   const id = c.req.param('id');
+  const { orgId } = getAuthContext(c);
   try {
-    const res = await harnessClient.get(`/enrichment/scrape-targets/${encodeURIComponent(id)}`, TIMEOUT);
+    const res = await harnessClient.get(
+      `/enrichment/scrape-targets/${encodeURIComponent(id)}?org_id=${Number(orgId)}`,
+      TIMEOUT,
+    );
     return forwardResponse(res);
   } catch (err) {
     return mapHarnessError(err, 'enrichment');
@@ -187,9 +195,10 @@ enrichmentRoute.get('/scrape-targets/:id', async (c) => {
 
 enrichmentRoute.post('/scrape-targets/:id/run-now', async (c) => {
   const id = c.req.param('id');
+  const { orgId } = getAuthContext(c);
   try {
     const res = await harnessClient.post(
-      `/enrichment/scrape-targets/${encodeURIComponent(id)}/run-now`,
+      `/enrichment/scrape-targets/${encodeURIComponent(id)}/run-now?org_id=${Number(orgId)}`,
       {},
       TIMEOUT,
     );

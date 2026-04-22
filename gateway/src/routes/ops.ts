@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../middleware/requireAuth.js';
+import { getAuthContext } from '../lib/auth-context.js';
 import { mapHarnessError } from '../lib/mapHarnessError.js';
 import { forwardResponse } from '../lib/forwardResponse.js';
 import type { AuthVariables } from '../types/AuthVariables.js';
@@ -12,7 +13,10 @@ export const opsRoute = new Hono<{ Variables: AuthVariables }>();
 opsRoute.use('*', requireAuth);
 
 opsRoute.get('/dashboard', async (c) => {
-  const qs = c.req.url.includes('?') ? `?${c.req.url.split('?')[1]}` : '';
+  const { orgId } = getAuthContext(c);
+  const url = new URL(c.req.url);
+  url.searchParams.set('org_id', String(Number(orgId)));
+  const qs = `?${url.searchParams.toString()}`;
   try {
     const res = await harnessClient.get(`/ops/dashboard${qs}`, TIMEOUT);
     return forwardResponse(res);

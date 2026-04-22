@@ -39,18 +39,23 @@ harnessRoute.get('/stats/usage', async (c) => {
   }
 });
 
-harnessRoute.get('/graph/snapshot', async (_c) => {
+harnessRoute.get('/graph/snapshot', async (c) => {
+  const { orgId } = getAuthContext(c);
+  const url = new URL(c.req.url);
+  const limit = url.searchParams.get('limit');
+  const qs = `?org_id=${Number(orgId)}${limit ? `&limit=${encodeURIComponent(limit)}` : ''}`;
   try {
-    const res = await harnessClient.get('/graph/snapshot', TIMEOUT);
+    const res = await harnessClient.get(`/graph/snapshot${qs}`, TIMEOUT);
     return forwardResponse(res);
   } catch (err) {
     return mapHarnessError(err);
   }
 });
 
-harnessRoute.get('/chroma/snapshot', async (_c) => {
+harnessRoute.get('/chroma/snapshot', async (c) => {
+  const { orgId } = getAuthContext(c);
   try {
-    const res = await harnessClient.get('/chroma/snapshot', TIMEOUT);
+    const res = await harnessClient.get(`/chroma/snapshot?org_id=${Number(orgId)}`, TIMEOUT);
     return forwardResponse(res);
   } catch (err) {
     return mapHarnessError(err);

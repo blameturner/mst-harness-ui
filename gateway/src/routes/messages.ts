@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../middleware/requireAuth.js';
+import { getAuthContext } from '../lib/auth-context.js';
 import { mapHarnessError } from '../lib/mapHarnessError.js';
 import { forwardResponse } from '../lib/forwardResponse.js';
 import type { AuthVariables } from '../types/AuthVariables.js';
@@ -13,9 +14,10 @@ messagesRoute.use('*', requireAuth);
 
 messagesRoute.get('/:id/search-sources', async (c) => {
   const id = c.req.param('id');
+  const { orgId } = getAuthContext(c);
   try {
     const res = await harnessClient.get(
-      `/messages/${encodeURIComponent(id)}/search-sources`,
+      `/messages/${encodeURIComponent(id)}/search-sources?org_id=${Number(orgId)}`,
       TIMEOUT,
     );
     return forwardResponse(res);
