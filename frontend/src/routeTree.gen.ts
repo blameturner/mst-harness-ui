@@ -14,6 +14,7 @@ import { Route as ResearchRouteImport } from './routes/research'
 import { Route as LogsRouteImport } from './routes/logs'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as HubRouteImport } from './routes/hub'
+import { Route as HomeRouteImport } from './routes/home'
 import { Route as CodeRouteImport } from './routes/code'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as ArchitectureRouteImport } from './routes/architecture'
@@ -49,6 +50,11 @@ const LoginRoute = LoginRouteImport.update({
 const HubRoute = HubRouteImport.update({
   id: '/hub',
   path: '/hub',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HomeRoute = HomeRouteImport.update({
+  id: '/home',
+  path: '/home',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CodeRoute = CodeRouteImport.update({
@@ -113,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/architecture': typeof ArchitectureRoute
   '/chat': typeof ChatRoute
   '/code': typeof CodeRoute
+  '/home': typeof HomeRoute
   '/hub': typeof HubRoute
   '/login': typeof LoginRoute
   '/logs': typeof LogsRoute
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/architecture': typeof ArchitectureRoute
   '/chat': typeof ChatRoute
   '/code': typeof CodeRoute
+  '/home': typeof HomeRoute
   '/hub': typeof HubRoute
   '/login': typeof LoginRoute
   '/logs': typeof LogsRoute
@@ -150,6 +158,7 @@ export interface FileRoutesById {
   '/architecture': typeof ArchitectureRoute
   '/chat': typeof ChatRoute
   '/code': typeof CodeRoute
+  '/home': typeof HomeRoute
   '/hub': typeof HubRoute
   '/login': typeof LoginRoute
   '/logs': typeof LogsRoute
@@ -170,6 +179,7 @@ export interface FileRouteTypes {
     | '/architecture'
     | '/chat'
     | '/code'
+    | '/home'
     | '/hub'
     | '/login'
     | '/logs'
@@ -188,6 +198,7 @@ export interface FileRouteTypes {
     | '/architecture'
     | '/chat'
     | '/code'
+    | '/home'
     | '/hub'
     | '/login'
     | '/logs'
@@ -206,6 +217,7 @@ export interface FileRouteTypes {
     | '/architecture'
     | '/chat'
     | '/code'
+    | '/home'
     | '/hub'
     | '/login'
     | '/logs'
@@ -225,6 +237,7 @@ export interface RootRouteChildren {
   ArchitectureRoute: typeof ArchitectureRoute
   ChatRoute: typeof ChatRoute
   CodeRoute: typeof CodeRoute
+  HomeRoute: typeof HomeRoute
   HubRoute: typeof HubRoute
   LoginRoute: typeof LoginRoute
   LogsRoute: typeof LogsRoute
@@ -268,6 +281,13 @@ declare module '@tanstack/react-router' {
       path: '/hub'
       fullPath: '/hub'
       preLoaderRoute: typeof HubRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/home': {
+      id: '/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof HomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/code': {
@@ -395,6 +415,7 @@ const rootRouteChildren: RootRouteChildren = {
   ArchitectureRoute: ArchitectureRoute,
   ChatRoute: ChatRoute,
   CodeRoute: CodeRoute,
+  HomeRoute: HomeRoute,
   HubRoute: HubRoute,
   LoginRoute: LoginRoute,
   LogsRoute: LogsRoute,
