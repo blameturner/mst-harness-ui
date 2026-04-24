@@ -56,7 +56,15 @@ export function HomePage() {
       </nav>
 
       <div className="flex-1 min-h-0 overflow-y-auto">
-        {tab === 'dashboard' && <DashboardTab overview={overview} health={health} refetch={refetch} />}
+        {/*
+          Dashboard stays mounted so in-flight chat / PA streams don't get cut
+          when the user switches tabs. SSE handles live inside useHomeChat and
+          would close on unmount.  Other tabs (Logs has its own socket, Stats
+          and Queue are pure fetches) render on-demand.
+        */}
+        <div className={tab === 'dashboard' ? 'contents' : 'hidden'}>
+          <DashboardTab overview={overview} health={health} refetch={refetch} />
+        </div>
         {tab === 'logs' && <LogsTab />}
         {tab === 'stats' && <StatsTab />}
         {tab === 'queue' && <QueueTab />}

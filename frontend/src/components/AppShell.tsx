@@ -1,6 +1,7 @@
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { authClient } from '../lib/auth-client';
+import { useHomeChatStreaming } from '../features/home/hooks/useHomeChatStreaming';
 
 interface NavItem {
   to: string;
@@ -19,6 +20,7 @@ const NAV: NavItem[] = [
 export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const homeStreaming = useHomeChatStreaming();
 
   async function logout() {
     await authClient.signOut();
@@ -46,13 +48,23 @@ export function AppShell({ children }: { children: ReactNode }) {
                   key={item.to}
                   to={item.to}
                   className={[
-                    'px-2.5 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap',
+                    'relative px-2.5 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap',
                     isActive
                       ? 'bg-fg text-bg'
                       : 'text-muted hover:text-fg hover:bg-panelHi',
                   ].join(' ')}
                 >
                   {item.label}
+                  {item.to === '/home' && homeStreaming && (
+                    <span
+                      className={[
+                        'absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full animate-pulse',
+                        isActive ? 'bg-bg' : 'bg-fg',
+                      ].join(' ')}
+                      title="Home chat is streaming"
+                      aria-hidden
+                    />
+                  )}
                 </Link>
               );
             })}
