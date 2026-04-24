@@ -1,7 +1,7 @@
 // frontend/src/api/home/insights.ts
 import { http } from '../../lib/http';
 import { defaultOrgId } from './config';
-import type { Insight } from './types';
+import type { Insight, InsightResearchPlan } from './types';
 
 export function listInsights(opts: { orgId?: number; limit?: number } = {}) {
   const orgId = opts.orgId ?? defaultOrgId();
@@ -13,4 +13,27 @@ export function listInsights(opts: { orgId?: number; limit?: number } = {}) {
 
 export function getInsight(id: number) {
   return http.get(`api/home/insights/${id}`).json<Insight>();
+}
+
+export interface RequestInsightResearchResponse {
+  plan_id: number;
+  tool_job_id: string;
+}
+
+export function requestInsightResearch(
+  id: number,
+  focus: string,
+  orgId: number = defaultOrgId(),
+) {
+  return http
+    .post(`api/home/insights/${id}/research`, {
+      json: { focus, org_id: orgId },
+    })
+    .json<RequestInsightResearchResponse>();
+}
+
+export function listInsightResearch(id: number) {
+  return http
+    .get(`api/home/insights/${id}/research`)
+    .json<{ plans: InsightResearchPlan[] }>();
 }

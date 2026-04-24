@@ -62,26 +62,45 @@ export function QuestionsPanel({
     }
   }
 
+  const Header = (
+    <div className="flex items-baseline gap-2 pb-1">
+      <span className="text-[10px] uppercase tracking-[0.22em] font-sans text-muted">
+        Queries Awaiting Attention
+        {visibleQuestions.length > 0 && (
+          <span className="ml-2 font-display not-italic tabular-nums">
+            · {visibleQuestions.length}
+          </span>
+        )}
+      </span>
+      <span className="h-px flex-1 bg-border" />
+    </div>
+  );
+
   if (visibleQuestions.length === 0) {
     return (
-      <div className="border border-dashed border-border px-4 py-6 text-center text-[12px] text-muted">
-        No pending questions.
+      <div>
+        {Header}
+        <div className="py-10 text-center">
+          <p className="font-display italic text-lg text-muted">Quiet morning.</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-2">
-      <div className="px-1 text-[11px] uppercase tracking-[0.18em] text-muted">Pending questions</div>
-      {visibleQuestions.map((q) => (
-        <QuestionCard
-          key={q.id}
-          q={q}
-          ref={(el) => registerScrollTarget?.(q.id, el)}
-          onAnswer={handleAnswer}
-          onDismiss={handleDismiss}
-        />
-      ))}
+    <div>
+      {Header}
+      <div className="divide-y divide-border">
+        {visibleQuestions.map((q) => (
+          <QuestionCard
+            key={q.id}
+            q={q}
+            ref={(el) => registerScrollTarget?.(q.id, el)}
+            onAnswer={handleAnswer}
+            onDismiss={handleDismiss}
+          />
+        ))}
+      </div>
     </div>
   );
 }

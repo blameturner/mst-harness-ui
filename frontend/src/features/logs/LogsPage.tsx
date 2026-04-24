@@ -17,6 +17,7 @@ export function LogsPage() {
   const [search, setSearch] = useState('');
   const [levelFilter, setLevelFilter] = useState<Set<LogLevel>>(new Set());
   const [stderrOnly, setStderrOnly] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const { lines, connected, error, flushBuffer, clearLines } = useLogStream({ paused });
   const scrollRef = useAutoScroll(lines, paused);
@@ -137,60 +138,96 @@ export function LogsPage() {
     return { errors, warns };
   }, [lines]);
 
-  return (
-    <div className="h-full flex">
-      <div className="shrink-0 w-56 border-r border-border bg-panel/30 flex flex-col overflow-y-auto">
-        <div className="px-3 pt-3 pb-2">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] uppercase tracking-[0.16em] font-sans text-muted">Containers</span>
-            <div className="flex gap-1">
-              <button onClick={showAll} className="text-[9px] uppercase tracking-[0.1em] font-sans text-muted hover:text-fg px-1">All</button>
-              <button onClick={hideAll} className="text-[9px] uppercase tracking-[0.1em] font-sans text-muted hover:text-fg px-1">None</button>
-            </div>
+  const Sidebar = (
+    <>
+      <div className="px-3 pt-3 pb-2">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[10px] uppercase tracking-[0.16em] font-sans text-muted">Containers</span>
+          <div className="flex gap-1">
+            <button onClick={showAll} className="text-[9px] uppercase tracking-[0.1em] font-sans text-muted hover:text-fg px-1">All</button>
+            <button onClick={hideAll} className="text-[9px] uppercase tracking-[0.1em] font-sans text-muted hover:text-fg px-1">None</button>
           </div>
         </div>
+      </div>
 
-        {groupedContainers.map(([group, items]) => (
-          <div key={group} className="mb-2">
-            <button
-              onClick={() => showGroup(group)}
-              className="w-full px-3 py-1 text-left text-[9px] uppercase tracking-[0.16em] font-sans text-muted hover:text-fg hover:bg-panelHi/40 transition-colors flex items-center justify-between"
-            >
-              <span>{group}</span>
-              <span className="text-[9px] tabular-nums">
-                {items.filter((c) => !hidden.has(c.name)).length}/{items.length}
-              </span>
-            </button>
-            {items.map((c) => {
-              const isHidden = hidden.has(c.name);
-              const running = c.state === 'running';
-              return (
-                <button
-                  key={c.name}
-                  onClick={() => toggleContainer(c.name)}
-                  className={[
-                    'w-full px-3 py-1 text-left text-[11px] font-mono flex items-center gap-2 transition-all hover:bg-panelHi/40',
-                    isHidden ? 'text-muted/40' : 'text-fg',
-                  ].join(' ')}
-                >
-                  <span
-                    className="w-2 h-2 rounded-full shrink-0"
-                    style={{
-                      backgroundColor: isHidden ? 'transparent' : containerColor(c.name),
-                      border: isHidden ? '1px solid currentColor' : 'none',
-                    }}
-                  />
-                  <span className="truncate">{c.name}</span>
-                  {!running && <span className="text-[9px] text-muted ml-auto shrink-0">stopped</span>}
-                </button>
-              );
-            })}
+      {groupedContainers.map(([group, items]) => (
+        <div key={group} className="mb-2">
+          <button
+            onClick={() => showGroup(group)}
+            className="w-full px-3 py-1 text-left text-[9px] uppercase tracking-[0.16em] font-sans text-muted hover:text-fg hover:bg-panelHi/40 transition-colors flex items-center justify-between"
+          >
+            <span>{group}</span>
+            <span className="text-[9px] tabular-nums">
+              {items.filter((c) => !hidden.has(c.name)).length}/{items.length}
+            </span>
+          </button>
+          {items.map((c) => {
+            const isHidden = hidden.has(c.name);
+            const running = c.state === 'running';
+            return (
+              <button
+                key={c.name}
+                onClick={() => toggleContainer(c.name)}
+                className={[
+                  'w-full px-3 py-1 text-left text-[11px] font-mono flex items-center gap-2 transition-all hover:bg-panelHi/40',
+                  isHidden ? 'text-muted/40' : 'text-fg',
+                ].join(' ')}
+              >
+                <span
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{
+                    backgroundColor: isHidden ? 'transparent' : containerColor(c.name),
+                    border: isHidden ? '1px solid currentColor' : 'none',
+                  }}
+                />
+                <span className="truncate">{c.name}</span>
+                {!running && <span className="text-[9px] text-muted ml-auto shrink-0">stopped</span>}
+              </button>
+            );
+          })}
+        </div>
+      ))}
+    </>
+  );
+
+  return (
+    <div className="h-full flex">
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          <div
+            className="absolute inset-0 bg-black/30"
+            onClick={() => setSidebarOpen(false)}
+          />
+          <div className="relative w-64 max-w-[80vw] bg-bg border-r border-border flex flex-col overflow-y-auto shadow-xl">
+            <div className="flex items-center justify-between px-3 pt-3">
+              <span className="text-[10px] uppercase tracking-[0.16em] font-sans text-muted">Filters</span>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="text-muted hover:text-fg text-lg leading-none"
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            {Sidebar}
           </div>
-        ))}
+        </div>
+      )}
+
+      <div className="hidden md:flex shrink-0 w-56 border-r border-border bg-panel/30 flex-col overflow-y-auto">
+        {Sidebar}
       </div>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="shrink-0 border-b border-border px-4 py-2 flex items-center gap-3 flex-wrap">
+        <div className="shrink-0 border-b border-border px-3 sm:px-4 py-2 flex items-center gap-2 sm:gap-3 flex-wrap">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="md:hidden px-2 py-0.5 rounded border border-border text-[10px] uppercase tracking-[0.1em] font-sans text-muted hover:text-fg"
+            aria-label="Show container filters"
+          >
+            Filters
+          </button>
           <div className="flex items-center gap-1.5">
             <span className={`inline-block w-2 h-2 rounded-full ${connected ? 'bg-emerald-500' : 'bg-red-500'}`} />
             <span className="text-[11px] uppercase tracking-[0.14em] font-sans text-muted">
@@ -250,7 +287,7 @@ export function LogsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search logs…"
-            className="bg-transparent border border-border rounded px-2 py-0.5 text-[12px] font-mono w-48 outline-none focus:border-fg placeholder:text-muted/40"
+            className="bg-transparent border border-border rounded px-2 py-0.5 text-[12px] font-mono w-32 sm:w-48 outline-none focus:border-fg placeholder:text-muted/40"
           />
 
           <div className="ml-auto flex items-center gap-2">

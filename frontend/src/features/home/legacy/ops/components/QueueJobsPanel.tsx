@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { cancelQueueJob } from '../../../../../api/queue/cancelQueueJob';
 import { getQueueJob } from '../../../../../api/queue/getQueueJob';
 import { retryQueueJob } from '../../../../../api/queue/retryQueueJob';
+import { runQueueJobNow } from '../../../../../api/queue/runQueueJobNow';
 import { updateJobPriority } from '../../../../../api/queue/updateJobPriority';
 import type { OpsDashboardResponse } from '../../../../../api/types/OpsDashboard';
 import type { QueueJob } from '../../../../../api/types/QueueJob';
@@ -85,6 +86,17 @@ export function QueueJobsPanel({
         setActionMessage(`retried ${jobId} → ${res.job_id ?? '?'}`);
       } else {
         setActionMessage(`retry ${res.status}: ${res.error ?? ''}`);
+      }
+    });
+  }
+
+  async function handleRunNow(jobId: string) {
+    await withAction(jobId, async () => {
+      const res = await runQueueJobNow(jobId);
+      if (res.status === 'running' || res.status === 'queued') {
+        setActionMessage(`running ${jobId}`);
+      } else {
+        setActionMessage(`run-now ${res.status}: ${res.error ?? ''}`);
       }
     });
   }
@@ -189,6 +201,17 @@ export function QueueJobsPanel({
                 <td className="px-3 py-2">{fmt(job.claimed_by)}</td>
                 <td className="px-3 py-2">
                   <div className="flex items-center gap-1">
+                    {job.status === 'queued' && (
+                      <button
+                        type="button"
+                        onClick={() => void handleRunNow(job.job_id)}
+                        disabled={triggersDisabled || busyId === job.job_id}
+                        className="px-2 py-1 rounded border border-border text-[10px] uppercase tracking-[0.12em] hover:bg-fg hover:text-bg disabled:opacity-50"
+                        title="Run this job now, bypassing queue order"
+                      >
+                        Run now
+                      </button>
+                    )}
                     {(job.status === 'queued' || job.status === 'running') && (
                       <button
                         type="button"

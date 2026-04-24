@@ -19,34 +19,68 @@ export function SchedulesPanel({ schedules }: Props) {
     }
   }
 
-  return (
-    <div className="border border-border">
-      <div className="border-b border-border px-3 py-2 text-[11px] uppercase tracking-[0.18em] text-muted">
-        Schedules
+  const Header = (
+    <div className="flex items-baseline gap-2 pb-1">
+      <span className="text-[10px] uppercase tracking-[0.22em] font-sans text-muted">
+        On the Diary
+      </span>
+      <span className="h-px flex-1 bg-border" />
+    </div>
+  );
+
+  if (schedules.length === 0) {
+    return (
+      <div>
+        {Header}
+        <div className="py-8 text-center">
+          <p className="font-display italic text-muted">Nothing scheduled.</p>
+        </div>
       </div>
-      {schedules.length === 0 && <div className="p-3 text-[12px] text-muted">No schedules configured.</div>}
+    );
+  }
+
+  return (
+    <div>
+      {Header}
       <ul className="divide-y divide-border">
         {schedules.map((s) => (
-          <li key={s.id} className={['p-3', s.active ? '' : 'opacity-50'].join(' ')}>
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <div className="truncate text-[13px] text-fg">{s.agent_name}</div>
-                <div className="truncate text-[11px] text-muted">
-                  {s.cron_expression} · {s.timezone}
-                </div>
-                <div className="mt-0.5 text-[11px] text-muted">Next: {formatRelative(s.next_run_time)}</div>
+          <li
+            key={s.id}
+            className={[
+              'group py-2.5 flex items-start gap-3',
+              s.active ? '' : 'opacity-50',
+            ].join(' ')}
+          >
+            <span
+              className={[
+                'mt-1 w-1.5 h-1.5 rounded-full shrink-0',
+                s.active ? 'bg-fg' : 'bg-border',
+              ].join(' ')}
+              aria-hidden
+            />
+            <div className="min-w-0 flex-1">
+              <div className="truncate font-display text-[14px] text-fg">
+                {s.agent_name}
               </div>
-              <button
-                className="border border-border px-2 py-1 text-[10px] uppercase tracking-[0.14em] hover:border-fg"
-                onClick={() => void handleRun(s)}
-              >
-                Run now
-              </button>
+              <div className="truncate text-[11px] font-sans text-muted">
+                <span className="font-mono tabular-nums">{s.cron_expression}</span>
+                <span className="mx-1.5">·</span>
+                <span>{s.timezone}</span>
+              </div>
+              <div className="text-[11px] text-muted mt-0.5">
+                <span className="italic font-display">next</span>{' '}
+                <span>{formatRelative(s.next_run_time)}</span>
+              </div>
             </div>
+            <button
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] uppercase tracking-[0.16em] font-sans text-muted hover:text-fg shrink-0 mt-1"
+              onClick={() => void handleRun(s)}
+            >
+              Run ›
+            </button>
           </li>
         ))}
       </ul>
     </div>
   );
 }
-

@@ -18,8 +18,11 @@ export function UnhealthyBanner({ health }: Props) {
   const ps = problems(health);
   if (ps.length === 0) return null;
   return (
-    <div className="border-b border-red-500 bg-red-500/10 px-8 py-2 text-[12px] text-red-400">
-      Unhealthy — {ps.join(' · ')}
+    <div className="border-t-2 border-b-2 border-fg bg-panel/60 px-4 sm:px-8 py-2.5">
+      <p className="font-display italic text-[13px] sm:text-[14px] text-fg">
+        <span className="mr-2 not-italic font-sans text-[11px] tracking-[0.18em] uppercase">§</span>
+        Stop press — {ps.join(' · ')}.
+      </p>
     </div>
   );
 }

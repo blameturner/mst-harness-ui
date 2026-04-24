@@ -148,6 +148,21 @@ queueRoute.post('/jobs/:id/retry', async (c) => {
   }
 });
 
+queueRoute.post('/jobs/:id/run-now', async (c) => {
+  const id = c.req.param('id');
+  const qs = searchFromUrl(c.req.url);
+  try {
+    const res = await harnessClient.post(
+      `/tool-queue/jobs/${encodeURIComponent(id)}/run-now${qs}`,
+      {},
+      TIMEOUT,
+    );
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'queue');
+  }
+});
+
 queueRoute.get('/events', async (c) => {
   const qs = searchFromUrl(c.req.url);
   const url = `${env.HARNESS_URL}/tool-queue/events${qs}`;

@@ -61,26 +61,29 @@ export function DashboardTab({ overview, health, refetch }: Props) {
         onChatStream={(jobId) => chatRef.current?.attachStream(jobId)}
       />
 
-      <div className="grid grid-cols-[280px_minmax(0,1fr)_360px] gap-4 p-4">
-        <aside className="space-y-2">
+      <div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_360px] gap-6 sm:gap-8 px-4 sm:px-8 py-5 sm:py-7">
+        <main className="min-w-0 space-y-8 order-2 lg:order-2">
+          {/* Questions sit on a warmer paper tint to read as a separate spread */}
+          <div className="rounded-none bg-panel/60 border border-border px-4 sm:px-5 py-4">
+            <QuestionsPanel
+              questions={pending}
+              onRefetch={refetch}
+              onChatStream={(jobId) => chatRef.current?.attachStream(jobId)}
+              registerScrollTarget={(id, el) => {
+                if (el) questionRefs.current.set(id, el);
+                else questionRefs.current.delete(id);
+              }}
+            />
+          </div>
+          <Feed onOpen={openFeedItem} refreshKey={feedRefreshKey} />
+        </main>
+
+        <aside className="space-y-6 order-3 lg:order-1">
           <SchedulesPanel schedules={schedules} />
           <WidgetRail overview={overview} refreshSignal={overview} />
         </aside>
 
-        <main className="min-w-0 space-y-4">
-          <QuestionsPanel
-            questions={pending}
-            onRefetch={refetch}
-            onChatStream={(jobId) => chatRef.current?.attachStream(jobId)}
-            registerScrollTarget={(id, el) => {
-              if (el) questionRefs.current.set(id, el);
-              else questionRefs.current.delete(id);
-            }}
-          />
-          <Feed onOpen={openFeedItem} refreshKey={feedRefreshKey} />
-        </main>
-
-        <aside className="h-[calc(100vh-200px)] min-h-[500px]">
+        <aside className="h-[60vh] min-h-[400px] lg:h-[calc(100vh-240px)] lg:min-h-[500px] order-1 xl:order-3 lg:col-span-2 xl:col-span-1">
           <HomeChat ref={chatRef} conversationId={overview?.home_conversation?.id ?? null} />
         </aside>
       </div>

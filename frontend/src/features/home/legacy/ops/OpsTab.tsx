@@ -68,7 +68,7 @@ export function OpsTab() {
   }
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-3 sm:p-6 space-y-4">
       <div className="flex items-end gap-3 flex-wrap">
         <div>
           <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-1.5">Org ID</label>

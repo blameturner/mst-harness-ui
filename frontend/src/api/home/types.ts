@@ -2,11 +2,27 @@ export interface DigestMeta {
   id: number;
   date: string;
   markdown: string | null;
-  markdown_available: boolean;
-  path: string;
   cluster_count: number;
   source_count: number;
   created_at: string;
+}
+
+export type InsightResearchStatus =
+  | 'pending'
+  | 'generating'
+  | 'searching'
+  | 'synthesizing'
+  | 'completed'
+  | 'failed';
+
+export interface InsightResearchPlan {
+  plan_id: number;
+  focus: string;
+  status: InsightResearchStatus;
+  confidence: number | null;
+  created_at: string;
+  updated_at: string | null;
+  completed_at: string | null;
 }
 
 export interface Question {

@@ -35,9 +35,9 @@ export function StatsTab() {
     <div>
       <TodaySection />
       <OverviewSection />
-      <div className="space-y-8 px-8 py-6">
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-xl">Usage statistics</h2>
+      <div className="space-y-6 sm:space-y-8 px-4 sm:px-8 py-4 sm:py-6">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <h2 className="font-display text-lg sm:text-xl">Usage statistics</h2>
         <div className="flex gap-1">
           {periods.map((p) => (
             <button

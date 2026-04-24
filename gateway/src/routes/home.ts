@@ -132,6 +132,36 @@ homeRoute.post('/insights/produce', async (c) => {
   }
 });
 
+homeRoute.post('/insights/:id/research', async (c) => {
+  const id = c.req.param('id');
+  const body = await c.req.json().catch(() => null);
+  const { orgId } = getAuthContext(c);
+  const payload = { ...(body ?? {}), org_id: Number((body as any)?.org_id ?? orgId) };
+  try {
+    const res = await harnessClient.post(
+      `/home/insights/${encodeURIComponent(id)}/research`,
+      payload,
+      TIMEOUT,
+    );
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'home');
+  }
+});
+
+homeRoute.get('/insights/:id/research', async (c) => {
+  const id = c.req.param('id');
+  try {
+    const res = await harnessClient.get(
+      `/home/insights/${encodeURIComponent(id)}/research`,
+      TIMEOUT,
+    );
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'home');
+  }
+});
+
 homeRoute.get('/questions', async (c) => {
   const { orgId } = getAuthContext(c);
   const qs = scopedSearch(c.req.url, orgId);

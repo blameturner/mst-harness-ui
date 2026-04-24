@@ -56,36 +56,62 @@ export function Feed({ onOpen, refreshKey }: Props) {
     load(false);
   }, [load, refreshKey]);
 
+  const Header = (
+    <div className="flex items-baseline gap-2 pb-1">
+      <span className="text-[10px] uppercase tracking-[0.22em] font-sans text-muted">
+        The Digest
+      </span>
+      <span className="h-px flex-1 bg-border" />
+    </div>
+  );
+
   if (loading) {
     return (
-      <div className="space-y-2">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="h-16 border border-border animate-pulse" />
-        ))}
+      <div>
+        {Header}
+        <div>
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="h-20 border-b border-border animate-pulse bg-panel/40"
+            />
+          ))}
+        </div>
       </div>
     );
   }
 
   if (items.length === 0) {
     return (
-      <div className="border border-dashed border-border px-4 py-8 text-center text-sm text-muted">
-        No activity yet — run a digest or send a chat to get started.
+      <div>
+        {Header}
+        <div className="py-12 text-center">
+          <p className="font-display italic text-lg text-muted">
+            Nothing filed today.
+          </p>
+          <p className="font-sans text-[12px] text-muted/70 mt-2">
+            Run a digest, or start a chat — it'll show up here.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-2">
-      {items.map((it) => (
-        <FeedItem key={`${it.kind}-${it.id}`} item={it} onClick={onOpen} />
-      ))}
+    <div>
+      {Header}
+      <div>
+        {items.map((it) => (
+          <FeedItem key={`${it.kind}-${it.id}`} item={it} onClick={onOpen} />
+        ))}
+      </div>
       {hasMore && (
         <button
           disabled={loadingMore}
           onClick={() => load(true)}
-          className="w-full border border-border px-4 py-2 text-[11px] uppercase tracking-[0.14em] text-muted hover:border-fg hover:text-fg disabled:opacity-50"
+          className="w-full mt-3 py-2 text-[11px] uppercase tracking-[0.16em] text-muted hover:text-fg font-sans disabled:opacity-50 transition-colors"
         >
-          {loadingMore ? 'Loading…' : 'Load more'}
+          {loadingMore ? 'Loading…' : 'Load more ›'}
         </button>
       )}
     </div>
