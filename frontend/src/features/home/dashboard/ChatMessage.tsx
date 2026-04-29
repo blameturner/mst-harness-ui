@@ -1,8 +1,6 @@
 import type { ChatMessage as Msg } from '../hooks/useHomeChat';
 import { MarkdownBody } from '../../../components/chat/MarkdownBody';
 
-// Pull a trailing "_why: ..._" italic line off an assistant message so we
-// can render it as a muted footnote rather than inline prose.
 const WHY_RE = /\n+_why:\s*([\s\S]+?)_\s*$/i;
 function splitWhy(text: string): { body: string; why: string | null } {
   const m = text.match(WHY_RE);
