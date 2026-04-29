@@ -1,7 +1,7 @@
 // Container entrypoint rewrites /config.js at startup from GATEWAY_URL env var, so nothing is baked into the bundle
 declare global {
   interface Window {
-    __ENV__?: { GATEWAY_URL?: string };
+    __ENV__?: { GATEWAY_URL?: string; DEFAULT_ORG_ID?: string | number };
   }
 }
 

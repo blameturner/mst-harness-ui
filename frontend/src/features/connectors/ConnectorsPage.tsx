@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { useState } from 'react';
 import { ApisTab } from './apis/ApisTab';
 import { SmtpTab } from './smtp/SmtpTab';
 import { SecretsTab } from './secrets/SecretsTab';
@@ -13,31 +12,7 @@ const TABS: { id: ConnectorsTabId; label: string }[] = [
 ];
 
 export function ConnectorsPage() {
-  // Deep-linkable via ?tab=apis|smtp|secrets
-  const navigate = useNavigate();
-  const search = useSearch({ from: '/home/connectors' }) as { tab?: string } | undefined;
-  const initial = (TABS.find((t) => t.id === (search?.tab as ConnectorsTabId))?.id ?? 'apis') as ConnectorsTabId;
-  const [tab, setTab] = useState<ConnectorsTabId>(initial);
-
-  useEffect(() => {
-    // Sync search param when tab changes via UI.
-    if (search?.tab !== tab) {
-      navigate({
-        to: '/home/connectors',
-        search: { tab },
-        replace: true,
-      });
-    }
-    // We intentionally only sync from tab → URL, not vice-versa here.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab]);
-
-  // If the URL changes (e.g. back/forward), follow it.
-  useEffect(() => {
-    const next = (TABS.find((t) => t.id === (search?.tab as ConnectorsTabId))?.id ?? 'apis') as ConnectorsTabId;
-    if (next !== tab) setTab(next);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search?.tab]);
+  const [tab, setTab] = useState<ConnectorsTabId>('apis');
 
   return (
     <div className="h-full flex flex-col bg-bg text-fg font-sans">

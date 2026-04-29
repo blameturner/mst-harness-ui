@@ -1,5 +1,5 @@
 import { Fragment } from 'react';
-import type { HarnessStats } from '../../../api/types/HarnessStats';
+import type { HarnessStats } from '../../../../api/types/HarnessStats';
 import { DAY_LABELS } from '../constants/DAY_LABELS';
 
 export function Heatmap({ data }: { data: HarnessStats['by_hour'] }) {

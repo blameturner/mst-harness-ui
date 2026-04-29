@@ -1,24 +1,47 @@
 // frontend/src/features/home/HomePage.tsx
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useOverview } from './hooks/useOverview';
 import { UnhealthyBanner } from './dashboard/UnhealthyBanner';
 import { DashboardTab } from './tabs/DashboardTab';
 import { LogsTab } from './tabs/LogsTab';
 import { StatsTab } from './tabs/StatsTab';
 import { QueueTab } from './tabs/QueueTab';
+import { ConnectorsPage } from '../connectors/ConnectorsPage';
 
-type Tab = 'dashboard' | 'logs' | 'stats' | 'queue';
+type Tab = 'dashboard' | 'logs' | 'stats' | 'queue' | 'connectors';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'logs', label: 'Logs' },
   { id: 'stats', label: 'Stats' },
-  { id: 'queue', label: 'Queue' },
+  { id: 'queue', label: 'Queues' },
+  { id: 'connectors', label: 'Connectors' },
 ];
 
 export function HomePage() {
-  const [tab, setTab] = useState<Tab>('dashboard');
+  const navigate = useNavigate();
+  const search = useSearch({ from: '/home' }) as { tab?: Tab } | undefined;
+  const initialTab = (TABS.find((t) => t.id === search?.tab)?.id ?? 'dashboard') as Tab;
+  const [tab, setTab] = useState<Tab>(initialTab);
   const { overview, health, loading, refetch } = useOverview();
+
+  useEffect(() => {
+    if (search?.tab !== tab) {
+      navigate({
+        to: '/home',
+        search: { tab: tab === 'dashboard' ? undefined : tab },
+        replace: true,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  useEffect(() => {
+    const nextTab = (TABS.find((t) => t.id === search?.tab)?.id ?? 'dashboard') as Tab;
+    if (nextTab !== tab) setTab(nextTab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search?.tab]);
 
   const ok = health && health.scheduler_running;
 
@@ -68,6 +91,7 @@ export function HomePage() {
         {tab === 'logs' && <LogsTab />}
         {tab === 'stats' && <StatsTab />}
         {tab === 'queue' && <QueueTab />}
+        {tab === 'connectors' && <ConnectorsPage />}
       </div>
     </div>
   );

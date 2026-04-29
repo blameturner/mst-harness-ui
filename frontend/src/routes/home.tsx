@@ -4,6 +4,13 @@ import { authClient } from '../lib/auth-client';
 import { HomePage } from '../features/home/HomePage';
 
 export const Route = createFileRoute('/home')({
+  validateSearch: (search) => ({
+    tab:
+      typeof search.tab === 'string' &&
+      ['dashboard', 'logs', 'stats', 'queue', 'connectors'].includes(search.tab)
+        ? (search.tab as 'dashboard' | 'logs' | 'stats' | 'queue' | 'connectors')
+        : undefined,
+  }),
   beforeLoad: async () => {
     try {
       const status = await setupStatus();

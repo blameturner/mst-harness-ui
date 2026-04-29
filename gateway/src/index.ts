@@ -31,6 +31,8 @@ import { messagesRoute } from './routes/messages.js';
 import { schedulerRoute } from './routes/scheduler.js';
 import { opsRoute } from './routes/ops.js';
 import { homeRoute } from './routes/home.js';
+import { connectorsRoute } from './routes/connectors.js';
+import { agentsAdminRoute } from './routes/agentsAdmin.js';
 import { rateLimit } from './middleware/rateLimit.js';
 
 const app = new Hono<{ Variables: AuthVariables }>();
@@ -83,6 +85,8 @@ app.route('/api/messages', messagesRoute);
 app.route('/api/scheduler', schedulerRoute);
 app.route('/api/ops', opsRoute);
 app.route('/api/home', homeRoute);
+app.route('/api/connectors', connectorsRoute);
+app.route('/api', agentsAdminRoute);
 
 app.get('/', (c) => c.json({ name: 'mst-ag-gateway', ok: true }));
 

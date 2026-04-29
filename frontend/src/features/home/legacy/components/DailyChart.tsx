@@ -1,4 +1,4 @@
-import type { HarnessStats } from '../../../api/types/HarnessStats';
+import type { HarnessStats } from '../../../../api/types/HarnessStats';
 import { formatNumber } from '../../../../lib/utils/formatNumber';
 
 export function DailyChart({ days }: { days: HarnessStats['by_day'] }) {

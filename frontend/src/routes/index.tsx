@@ -19,7 +19,7 @@ export const Route = createFileRoute('/')({
     if (!session.data?.user) {
       throw redirect({ to: '/login' });
     }
-    throw redirect({ to: '/home' });
+    throw redirect({ to: '/home', search: { tab: undefined } });
   },
   component: () => null,
 });

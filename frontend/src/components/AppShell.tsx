@@ -11,8 +11,7 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { to: '/home', label: 'Home', excludePrefixes: ['/home/connectors'] },
-  { to: '/home/connectors', label: 'Connectors', matchPrefix: '/home/connectors' },
+  { to: '/home', label: 'Home' },
   { to: '/chat', label: 'Chat' },
   { to: '/code', label: 'Code' },
   { to: '/agents', label: 'Agents', matchPrefix: '/agents' },
@@ -35,6 +34,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="flex items-center gap-3 sm:gap-8 min-w-0">
           <Link
             to="/home"
+            search={{ tab: undefined }}
             className="font-display text-lg sm:text-xl font-semibold tracking-tightest leading-none select-none whitespace-nowrap"
           >
             Jeff<span className="italic">GPT</span>
