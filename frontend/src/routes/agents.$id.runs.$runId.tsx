@@ -1,10 +1,10 @@
-import { createFileRoute, Link, redirect, useParams } from '@tanstack/react-router';
+import { createFileRoute, Link, useParams } from '@tanstack/react-router';
+import { requireSession } from "../lib/route-guards";
 import { useEffect, useState } from 'react';
 import type { AgentOutputRow } from '../api/types/AgentOutputRow';
 import type { AgentRun } from '../api/types/AgentRun';
 import { getAgentRuns } from '../api/agents/getAgentRuns';
 import { getAgentOutputs } from '../api/agents/getAgentOutputs';
-import { authClient } from '../lib/auth-client';
 
 function RunDetailPage() {
   const { id, runId } = useParams({ from: '/agents/$id/runs/$runId' });
@@ -113,10 +113,7 @@ function Field({ label, value }: { label: string; value: string }) {
 
 export const Route = createFileRoute('/agents/$id/runs/$runId')({
   beforeLoad: async () => {
-    const session = await authClient.getSession();
-    if (!session.data?.user) {
-      throw redirect({ to: '/login' });
-    }
+    await requireSession();
   },
   component: RunDetailPage,
 });

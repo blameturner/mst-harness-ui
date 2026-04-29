@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { setupStatus } from '../api/auth/setupStatus';
-import { authClient } from '../lib/auth-client';
+import { requireSession } from '../lib/route-guards';
 import { HomePage } from '../features/home/HomePage';
 
 export const Route = createFileRoute('/home')({
@@ -26,10 +26,7 @@ export const Route = createFileRoute('/home')({
       if ((err as any)?.routerCode) throw err;
       console.error('[home] setup status check failed', err);
     }
-    const session = await authClient.getSession();
-    if (!session.data?.user) {
-      throw redirect({ to: '/login' });
-    }
+    await requireSession();
   },
   component: HomePage,
 });

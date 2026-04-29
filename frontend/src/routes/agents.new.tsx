@@ -1,9 +1,9 @@
-import { createFileRoute, Link, redirect, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { requireSession } from "../lib/route-guards";
 import { useEffect, useState } from 'react';
 import { listWorkerTypes } from '../api/models/listWorkerTypes';
 import { createSchedule } from '../api/schedules/createSchedule';
 import { CronPicker } from '../components/CronPicker';
-import { authClient } from '../lib/auth-client';
 
 function AgentsNewPage() {
   const navigate = useNavigate();
@@ -143,10 +143,7 @@ function AgentsNewPage() {
 
 export const Route = createFileRoute('/agents/new')({
   beforeLoad: async () => {
-    const session = await authClient.getSession();
-    if (!session.data?.user) {
-      throw redirect({ to: '/login' });
-    }
+    await requireSession();
   },
   component: AgentsNewPage,
 });

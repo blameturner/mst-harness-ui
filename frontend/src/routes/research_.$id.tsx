@@ -1,8 +1,8 @@
-import { createFileRoute, Link, redirect, useParams } from '@tanstack/react-router';
+import { createFileRoute, Link, useParams } from '@tanstack/react-router';
+import { requireSession } from "../lib/route-guards";
 import { useEffect, useState } from 'react';
 import type { ResearchPlan } from '../api/types/Enrichment';
 import { getResearchPlan } from '../api/enrichment/research';
-import { authClient } from '../lib/auth-client';
 import { ResearchPaperPage } from '../features/home/legacy/research/ResearchPaperPage';
 
 function ResearchPaperRoute() {
@@ -62,10 +62,7 @@ function ResearchPaperRoute() {
 
 export const Route = createFileRoute('/research_/$id')({
   beforeLoad: async () => {
-    const session = await authClient.getSession();
-    if (!session.data?.user) {
-      throw redirect({ to: '/login' });
-    }
+    await requireSession();
   },
   component: ResearchPaperRoute,
 });

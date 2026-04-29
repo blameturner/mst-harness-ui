@@ -1,4 +1,5 @@
-import { createFileRoute, Link, redirect, useParams } from '@tanstack/react-router';
+import { createFileRoute, Link, useParams } from '@tanstack/react-router';
+import { requireSession } from "../lib/route-guards";
 import { useEffect, useState } from 'react';
 import type { AgentOutputRow } from '../api/types/AgentOutputRow';
 import type { AgentRun } from '../api/types/AgentRun';
@@ -6,7 +7,6 @@ import type { AgentSummary } from '../api/types/AgentSummary';
 import { getAgent } from '../api/agents/getAgent';
 import { getAgentRuns } from '../api/agents/getAgentRuns';
 import { getAgentOutputs } from '../api/agents/getAgentOutputs';
-import { authClient } from '../lib/auth-client';
 
 type Tab = 'runs' | 'outputs';
 
@@ -144,10 +144,7 @@ function AgentDetailPage() {
 
 export const Route = createFileRoute('/agents/$id')({
   beforeLoad: async () => {
-    const session = await authClient.getSession();
-    if (!session.data?.user) {
-      throw redirect({ to: '/login' });
-    }
+    await requireSession();
   },
   component: AgentDetailPage,
 });

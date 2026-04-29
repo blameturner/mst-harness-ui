@@ -1,11 +1,10 @@
-import { createFileRoute, redirect } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
+import { requireSession } from "../lib/route-guards";
 import { ResearchTab } from '../features/home/tabs/ResearchTab';
-import { authClient } from '../lib/auth-client';
 
 export const Route = createFileRoute('/research')({
   beforeLoad: async () => {
-    const session = await authClient.getSession();
-    if (!session.data?.user) throw redirect({ to: '/login' });
+    await requireSession();
   },
   component: ResearchTab,
 });

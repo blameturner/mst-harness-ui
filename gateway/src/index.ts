@@ -48,13 +48,35 @@ app.use(
   }),
 );
 
-// Rate limits. Tight buckets on auth and setup endpoints to deter brute force
-// and setup-spam; a looser bucket on the rest of the API as a safety net.
-// In-memory limiter is appropriate for the single-instance LAN deployment.
-app.use(
-  '/api/auth/*',
-  rateLimit({ windowMs: 15 * 60 * 1000, max: 20, name: 'auth' }),
-);
+// Rate limits. Tight buckets on auth mutations and setup endpoints to deter
+// brute force and setup-spam; a looser bucket on the rest of the API as a
+// safety net. In-memory limiter is appropriate for the single-instance LAN
+// deployment.
+//
+// IMPORTANT: do NOT put the tight bucket on /api/auth/* wholesale.
+// `GET /api/auth/get-session` is called by every TanStack route's beforeLoad
+// (15+ routes), so a 20/15min bucket trips after normal navigation, then 429s
+// the redirect-to-/login attempt to sign back in — locking the user out for
+// the rest of the window. The tight bucket only belongs on credential-bearing
+// mutations (sign-in / sign-up / reset-password).
+const authMutationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  name: 'auth-mutation',
+});
+app.use('/api/auth/*', async (c, next) => {
+  if (c.req.method === 'GET') return next();
+  // Only credential mutations get the tight bucket. Other POSTs (sign-out,
+  // session refresh) ride the normal /api/* bucket below.
+  const path = new URL(c.req.url).pathname;
+  const isCredentialed =
+    path.includes('/sign-in') ||
+    path.includes('/sign-up') ||
+    path.includes('/forget-password') ||
+    path.includes('/reset-password');
+  if (isCredentialed) return authMutationLimiter(c, next);
+  return next();
+});
 // Only the setup mutation (POST /api/setup) needs the tight anti-spam bucket.
 // GET /api/setup/status is polled by every route guard on every navigation, so
 // it must use the normal /api/* bucket — otherwise a logged-in user gets 429s
