@@ -364,3 +364,80 @@ enrichmentRoute.get('/research-plans/:id', async (c) => {
     return mapHarnessError(err, 'enrichment');
   }
 });
+
+enrichmentRoute.get('/research/doc-types', async (_c) => {
+  try {
+    const res = await harnessClient.get('/enrichment/research/doc-types', TIMEOUT);
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'enrichment');
+  }
+});
+
+enrichmentRoute.post('/research/:id/start', async (c) => {
+  const id = c.req.param('id');
+  try {
+    const res = await harnessClient.post(
+      `/enrichment/research/${encodeURIComponent(id)}/start`,
+      {},
+      TIMEOUT,
+    );
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'enrichment');
+  }
+});
+
+enrichmentRoute.post('/research/:id/review', async (c) => {
+  const id = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+  const schema = z.object({ instructions: z.string().optional() });
+  const parsed = schema.safeParse(body ?? {});
+  if (!parsed.success) {
+    return c.json({ error: 'invalid_body', details: parsed.error.errors }, 400);
+  }
+  try {
+    const res = await harnessClient.post(
+      `/enrichment/research/${encodeURIComponent(id)}/review`,
+      parsed.data,
+      TIMEOUT,
+    );
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'enrichment');
+  }
+});
+
+enrichmentRoute.post('/research/:id/ops/:kind', async (c) => {
+  const id = c.req.param('id');
+  const kind = c.req.param('kind');
+  const body = await c.req.json().catch(() => ({}));
+  const schema = z.object({ params: z.record(z.unknown()).optional() });
+  const parsed = schema.safeParse(body ?? {});
+  if (!parsed.success) {
+    return c.json({ error: 'invalid_body', details: parsed.error.errors }, 400);
+  }
+  try {
+    const res = await harnessClient.post(
+      `/enrichment/research/${encodeURIComponent(id)}/ops/${encodeURIComponent(kind)}`,
+      parsed.data,
+      TIMEOUT,
+    );
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'enrichment');
+  }
+});
+
+enrichmentRoute.get('/research/:id/artifacts', async (c) => {
+  const id = c.req.param('id');
+  try {
+    const res = await harnessClient.get(
+      `/enrichment/research/${encodeURIComponent(id)}/artifacts`,
+      TIMEOUT,
+    );
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'enrichment');
+  }
+});

@@ -7,14 +7,18 @@ import {
   completeResearchPlan,
   deleteResearchPlan,
   updateResearchPlanQueries,
+  getResearchDocTypes,
 } from '../../../api/enrichment/research';
-import type { ResearchPlan } from '../../../api/types/Enrichment';
+import type { ResearchDocType, ResearchPlan } from '../../../api/types/Enrichment';
 import { ResearchPlanCard } from '../legacy/research/ResearchPlanCard';
 
 type StatusFilter = 'all' | 'active' | 'complete' | 'failed';
 
 export function ResearchTab() {
   const [topic, setTopic] = useState('');
+  const [docTypes, setDocTypes] = useState<ResearchDocType[]>([]);
+  const [docTypeAuto, setDocTypeAuto] = useState(true);
+  const [docType, setDocType] = useState<string>('');
   const [plans, setPlans] = useState<ResearchPlan[]>([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -25,6 +29,14 @@ export function ResearchTab() {
 
   useEffect(() => {
     loadPlans();
+    getResearchDocTypes()
+      .then((res) => {
+        setDocTypes(res?.types ?? []);
+        if (res?.default) setDocType(res.default);
+      })
+      .catch(() => {
+        /* doc types optional */
+      });
     return () => {
       if (pollRef.current) window.clearInterval(pollRef.current);
     };
@@ -109,19 +121,47 @@ export function ResearchTab() {
         <Stat label="Avg Iterations" value={stats.avgIter} />
       </div>
 
-      <div className="flex items-end gap-3">
-        <div className="flex-1">
+      <div className="flex items-end gap-3 flex-wrap">
+        <div className="flex-1 min-w-[260px]">
           <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-1.5">Topic</label>
-          <input
-            type="text"
+          <textarea
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') handleGenerate();
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleGenerate();
             }}
+            rows={2}
             placeholder="Enter research topic..."
             className="w-full px-3 py-2 rounded border border-border bg-panel text-fg text-sm font-sans focus:outline-none focus:border-fg"
           />
+        </div>
+        <div className="min-w-[200px]">
+          <label className="flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-muted mb-1.5">
+            Doc type
+            <input
+              type="checkbox"
+              checked={docTypeAuto}
+              onChange={(e) => setDocTypeAuto(e.target.checked)}
+              className="ml-auto"
+            />
+            <span className="lowercase tracking-normal text-[10px]">auto-detect</span>
+          </label>
+          <select
+            value={docType}
+            onChange={(e) => setDocType(e.target.value)}
+            disabled={docTypeAuto || docTypes.length === 0}
+            className="w-full px-2 py-2 rounded border border-border bg-panel text-fg text-sm font-sans disabled:opacity-50"
+          >
+            {docTypes.length === 0 ? (
+              <option value="">—</option>
+            ) : (
+              docTypes.map((t) => (
+                <option key={t.key} value={t.key} title={t.tone ?? ''}>
+                  {t.key.replace(/_/g, ' ')}
+                </option>
+              ))
+            )}
+          </select>
         </div>
         <button
           onClick={handleGenerate}

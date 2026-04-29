@@ -38,9 +38,13 @@ export function confidenceTone(score: number): {
 
 export const STATUS_TONES: Record<string, string> = {
   pending: 'bg-muted/30 text-muted',
+  hidden: 'bg-muted/30 text-muted',
   generating: 'bg-blue-500/15 text-blue-600',
+  searching: 'bg-blue-500/15 text-blue-600',
   synthesizing: 'bg-indigo-500/15 text-indigo-600',
   critiquing: 'bg-amber-500/15 text-amber-700',
+  reviewing: 'bg-amber-500/15 text-amber-700',
+  revising: 'bg-amber-500/15 text-amber-700',
   complete: 'bg-emerald-500/15 text-emerald-700',
   completed: 'bg-emerald-500/15 text-emerald-700',
   failed: 'bg-red-500/15 text-red-600',

@@ -56,8 +56,64 @@ export type ResearchStatus =
   | 'generating'
   | 'synthesizing'
   | 'critiquing'
+  | 'searching'
+  | 'reviewing'
+  | 'revising'
   | 'completed'
-  | 'failed';
+  | 'failed'
+  | 'hidden';
+
+export interface ResearchDocType {
+  key: string;
+  opener?: string;
+  closer?: string;
+  tone?: string;
+}
+
+export interface ResearchDocTypesResponse {
+  default: string;
+  types: ResearchDocType[];
+}
+
+export interface ResearchArtifactEntry {
+  text: string;
+  generated_at: string;
+}
+
+export interface ResearchArtifacts {
+  fact_check?: ResearchArtifactEntry;
+  citation_audit?: ResearchArtifactEntry;
+  slide_deck?: ResearchArtifactEntry;
+  email_tldr?: ResearchArtifactEntry;
+  qa_pack?: ResearchArtifactEntry;
+  action_plan?: ResearchArtifactEntry;
+  [key: string]: ResearchArtifactEntry | undefined;
+}
+
+export interface ResearchArtifactsResponse {
+  plan_id: number;
+  artifacts: ResearchArtifacts;
+}
+
+export type ResearchOpKind =
+  | 'fact_check'
+  | 'citation_audit'
+  | 'expand_section'
+  | 'add_section'
+  | 'counter_arguments'
+  | 'add_fresh_sources'
+  | 'refresh_recency'
+  | 'reframe'
+  | 'resize'
+  | 'slide_deck'
+  | 'email_tldr'
+  | 'qa_pack'
+  | 'action_plan'
+  | 'chat_with_paper';
+
+export type ResearchOpResponse =
+  | { status: 'queued'; job_id: string }
+  | { status: 'ok'; [key: string]: unknown };
 
 export interface GapField {
   field: string;
@@ -89,6 +145,10 @@ export interface ResearchPlan {
   gap_report?: string | null;
   paper_content?: string | null;
   created_at: string;
+  type?: string | null;
+  doc_type?: string | null;
+  artifacts_json?: string | ResearchArtifacts | null;
+  error_message?: string | null;
 }
 
 export interface ResearchPlansListResponse {

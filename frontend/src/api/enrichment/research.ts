@@ -1,5 +1,13 @@
 import { http } from '../../lib/http';
-import type { ResearchPlan, ResearchPlansListResponse } from '../types/Enrichment';
+import type {
+  ResearchArtifacts,
+  ResearchArtifactsResponse,
+  ResearchDocTypesResponse,
+  ResearchOpKind,
+  ResearchOpResponse,
+  ResearchPlan,
+  ResearchPlansListResponse,
+} from '../types/Enrichment';
 import { normalizeList } from './_normalizeList';
 
 // Harness stores JSON-encoded strings in these columns. Parse at the boundary so
@@ -27,6 +35,7 @@ function parsePlan(raw: unknown): ResearchPlan {
       typeof r.gap_report === 'string' && r.gap_report.length > 0
         ? (r.gap_report as string)
         : null,
+    artifacts_json: parseJson<ResearchArtifacts>(r.artifacts_json, {}),
   };
 }
 
@@ -89,6 +98,43 @@ export async function listResearchPlans(params?: { status?: string }): Promise<R
   const raw = await http.get(`api/enrichment/research-plans/list?${searchParams}`).json<unknown>();
   const normalized = normalizeList<unknown>(raw, 'research-plans/list');
   return { items: normalized.items.map(parsePlan), total: normalized.total };
+}
+
+export function getResearchDocTypes() {
+  return http.get('api/enrichment/research/doc-types').json<ResearchDocTypesResponse>();
+}
+
+export function startResearchPlan(planId: number) {
+  return http
+    .post(`api/enrichment/research/${planId}/start`, { json: {} })
+    .json<ResearchOpResponse>();
+}
+
+export function reviewResearchPlan(planId: number, instructions?: string) {
+  return http
+    .post(`api/enrichment/research/${planId}/review`, {
+      json: instructions ? { instructions } : {},
+    })
+    .json<ResearchOpResponse>();
+}
+
+export function runResearchOp<T = ResearchOpResponse>(
+  planId: number,
+  kind: ResearchOpKind,
+  params?: Record<string, unknown>,
+) {
+  return http
+    .post(`api/enrichment/research/${planId}/ops/${kind}`, {
+      json: { params: params ?? {} },
+    })
+    .json<T>();
+}
+
+export async function getResearchArtifacts(planId: number): Promise<ResearchArtifacts> {
+  const raw = await http
+    .get(`api/enrichment/research/${planId}/artifacts`)
+    .json<ResearchArtifactsResponse>();
+  return raw?.artifacts ?? {};
 }
 
 export async function getResearchPlan(planId: number): Promise<ResearchPlan | null> {
