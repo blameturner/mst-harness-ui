@@ -3,14 +3,17 @@ import { defaultOrgId } from '../home/config';
 import { gatewayUrl } from '../../lib/runtime-env';
 
 export interface ToolJob {
-  id: string;
-  kind: string;
-  status: 'queued' | 'running' | 'done' | 'error' | 'cancelled' | string;
-  created_at: string;
+  job_id: string;
+  type: string;
+  status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled' | string;
+  created_at?: string;
   started_at?: string;
-  finished_at?: string;
+  completed_at?: string;
   source?: string;
-  conversation_id?: number;
+  conversation_id?: number | null;
+  priority?: number;
+  error?: string;
+  result_status?: string | null;
 }
 export interface ToolJobDeps {
   nodes: Array<{ id: string; kind: string; status: string }>;

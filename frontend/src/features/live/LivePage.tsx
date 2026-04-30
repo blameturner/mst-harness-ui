@@ -125,8 +125,9 @@ function JobsColumn() {
             <option value="">all</option>
             <option value="queued">queued</option>
             <option value="running">running</option>
-            <option value="done">done</option>
-            <option value="error">error</option>
+            <option value="completed">completed</option>
+            <option value="failed">failed</option>
+            <option value="cancelled">cancelled</option>
           </select>
         }
       />
@@ -140,21 +141,21 @@ function JobsColumn() {
         ) : (
           <ul>
             {jobs.map((j) => (
-              <li key={j.id}>
+              <li key={j.job_id}>
                 <button
-                  onClick={() => setActive(active?.id === j.id ? null : j)}
+                  onClick={() => setActive(active?.job_id === j.job_id ? null : j)}
                   className={[
                     'w-full text-left px-4 py-2.5 border-b border-border transition-colors',
-                    active?.id === j.id ? 'bg-panelHi' : 'hover:bg-panel/60',
+                    active?.job_id === j.job_id ? 'bg-panelHi' : 'hover:bg-panel/60',
                   ].join(' ')}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-xs truncate text-fg">{j.kind}</span>
+                    <span className="font-mono text-xs truncate text-fg">{j.type}</span>
                     <StatusPill status={j.status} />
                   </div>
-                  <div className="text-[10px] text-muted font-mono mt-1 flex justify-between">
-                    <span className="truncate">{j.id}</span>
-                    <span>{relTime(j.created_at)}</span>
+                  <div className="text-[10px] text-muted font-mono mt-1 flex justify-between gap-2">
+                    <span className="truncate">{j.job_id}</span>
+                    <span className="shrink-0">{j.created_at ? relTime(j.created_at) : '—'}</span>
                   </div>
                 </button>
               </li>
@@ -175,14 +176,14 @@ function JobDetail({ job, onClose }: { job: ToolJob; onClose: () => void }) {
   useEffect(() => {
     setDeps(null);
     liveApi
-      .jobDependencies(job.id)
+      .jobDependencies(job.job_id)
       .then(setDeps)
       .catch(() => setDeps({ nodes: [], edges: [] }));
-  }, [job.id]);
+  }, [job.job_id]);
 
   useEffect(() => {
     setLogLines([]);
-    const es = new EventSource(liveJobLogStreamUrl(job.id), { withCredentials: true });
+    const es = new EventSource(liveJobLogStreamUrl(job.job_id), { withCredentials: true });
     es.onmessage = (e) => {
       setLogLines((l) => [...l.slice(-499), e.data]);
       requestAnimationFrame(() => {
@@ -191,12 +192,12 @@ function JobDetail({ job, onClose }: { job: ToolJob; onClose: () => void }) {
     };
     es.onerror = () => es.close();
     return () => es.close();
-  }, [job.id]);
+  }, [job.job_id]);
 
   return (
     <div className="shrink-0 border-t border-border bg-panel/40 max-h-[60%] flex flex-col overflow-hidden">
       <div className="px-4 py-2 flex items-center justify-between border-b border-border bg-bg">
-        <div className="font-mono text-[11px] truncate text-fg">{job.id}</div>
+        <div className="font-mono text-[11px] truncate text-fg">{job.job_id}</div>
         <button
           onClick={onClose}
           aria-label="Close"
