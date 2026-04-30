@@ -4,13 +4,6 @@ import { requireSession } from '../lib/route-guards';
 import { HomePage } from '../features/home/HomePage';
 
 export const Route = createFileRoute('/home')({
-  validateSearch: (search) => ({
-    tab:
-      typeof search.tab === 'string' &&
-      ['dashboard', 'logs', 'stats', 'connectors'].includes(search.tab)
-        ? (search.tab as 'dashboard' | 'logs' | 'stats' | 'connectors')
-        : undefined,
-  }),
   beforeLoad: async () => {
     // Only redirect to /setup on a *successful* "not configured" answer. If
     // the status endpoint errors (network, 429, 5xx) we trust the existing

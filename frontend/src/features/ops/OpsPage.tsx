@@ -20,11 +20,24 @@ import {
 } from '../../components/ui';
 import { relTime } from '../../lib/utils/relTime';
 import { ControlPlaneTab } from './ControlPlaneTab';
+import { LogsPage } from '../logs/LogsPage';
+import { StatsTab } from '../home/tabs/StatsTab';
+import { ConnectorsPage } from '../connectors/ConnectorsPage';
 
-type Tab = 'control' | 'connectors' | 'scheduler' | 'research';
+type Tab =
+  | 'control'
+  | 'logs'
+  | 'stats'
+  | 'integrations'
+  | 'activity'
+  | 'scheduler'
+  | 'research';
 const TABS: ReadonlyArray<TabDef<Tab>> = [
   { id: 'control', label: 'Control plane' },
-  { id: 'connectors', label: 'Connectors' },
+  { id: 'logs', label: 'Logs' },
+  { id: 'stats', label: 'Stats' },
+  { id: 'integrations', label: 'Integrations' },
+  { id: 'activity', label: 'Connector activity' },
   { id: 'scheduler', label: 'Scheduler' },
   { id: 'research', label: 'Research artifacts' },
 ];
@@ -42,7 +55,10 @@ export function OpsPage() {
 
       <div className="flex-1 min-h-0 overflow-y-auto">
         {tab === 'control' && <ControlPlaneTab />}
-        {tab === 'connectors' && <ConnectorsTab />}
+        {tab === 'logs' && <LogsPage />}
+        {tab === 'stats' && <StatsTab />}
+        {tab === 'integrations' && <ConnectorsPage />}
+        {tab === 'activity' && <ConnectorsTab />}
         {tab === 'scheduler' && <SchedulerTab />}
         {tab === 'research' && <ResearchTab />}
       </div>
