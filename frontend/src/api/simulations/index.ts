@@ -27,6 +27,8 @@ export interface Sim {
   participants: Participant[];
   status: SimStatus;
   max_turns: number;
+  turn_count?: number;
+  created_at?: string;
   started_at?: string;
   completed_at?: string;
   error?: string;

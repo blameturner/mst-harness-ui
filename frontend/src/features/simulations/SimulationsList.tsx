@@ -53,11 +53,11 @@ export function SimulationsList({ selectedId, onEmptyChange }: Props) {
 
   const sorted = useMemo(() => {
     if (!sims) return null;
-    return [...sims].sort((a, b) => {
-      const at = a.started_at ? new Date(a.started_at).getTime() : a.sim_id;
-      const bt = b.started_at ? new Date(b.started_at).getTime() : b.sim_id;
-      return bt - at;
-    });
+    const ts = (s: Sim) => {
+      const v = s.created_at ?? s.started_at;
+      return v ? new Date(v).getTime() : s.sim_id;
+    };
+    return [...sims].sort((a, b) => ts(b) - ts(a));
   }, [sims]);
 
   useEffect(() => {
@@ -90,7 +90,7 @@ export function SimulationsList({ selectedId, onEmptyChange }: Props) {
         <li className="px-4 py-2 text-[11px] text-red-700 bg-red-50">{error}</li>
       )}
       {sorted!.map((s) => {
-        const turns = s.transcript?.length ?? 0;
+        const turns = s.turn_count ?? s.transcript?.length ?? 0;
         const active = s.sim_id === selectedId;
         return (
           <li key={s.sim_id}>
@@ -132,7 +132,7 @@ export function SimulationsList({ selectedId, onEmptyChange }: Props) {
                 <span>
                   {turns}/{s.max_turns} turns
                 </span>
-                <span>#{s.sim_id} · {relTime(s.started_at ?? null)}</span>
+                <span>#{s.sim_id} · {relTime(s.created_at ?? s.started_at ?? null)}</span>
               </div>
             </Link>
           </li>

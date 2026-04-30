@@ -19,16 +19,18 @@ import {
   type TabDef,
 } from '../../components/ui';
 import { relTime } from '../../lib/utils/relTime';
+import { ControlPlaneTab } from './ControlPlaneTab';
 
-type Tab = 'connectors' | 'scheduler' | 'research';
+type Tab = 'control' | 'connectors' | 'scheduler' | 'research';
 const TABS: ReadonlyArray<TabDef<Tab>> = [
+  { id: 'control', label: 'Control plane' },
   { id: 'connectors', label: 'Connectors' },
   { id: 'scheduler', label: 'Scheduler' },
   { id: 'research', label: 'Research artifacts' },
 ];
 
 export function OpsPage() {
-  const [tab, setTab] = useState<Tab>('connectors');
+  const [tab, setTab] = useState<Tab>('control');
 
   return (
     <div className="h-full flex flex-col bg-bg text-fg font-sans">
@@ -39,6 +41,7 @@ export function OpsPage() {
       />
 
       <div className="flex-1 min-h-0 overflow-y-auto">
+        {tab === 'control' && <ControlPlaneTab />}
         {tab === 'connectors' && <ConnectorsTab />}
         {tab === 'scheduler' && <SchedulerTab />}
         {tab === 'research' && <ResearchTab />}
