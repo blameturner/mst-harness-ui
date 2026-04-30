@@ -159,6 +159,8 @@ export function RunDetail({
           <div className="text-xs text-muted">Cancelled by user.</div>
         )}
 
+        <UrlEventLog runId={run.Id} inFlight={inFlight} />
+
         <ArtifactsSection run={run} policy={policy} artifacts={artifacts} />
       </div>
 
@@ -263,6 +265,102 @@ function Timeline({ run }: { run: HarvestRun }) {
         <dd className="font-mono">${run.cost_usd.toFixed(4)}</dd>
       </dl>
     </section>
+  );
+}
+
+// Per-URL event tail — populated from the runner's rolling buffer in
+// artifacts_json["events"]. Polls while the run is in flight; loads once
+// after it terminates.
+function UrlEventLog({ runId, inFlight }: { runId: number; inFlight: boolean }) {
+  const [events, setEvents] = useState<Array<{
+    ts: string;
+    url: string;
+    outcome: string;
+    depth: number;
+  }> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = () =>
+      harvestApi
+        .runLog(runId, 200)
+        .then((r) => {
+          if (!cancelled) setEvents(r.events);
+        })
+        .catch(() => undefined);
+
+    void load();
+    if (!inFlight) return () => { cancelled = true; };
+    const id = setInterval(load, 4000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [runId, inFlight]);
+
+  if (events == null) {
+    return (
+      <section>
+        <Eyebrow className="mb-2">Log</Eyebrow>
+        <div className="text-xs text-muted">loading…</div>
+      </section>
+    );
+  }
+  if (events.length === 0) {
+    return (
+      <section>
+        <Eyebrow className="mb-2">Log</Eyebrow>
+        <div className="text-xs text-muted">No URL events recorded yet.</div>
+      </section>
+    );
+  }
+  // Newest first reads better in a drawer.
+  const reversed = [...events].reverse();
+  return (
+    <section>
+      <div className="flex items-center gap-2 mb-2">
+        <Eyebrow>Log</Eyebrow>
+        <span className="text-[10px] uppercase tracking-[0.18em] text-muted">
+          {events.length} event{events.length === 1 ? '' : 's'}
+        </span>
+      </div>
+      <ul className="border border-border rounded-md bg-bg divide-y divide-border max-h-72 overflow-y-auto">
+        {reversed.map((e, i) => (
+          <li key={`${e.ts}-${i}`} className="px-2.5 py-1.5 text-[11px] flex items-center gap-2">
+            <OutcomePill outcome={e.outcome} />
+            <span className="font-mono text-fg/85 truncate flex-1" title={e.url}>
+              {e.url}
+            </span>
+            <span className="text-muted text-[10px] tabular-nums whitespace-nowrap">
+              d{e.depth}
+            </span>
+            <span className="text-muted text-[10px] tabular-nums whitespace-nowrap">
+              {e.ts.slice(11, 19)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function OutcomePill({ outcome }: { outcome: string }) {
+  // Map runner outcomes to the established status palette without inventing
+  // new colour tokens. persisted=success, unchanged=neutral, skipped=muted,
+  // anything else=failure.
+  const tone = outcome === 'persisted'
+    ? 'border-emerald-300 text-emerald-800 bg-emerald-50'
+    : outcome === 'unchanged'
+    ? 'border-border text-fg bg-panel'
+    : outcome === 'skipped'
+    ? 'border-border text-muted bg-panel'
+    : 'border-red-300 text-red-700 bg-red-50';
+  return (
+    <span
+      className={`px-1.5 py-px font-mono text-[9px] uppercase tracking-[0.16em] border rounded-sm whitespace-nowrap ${tone}`}
+    >
+      {outcome}
+    </span>
   );
 }
 

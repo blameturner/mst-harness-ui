@@ -1,26 +1,28 @@
 import { useEffect, useState } from 'react';
 import { harvestApi, type HarvestPolicy, type HarvestRun } from '../../api/harvest';
-import { PageHeader, TabRow, type TabDef } from '../../components/ui';
+import { Btn, PageHeader } from '../../components/ui';
 import { PolicyCatalog } from './PolicyCatalog';
 import { TriggerForm } from './TriggerForm';
 import { RunsTable } from './RunsTable';
 import { HostsTable } from './HostsTable';
 import { RunDetail } from './RunDetail';
+import { LiveRail } from './LiveRail';
 
-type Tab = 'trigger' | 'runs' | 'hosts';
-
-const TABS: ReadonlyArray<TabDef<Tab>> = [
-  { id: 'trigger', label: 'Trigger' },
-  { id: 'runs', label: 'Runs' },
-  { id: 'hosts', label: 'Hosts' },
-];
-
+// One stacked Harvest console: Trigger → Live → History, with the policy
+// catalog in a left rail and the run detail in a right rail. Hosts moved
+// behind a small button — useful but not the everyday view.
 export function HarvestPage() {
-  const [tab, setTab] = useState<Tab>('trigger');
   const [policies, setPolicies] = useState<HarvestPolicy[] | null>(null);
   const [selectedPolicy, setSelectedPolicy] = useState<HarvestPolicy | null>(null);
   const [activeRunId, setActiveRunId] = useState<number | null>(null);
   const [activeRun, setActiveRun] = useState<HarvestRun | null>(null);
+  const [hostsOpen, setHostsOpen] = useState(false);
+  // Bumper state used to force RunsTable to remount + re-fetch after a
+  // cancel/retry from RunDetail. RunsTable doesn't expose a refresh hook,
+  // so a `key` change is the cheapest way to nudge it without touching
+  // its internals. The 10s internal poll would catch this eventually,
+  // but the operator wants immediate feedback after their action.
+  const [runsBumper, setRunsBumper] = useState(0);
 
   useEffect(() => {
     harvestApi
@@ -35,7 +37,6 @@ export function HarvestPage() {
 
   const onTriggered = (runId: number) => {
     setActiveRunId(runId);
-    setTab('runs');
   };
 
   return (
@@ -44,9 +45,14 @@ export function HarvestPage() {
         eyebrow="Operator console"
         title="Harvest"
         right={
-          <span className="text-[10px] uppercase tracking-[0.22em] text-muted">
-            {policies ? `${policies.length} policies` : 'loading'}
-          </span>
+          <div className="flex items-center gap-3">
+            <Btn variant="ghost" size="sm" onClick={() => setHostsOpen((v) => !v)}>
+              {hostsOpen ? 'Close hosts' : 'Hosts'}
+            </Btn>
+            <span className="text-[10px] uppercase tracking-[0.22em] text-muted">
+              {policies ? `${policies.length} policies` : 'loading'}
+            </span>
+          </div>
         }
       />
 
@@ -54,38 +60,45 @@ export function HarvestPage() {
         <PolicyCatalog
           policies={policies}
           selected={selectedPolicy}
-          onSelect={(p) => {
-            setSelectedPolicy(p);
-            setTab('trigger');
-          }}
+          onSelect={(p) => setSelectedPolicy(p)}
         />
 
-        <div className="flex flex-col min-h-0 overflow-hidden">
-          <TabRow tabs={TABS} active={tab} onChange={setTab} />
-          <div className="flex-1 min-h-0 overflow-y-auto">
-            {tab === 'trigger' && (
-              <TriggerForm policy={selectedPolicy} onTriggered={onTriggered} />
-            )}
-            {tab === 'runs' && (
-              <RunsTable
+        <div className="flex flex-col min-h-0 overflow-y-auto">
+          {hostsOpen ? (
+            <HostsTable />
+          ) : (
+            <>
+              <section className="border-b border-border">
+                <TriggerForm policy={selectedPolicy} onTriggered={onTriggered} />
+              </section>
+
+              <LiveRail
                 onSelect={(r) => {
                   setActiveRunId(r.Id);
                   setActiveRun(r);
                 }}
                 activeRunId={activeRunId}
               />
-            )}
-            {tab === 'hosts' && <HostsTable />}
-          </div>
+
+              <section className="flex-1 min-h-0">
+                <RunsTable
+                  key={`runs-${runsBumper}`}
+                  onSelect={(r) => {
+                    setActiveRunId(r.Id);
+                    setActiveRun(r);
+                  }}
+                  activeRunId={activeRunId}
+                />
+              </section>
+            </>
+          )}
         </div>
 
         <RunDetail
           runId={activeRunId}
           fallback={activeRun}
           policies={policies}
-          onChanged={() => {
-            // bump runs list refresh implicit via its own polling
-          }}
+          onChanged={() => setRunsBumper((n) => n + 1)}
           onOpenParent={(parentId) => setActiveRunId(parentId)}
         />
       </div>

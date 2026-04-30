@@ -39,7 +39,10 @@ const NAV: NavEntry[] = [
   },
   {
     label: 'Pipelines',
-    items: [{ to: '/harvest', label: 'Harvest', matchPrefix: '/harvest' }],
+    items: [
+      { to: '/harvest', label: 'Harvest', matchPrefix: '/harvest' },
+      { to: '/enrichment', label: 'Enrichment', matchPrefix: '/enrichment' },
+    ],
   },
   {
     label: 'Ops',

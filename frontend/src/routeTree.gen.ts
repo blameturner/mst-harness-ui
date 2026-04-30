@@ -22,6 +22,7 @@ import { Route as HubRouteImport } from './routes/hub'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as HarvestRouteImport } from './routes/harvest'
 import { Route as GraphRouteImport } from './routes/graph'
+import { Route as EnrichmentRouteImport } from './routes/enrichment'
 import { Route as CodeRouteImport } from './routes/code'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as ArchitectureRouteImport } from './routes/architecture'
@@ -101,6 +102,11 @@ const GraphRoute = GraphRouteImport.update({
   path: '/graph',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EnrichmentRoute = EnrichmentRouteImport.update({
+  id: '/enrichment',
+  path: '/enrichment',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CodeRoute = CodeRouteImport.update({
   id: '/code',
   path: '/code',
@@ -173,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/architecture': typeof ArchitectureRoute
   '/chat': typeof ChatRoute
   '/code': typeof CodeRoute
+  '/enrichment': typeof EnrichmentRoute
   '/graph': typeof GraphRoute
   '/harvest': typeof HarvestRoute
   '/home': typeof HomeRouteWithChildren
@@ -201,6 +208,7 @@ export interface FileRoutesByTo {
   '/architecture': typeof ArchitectureRoute
   '/chat': typeof ChatRoute
   '/code': typeof CodeRoute
+  '/enrichment': typeof EnrichmentRoute
   '/graph': typeof GraphRoute
   '/harvest': typeof HarvestRoute
   '/home': typeof HomeRouteWithChildren
@@ -230,6 +238,7 @@ export interface FileRoutesById {
   '/architecture': typeof ArchitectureRoute
   '/chat': typeof ChatRoute
   '/code': typeof CodeRoute
+  '/enrichment': typeof EnrichmentRoute
   '/graph': typeof GraphRoute
   '/harvest': typeof HarvestRoute
   '/home': typeof HomeRouteWithChildren
@@ -260,6 +269,7 @@ export interface FileRouteTypes {
     | '/architecture'
     | '/chat'
     | '/code'
+    | '/enrichment'
     | '/graph'
     | '/harvest'
     | '/home'
@@ -288,6 +298,7 @@ export interface FileRouteTypes {
     | '/architecture'
     | '/chat'
     | '/code'
+    | '/enrichment'
     | '/graph'
     | '/harvest'
     | '/home'
@@ -316,6 +327,7 @@ export interface FileRouteTypes {
     | '/architecture'
     | '/chat'
     | '/code'
+    | '/enrichment'
     | '/graph'
     | '/harvest'
     | '/home'
@@ -345,6 +357,7 @@ export interface RootRouteChildren {
   ArchitectureRoute: typeof ArchitectureRoute
   ChatRoute: typeof ChatRoute
   CodeRoute: typeof CodeRoute
+  EnrichmentRoute: typeof EnrichmentRoute
   GraphRoute: typeof GraphRoute
   HarvestRoute: typeof HarvestRoute
   HomeRoute: typeof HomeRouteWithChildren
@@ -453,6 +466,13 @@ declare module '@tanstack/react-router' {
       path: '/graph'
       fullPath: '/graph'
       preLoaderRoute: typeof GraphRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/enrichment': {
+      id: '/enrichment'
+      path: '/enrichment'
+      fullPath: '/enrichment'
+      preLoaderRoute: typeof EnrichmentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/code': {
@@ -604,6 +624,7 @@ const rootRouteChildren: RootRouteChildren = {
   ArchitectureRoute: ArchitectureRoute,
   ChatRoute: ChatRoute,
   CodeRoute: CodeRoute,
+  EnrichmentRoute: EnrichmentRoute,
   GraphRoute: GraphRoute,
   HarvestRoute: HarvestRoute,
   HomeRoute: HomeRouteWithChildren,

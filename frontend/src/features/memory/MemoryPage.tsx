@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   memoryApi,
+  type MemoryAskResponse,
   type MemoryCollection,
   type MemoryHealth,
   type MemorySearchHit,
@@ -17,14 +18,15 @@ import {
 } from '../../components/ui';
 import { relTime } from '../../lib/utils/relTime';
 
-type Tab = 'search' | 'health';
+type Tab = 'ask' | 'search' | 'health';
 const TABS: ReadonlyArray<TabDef<Tab>> = [
+  { id: 'ask', label: 'Ask' },
   { id: 'search', label: 'Search' },
   { id: 'health', label: 'Health' },
 ];
 
 export function MemoryPage() {
-  const [tab, setTab] = useState<Tab>('search');
+  const [tab, setTab] = useState<Tab>('ask');
   const [collections, setCollections] = useState<MemoryCollection[] | null>(null);
   const [health, setHealth] = useState<MemoryHealth | null>(null);
   const [healthErr, setHealthErr] = useState<string | null>(null);
@@ -50,10 +52,176 @@ export function MemoryPage() {
       />
 
       <div className="flex-1 min-h-0 overflow-hidden">
-        {tab === 'search' ? (
-          <SearchView collections={collections} />
-        ) : (
-          <HealthView health={health} error={healthErr} />
+        {tab === 'ask' && <AskView collections={collections} />}
+        {tab === 'search' && <SearchView collections={collections} />}
+        {tab === 'health' && <HealthView health={health} error={healthErr} />}
+      </div>
+    </div>
+  );
+}
+
+function AskView({ collections }: { collections: MemoryCollection[] | null }) {
+  const [q, setQ] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [resp, setResp] = useState<MemoryAskResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [forgotten, setForgotten] = useState<Set<string>>(new Set());
+
+  const forget = async (chunkId: string, collection: string) => {
+    if (forgotten.has(chunkId)) return;
+    if (!window.confirm(`Forget this snippet from "${collection}"? This can't be undone.`)) return;
+    try {
+      await memoryApi.forget(chunkId, collection);
+      setForgotten((prev) => new Set(prev).add(chunkId));
+    } catch (e) {
+      alert(`forget failed: ${(e as Error).message}`);
+    }
+  };
+
+  const submit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!q.trim() || loading) return;
+    setLoading(true);
+    setErr(null);
+    setResp(null);
+    try {
+      const r = await memoryApi.ask({
+        query: q.trim(),
+        collections: selected.size ? [...selected] : undefined,
+        n_results: 6,
+        max_tokens: 600,
+      });
+      setResp(r);
+    } catch (e2) {
+      setErr((e2 as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggle = (name: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+
+  return (
+    <div className="h-full overflow-y-auto">
+      <form onSubmit={submit} className="border-b border-border bg-panel/20 px-5 sm:px-8 py-5 space-y-4">
+        <div className="flex gap-2 items-stretch">
+          <input
+            autoFocus
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Ask a question about everything I've stored…"
+            className="flex-1 bg-bg border border-border rounded-sm px-4 py-3 text-base font-display tracking-tight focus:outline-none focus:border-fg focus:ring-2 focus:ring-fg/15"
+          />
+          <Btn type="submit" variant="primary" disabled={!q.trim() || loading}>
+            {loading ? 'Thinking…' : 'Ask'}
+          </Btn>
+        </div>
+        {collections && collections.length > 0 && (
+          <div>
+            <Eyebrow className="mb-2">Limit to collections (optional)</Eyebrow>
+            <div className="flex flex-wrap gap-1">
+              {collections.map((c) => {
+                const on = selected.has(c.name);
+                return (
+                  <button
+                    key={c.name}
+                    type="button"
+                    onClick={() => toggle(c.name)}
+                    className={[
+                      'px-2 py-1 text-[10px] uppercase tracking-[0.16em] border rounded-sm transition-colors',
+                      on
+                        ? 'border-fg bg-fg text-bg'
+                        : 'border-border text-muted hover:text-fg hover:border-fg',
+                    ].join(' ')}
+                  >
+                    {c.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </form>
+
+      <div className="px-5 sm:px-8 py-5 space-y-5">
+        {err && (
+          <div className="border border-red-200 bg-red-50 rounded-sm px-3 py-2 text-xs text-red-800">
+            {err}
+          </div>
+        )}
+        {!resp && !loading && (
+          <Empty
+            title="ready"
+            hint="Ask anything — I'll search across memory and synthesise an answer with citations."
+          />
+        )}
+        {loading && <div className="text-xs text-muted">Searching memory and synthesising…</div>}
+        {resp && (
+          <>
+            <article className="border border-border rounded-md bg-bg p-5 space-y-3">
+              <Eyebrow>answer</Eyebrow>
+              <p className="text-sm whitespace-pre-wrap leading-relaxed text-fg/90">{resp.answer}</p>
+              {resp.collections_searched.length > 0 && (
+                <div className="text-[10px] uppercase tracking-[0.16em] text-muted">
+                  searched: {resp.collections_searched.join(', ')}
+                </div>
+              )}
+            </article>
+            {resp.sources.length > 0 && (
+              <div>
+                <Eyebrow className="mb-2">Sources ({resp.sources.length})</Eyebrow>
+                <ul className="space-y-2">
+                  {resp.sources.map((s) => {
+                    const isForgotten = !!s.chunk_id && forgotten.has(s.chunk_id);
+                    return (
+                      <li
+                        key={s.id}
+                        className={[
+                          'border border-border rounded-md bg-bg px-4 py-3 space-y-1.5',
+                          isForgotten ? 'opacity-50' : '',
+                        ].join(' ')}
+                      >
+                        <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.16em] text-muted">
+                          <span className="font-mono normal-case tracking-normal text-fg/80">
+                            [{s.id}] {s.collection}
+                          </span>
+                          {s.distance != null && (
+                            <span className="font-mono normal-case tracking-normal">
+                              d={s.distance.toFixed(3)}
+                            </span>
+                          )}
+                          {s.chunk_id && (
+                            <button
+                              type="button"
+                              onClick={() => forget(s.chunk_id!, s.collection)}
+                              disabled={isForgotten}
+                              className={[
+                                'ml-auto normal-case tracking-normal underline decoration-dotted',
+                                isForgotten
+                                  ? 'text-muted cursor-not-allowed'
+                                  : 'text-red-700 hover:text-red-900',
+                              ].join(' ')}
+                              title="Delete this chunk from memory"
+                            >
+                              {isForgotten ? 'forgotten' : 'forget'}
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-xs leading-relaxed text-fg/85">{s.snippet}</p>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

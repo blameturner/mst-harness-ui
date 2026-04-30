@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   graphApi,
+  type GraphAskResponse,
+  type GraphDiff,
   type GraphEdge,
   type GraphEvidence,
   type GraphMaintenanceEvent,
@@ -23,16 +25,18 @@ import {
 } from '../../components/ui';
 import { relTime } from '../../lib/utils/relTime';
 
-type Tab = 'explore' | 'path' | 'resolution' | 'health';
+type Tab = 'ask' | 'explore' | 'path' | 'diff' | 'resolution' | 'health';
 const TABS: ReadonlyArray<TabDef<Tab>> = [
+  { id: 'ask', label: 'Ask' },
   { id: 'explore', label: 'Explore' },
   { id: 'path', label: 'Path' },
+  { id: 'diff', label: 'Diff' },
   { id: 'resolution', label: 'Resolution' },
   { id: 'health', label: 'Health' },
 ];
 
 export function GraphPage() {
-  const [tab, setTab] = useState<Tab>('explore');
+  const [tab, setTab] = useState<Tab>('ask');
 
   return (
     <div className="h-full flex flex-col bg-bg text-fg font-sans">
@@ -43,11 +47,206 @@ export function GraphPage() {
       />
 
       <div className="flex-1 min-h-0 overflow-hidden">
+        {tab === 'ask' && <AskTab />}
         {tab === 'explore' && <ExploreTab />}
         {tab === 'path' && <PathTab />}
+        {tab === 'diff' && <DiffTab />}
         {tab === 'resolution' && <ResolutionTab />}
         {tab === 'health' && <HealthTab />}
       </div>
+    </div>
+  );
+}
+
+function AskTab() {
+  const [q, setQ] = useState('');
+  const [resp, setResp] = useState<GraphAskResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const submit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!q.trim() || loading) return;
+    setLoading(true);
+    setErr(null);
+    setResp(null);
+    try {
+      setResp(await graphApi.ask(q.trim(), { max_hops: 1, max_tokens: 600 }));
+    } catch (e2) {
+      setErr((e2 as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="h-full overflow-y-auto">
+      <form
+        onSubmit={submit}
+        className="border-b border-border bg-panel/20 px-5 sm:px-8 py-5"
+      >
+        <div className="flex gap-2 items-stretch">
+          <input
+            autoFocus
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Ask the graph — 'how is X connected to Y', 'who works on Z'…"
+            className="flex-1 bg-bg border border-border rounded-sm px-4 py-3 text-base font-display tracking-tight focus:outline-none focus:border-fg focus:ring-2 focus:ring-fg/15"
+          />
+          <Btn type="submit" variant="primary" disabled={!q.trim() || loading}>
+            {loading ? 'Searching…' : 'Ask'}
+          </Btn>
+        </div>
+      </form>
+      <div className="px-5 sm:px-8 py-5 space-y-5">
+        {err && (
+          <div className="border border-red-200 bg-red-50 rounded-sm px-3 py-2 text-xs text-red-800">
+            {err}
+          </div>
+        )}
+        {!resp && !loading && (
+          <Empty
+            title="ready"
+            hint="Ask anything — I'll match entities in the graph and synthesise an answer over their relationships."
+          />
+        )}
+        {loading && <div className="text-xs text-muted">Traversing graph and synthesising…</div>}
+        {resp && (
+          <>
+            <article className="border border-border rounded-md bg-bg p-5 space-y-3">
+              <Eyebrow>answer</Eyebrow>
+              <p className="text-sm whitespace-pre-wrap leading-relaxed text-fg/90">{resp.answer}</p>
+              {resp.matched_entities.length > 0 && (
+                <div className="text-[10px] uppercase tracking-[0.16em] text-muted">
+                  matched: {resp.matched_entities.join(', ')}
+                </div>
+              )}
+            </article>
+            {resp.edges.length > 0 && (
+              <div>
+                <Eyebrow className="mb-2">Triples used ({resp.edges.length})</Eyebrow>
+                <ul className="space-y-1">
+                  {resp.edges.slice(0, 30).map((e, i) => (
+                    <li
+                      key={i}
+                      className="border border-border rounded-md bg-bg px-4 py-2 text-xs flex items-center gap-2"
+                    >
+                      <span className="font-mono text-fg/80 truncate flex-1">
+                        ({e.from}) -[{e.relationship}]-&gt; ({e.to})
+                      </span>
+                      {e.confidence != null && (
+                        <span className="font-mono text-[10px] text-muted shrink-0">
+                          {(e.confidence * 100).toFixed(0)}%
+                        </span>
+                      )}
+                      <span className="font-mono text-[10px] text-muted shrink-0">
+                        ×{e.hits}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DiffTab() {
+  const [days, setDays] = useState(7);
+  const [diff, setDiff] = useState<GraphDiff | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    setErr(null);
+    graphApi
+      .diff(days)
+      .then(setDiff)
+      .catch((e) => setErr((e as Error).message))
+      .finally(() => setLoading(false));
+  }, [days]);
+
+  return (
+    <div className="h-full overflow-y-auto px-5 sm:px-8 py-5 space-y-6">
+      <div className="flex items-center gap-3">
+        <Eyebrow>window</Eyebrow>
+        {[1, 7, 30].map((d) => (
+          <button
+            key={d}
+            onClick={() => setDays(d)}
+            className={[
+              'px-3 py-1 text-[11px] uppercase tracking-[0.16em] border rounded-sm transition-colors',
+              days === d
+                ? 'border-fg bg-fg text-bg'
+                : 'border-border text-muted hover:text-fg hover:border-fg',
+            ].join(' ')}
+          >
+            {d}d
+          </button>
+        ))}
+      </div>
+      {err && (
+        <div className="border border-red-200 bg-red-50 rounded-sm px-3 py-2 text-xs text-red-800">
+          {err}
+        </div>
+      )}
+      {loading && <div className="text-xs text-muted">Loading diff…</div>}
+      {diff && (
+        <div className="grid md:grid-cols-2 gap-6">
+          <section className="space-y-2">
+            <Eyebrow>new entities ({diff.new_entities.length})</Eyebrow>
+            {diff.new_entities.length === 0 ? (
+              <Empty compact />
+            ) : (
+              <ul className="text-xs font-mono space-y-0.5">
+                {diff.new_entities.slice(0, 50).map((n) => (
+                  <li key={n} className="border-l-2 border-emerald-400 pl-2 text-fg/85">
+                    {n}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+          <section className="space-y-2">
+            <Eyebrow>refreshed entities ({diff.refreshed_entities.length})</Eyebrow>
+            {diff.refreshed_entities.length === 0 ? (
+              <Empty compact />
+            ) : (
+              <ul className="text-xs font-mono space-y-0.5">
+                {diff.refreshed_entities.slice(0, 50).map((n) => (
+                  <li key={n} className="border-l-2 border-amber-400 pl-2 text-fg/85">
+                    {n}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+          <section className="space-y-2 md:col-span-2">
+            <Eyebrow>new edges ({diff.new_edges.length})</Eyebrow>
+            {diff.new_edges.length === 0 ? (
+              <Empty compact />
+            ) : (
+              <ul className="space-y-1">
+                {diff.new_edges.slice(0, 40).map((e, i) => (
+                  <li
+                    key={i}
+                    className="border border-border rounded-md bg-bg px-3 py-1.5 text-[11px] font-mono flex items-center gap-2"
+                  >
+                    <span className="text-fg/85 truncate flex-1">
+                      {e.from} -[{e.relationship}]-&gt; {e.to}
+                    </span>
+                    <span className="text-muted shrink-0">×{e.hits}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+      )}
     </div>
   );
 }

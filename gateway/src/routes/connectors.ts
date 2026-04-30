@@ -25,6 +25,55 @@ export const connectorsRoute = new Hono<{ Variables: AuthVariables }>();
 
 connectorsRoute.use('*', requireAuth);
 
+// Unified list / per-row endpoints (top-level). MUST be registered before
+// the resource-specific routes (`/apis`, `/smtp`, `/secrets`) below so the
+// dynamic `:id` segment doesn't capture those literal prefixes.
+connectorsRoute.get('/', async (c) => {
+  try {
+    const res = await harnessClient.get(harnessPathWithOrg(c, '/connectors'), TIMEOUT);
+    return forwardResponse(res, 'connectors');
+  } catch (err) {
+    return mapHarnessError(err, 'connectors');
+  }
+});
+
+connectorsRoute.get('/:id/calls', async (c) => {
+  const id = c.req.param('id');
+  // Defensive: a connector id of 'apis'/'smtp'/'secrets' is not legal in
+  // our scheme (ids are namespaced like 'api-42'), so reject early. This
+  // also documents that those literal segments belong to the sub-resource
+  // routes registered below.
+  if (id === 'apis' || id === 'smtp' || id === 'secrets') {
+    return c.notFound();
+  }
+  try {
+    const res = await harnessClient.get(
+      harnessPathWithOrg(c, `/connectors/${encodeURIComponent(id)}/calls`),
+      TIMEOUT,
+    );
+    return forwardResponse(res, 'connectors');
+  } catch (err) {
+    return mapHarnessError(err, 'connectors');
+  }
+});
+
+connectorsRoute.post('/:id/test', async (c) => {
+  const id = c.req.param('id');
+  if (id === 'apis' || id === 'smtp' || id === 'secrets') {
+    return c.notFound();
+  }
+  try {
+    const res = await harnessClient.post(
+      harnessPathWithOrg(c, `/connectors/${encodeURIComponent(id)}/test`),
+      {},
+      120_000,
+    );
+    return forwardResponse(res, 'connectors');
+  } catch (err) {
+    return mapHarnessError(err, 'connectors');
+  }
+});
+
 connectorsRoute.get('/apis', async (c) => {
   try {
     const res = await harnessClient.get(harnessPathWithOrg(c, '/connectors/apis'), TIMEOUT);

@@ -53,6 +53,42 @@ export interface GraphMaintenanceEvent {
   kind: string;
   detail?: string;
 }
+export interface GraphAskEdge {
+  from: string;
+  from_type?: string;
+  to: string;
+  to_type?: string;
+  relationship: string;
+  hits: number;
+  weight: number;
+  last_seen?: string;
+  confidence?: number;
+}
+export interface GraphAskResponse {
+  query: string;
+  matched_entities: string[];
+  entities: Array<{ name: string; type?: string; edges_in?: number; edges_out?: number }>;
+  edges: GraphAskEdge[];
+  answer: string;
+}
+export interface GraphTimelineEvent {
+  relationship: string;
+  to: string;
+  to_type?: string;
+  hits: number;
+  weight: number;
+  first_seen?: string;
+  last_seen?: string;
+  confidence?: number;
+}
+export interface GraphDiff {
+  since: string;
+  since_days: number;
+  new_entities: string[];
+  refreshed_entities: string[];
+  new_edges: GraphAskEdge[];
+  refreshed_edges: GraphAskEdge[];
+}
 
 const sp = (extra: Record<string, string | number | undefined> = {}) => {
   const params: Record<string, string | number> = { org_id: defaultOrgId() };
@@ -90,4 +126,26 @@ export const graphApi = {
     http
       .get('api/graph/maintenance/events', { searchParams: sp({ limit }) })
       .json<{ events: GraphMaintenanceEvent[] }>(),
+  ask: (query: string, opts: { max_hops?: number; edge_limit?: number; max_tokens?: number } = {}) =>
+    http
+      .post('api/graph/ask', { json: { org_id: defaultOrgId(), query, ...opts } })
+      .json<GraphAskResponse>(),
+  timeline: (name: string) =>
+    http
+      .get(`api/graph/entity/${encodeURIComponent(name)}/timeline`, { searchParams: sp() })
+      .json<{ entity: string; events: GraphTimelineEvent[]; edge_count: number }>(),
+  diff: (sinceDays = 7) =>
+    http
+      .get('api/graph/diff', { searchParams: sp({ since_days: sinceDays }) })
+      .json<GraphDiff>(),
+  exportSubgraph: (seed: string, hops = 2, format: 'cytoscape' | 'raw' = 'cytoscape') =>
+    http
+      .get('api/graph/export', { searchParams: sp({ seed, hops, format }) })
+      .json<unknown>(),
+  mergeEntity: (label: string, canonical: string, alias: string) =>
+    http
+      .post('api/graph/entity/merge', {
+        json: { org_id: defaultOrgId(), label, canonical, alias },
+      })
+      .json<{ status: string; edges_moved?: number }>(),
 };

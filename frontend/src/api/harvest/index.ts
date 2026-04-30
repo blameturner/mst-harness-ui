@@ -125,6 +125,22 @@ export const harvestApi = {
       .get(`api/harvest/runs/${runId}/artifacts`, { searchParams: orgParam() })
       .json<HarvestArtifactsResponse>(),
 
+  active: () =>
+    http.get('api/harvest/active', { searchParams: orgParam() }).json<{ runs: HarvestRun[] }>(),
+
+  runLog: (runId: number, tail = 100) =>
+    http
+      .get(`api/harvest/runs/${runId}/log`, { searchParams: orgParam({ tail }) })
+      .json<{
+        run_id: number;
+        status: HarvestStatus;
+        urls_planned: number;
+        urls_fetched: number;
+        urls_persisted: number;
+        urls_failed: number;
+        events: Array<{ ts: string; url: string; outcome: string; depth: number }>;
+      }>(),
+
   cancelRun: (runId: number) =>
     http.post(`api/harvest/runs/${runId}/cancel`, { json: { org_id: defaultOrgId() } }).json<{ ok: boolean }>(),
 

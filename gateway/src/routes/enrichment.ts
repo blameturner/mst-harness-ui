@@ -13,6 +13,60 @@ export const enrichmentRoute = new Hono<{ Variables: AuthVariables }>();
 
 enrichmentRoute.use('*', requireAuth);
 
+// ── Frontend-shaped suggestion endpoints ──────────────────────────────────
+// The Enrichment UI calls /suggestions/pending, /preview/:id, /:id/decision.
+// These wrap the harness's /enrichment/suggestions/* (which themselves are
+// thin wrappers around /enrichment/discovery/suggestions/*).
+
+enrichmentRoute.get('/suggestions/pending', async (c) => {
+  const { orgId } = getAuthContext(c);
+  const qs = scopedSearch(c.req.url, orgId);
+  try {
+    const res = await harnessClient.get(`/enrichment/suggestions/pending${qs}`, TIMEOUT);
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'enrichment');
+  }
+});
+
+enrichmentRoute.get('/suggestions/preview/:id', async (c) => {
+  const id = c.req.param('id');
+  const { orgId } = getAuthContext(c);
+  try {
+    const res = await harnessClient.get(
+      `/enrichment/suggestions/preview/${encodeURIComponent(id)}?org_id=${Number(orgId)}`,
+      TIMEOUT,
+    );
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'enrichment');
+  }
+});
+
+enrichmentRoute.post('/suggestions/:id/decision', async (c) => {
+  const id = c.req.param('id');
+  const body = await c.req.json().catch(() => null);
+  const schema = z.object({
+    decision: z.enum(['approve', 'reject', 'defer']),
+    reason: z.string().optional(),
+  });
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: 'invalid_body', details: parsed.error.errors }, 400);
+  }
+  const { orgId } = getAuthContext(c);
+  try {
+    const res = await harnessClient.post(
+      `/enrichment/suggestions/${encodeURIComponent(id)}/decision?org_id=${Number(orgId)}`,
+      parsed.data,
+      TIMEOUT,
+    );
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'enrichment');
+  }
+});
+
 function scopedSearch(url: string, orgId: number | string): string {
   const parsedUrl = new URL(url);
   parsedUrl.searchParams.set('org_id', String(orgId));
@@ -213,6 +267,32 @@ enrichmentRoute.get('/dashboard', async (c) => {
   const qs = scopedSearch(c.req.url, orgId);
   try {
     const res = await harnessClient.get(`/enrichment/dashboard${qs}`, TIMEOUT);
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'enrichment');
+  }
+});
+
+enrichmentRoute.get('/sources/health', async (c) => {
+  const { orgId } = getAuthContext(c);
+  const qs = scopedSearch(c.req.url, orgId);
+  try {
+    const res = await harnessClient.get(`/enrichment/sources/health${qs}`, TIMEOUT);
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'enrichment');
+  }
+});
+
+enrichmentRoute.post('/scrape-targets/bump', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { orgId } = getAuthContext(c);
+  try {
+    const res = await harnessClient.post(
+      '/enrichment/scrape-targets/bump',
+      { ...(body as object), org_id: Number((body as { org_id?: number })?.org_id ?? orgId) },
+      TIMEOUT,
+    );
     return forwardResponse(res);
   } catch (err) {
     return mapHarnessError(err, 'enrichment');

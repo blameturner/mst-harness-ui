@@ -40,6 +40,27 @@ export interface MemorySearchBody {
   limit?: number;
 }
 
+export interface MemoryAskSource {
+  id: number;
+  chunk_id?: string | null;
+  collection: string;
+  distance?: number;
+  metadata?: Record<string, unknown>;
+  snippet: string;
+}
+export interface MemoryAskResponse {
+  query: string;
+  answer: string;
+  sources: MemoryAskSource[];
+  collections_searched: string[];
+}
+export interface MemoryAskBody {
+  query: string;
+  collections?: string[];
+  n_results?: number;
+  max_tokens?: number;
+}
+
 export const memoryApi = {
   collections: () =>
     http
@@ -55,6 +76,16 @@ export const memoryApi = {
     http
       .post('api/memory/search', { json: { org_id: defaultOrgId(), ...body } })
       .json<{ hits: MemorySearchHit[] }>(),
+  ask: (body: MemoryAskBody) =>
+    http
+      .post('api/memory/ask', { json: { org_id: defaultOrgId(), ...body } })
+      .json<MemoryAskResponse>(),
+  forget: (chunkId: string, collection: string) =>
+    http
+      .delete(`api/memory/items/${encodeURIComponent(chunkId)}`, {
+        searchParams: { collection, org_id: defaultOrgId() },
+      })
+      .json<{ status: string; chunk_id: string; collection: string }>(),
   health: () =>
     http.get('api/memory/health', { searchParams: { org_id: defaultOrgId() } }).json<MemoryHealth>(),
 };

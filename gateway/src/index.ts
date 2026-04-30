@@ -33,6 +33,16 @@ import { opsRoute } from './routes/ops.js';
 import { homeRoute } from './routes/home.js';
 import { connectorsRoute } from './routes/connectors.js';
 import { agentsAdminRoute } from './routes/agentsAdmin.js';
+import { harvestRoute } from './routes/harvest.js';
+import { adminRoute } from './routes/admin.js';
+import { simulationsRoute } from './routes/simulations.js';
+import { memoryRoute } from './routes/memory.js';
+import { graphRoute } from './routes/graph.js';
+import {
+  paStubRoute,
+  researchStubRoute,
+  triggersStubRoute,
+} from './routes/stubs.js';
 import { rateLimit } from './middleware/rateLimit.js';
 
 const app = new Hono<{ Variables: AuthVariables }>();
@@ -115,6 +125,14 @@ app.route('/api/scheduler', schedulerRoute);
 app.route('/api/ops', opsRoute);
 app.route('/api/home', homeRoute);
 app.route('/api/connectors', connectorsRoute);
+app.route('/api/harvest', harvestRoute);
+app.route('/api/admin', adminRoute);
+app.route('/api/simulations', simulationsRoute);
+app.route('/api/graph', graphRoute);
+app.route('/api/memory', memoryRoute);
+app.route('/api/pa', paStubRoute);
+app.route('/api/research', researchStubRoute);
+app.route('/api/triggers', triggersStubRoute);
 app.route('/api', agentsAdminRoute);
 
 app.get('/', (c) => c.json({ name: 'mst-ag-gateway', ok: true }));
