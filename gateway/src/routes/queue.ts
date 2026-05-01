@@ -163,6 +163,85 @@ queueRoute.post('/jobs/:id/run-now', async (c) => {
   }
 });
 
+queueRoute.post('/clear', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  try {
+    const res = await harnessClient.post('/tool-queue/clear', body, TIMEOUT);
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'queue');
+  }
+});
+
+queueRoute.post('/stop-all', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  try {
+    const res = await harnessClient.post('/tool-queue/stop-all', body, TIMEOUT);
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'queue');
+  }
+});
+
+queueRoute.post('/bulk', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  try {
+    const res = await harnessClient.post('/tool-queue/bulk', body, TIMEOUT);
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'queue');
+  }
+});
+
+queueRoute.post('/pause-type', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  try {
+    const res = await harnessClient.post('/tool-queue/pause-type', body, TIMEOUT);
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'queue');
+  }
+});
+
+queueRoute.get('/paused-types', async (_c) => {
+  try {
+    const res = await harnessClient.get('/tool-queue/paused-types', TIMEOUT);
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'queue');
+  }
+});
+
+queueRoute.get('/dag/:id', async (c) => {
+  const id = c.req.param('id');
+  const url = new URL(c.req.url);
+  const depth = url.searchParams.get('depth') || '3';
+  try {
+    const res = await harnessClient.get(
+      `/tool-queue/dag/${encodeURIComponent(id)}?depth=${encodeURIComponent(depth)}`,
+      TIMEOUT,
+    );
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'queue');
+  }
+});
+
+queueRoute.post('/jobs/:id/replay', async (c) => {
+  const id = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+  try {
+    const res = await harnessClient.post(
+      `/tool-queue/jobs/${encodeURIComponent(id)}/replay`,
+      body,
+      TIMEOUT,
+    );
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'queue');
+  }
+});
+
 queueRoute.get('/events', async (c) => {
   const qs = searchFromUrl(c.req.url);
   const url = `${env.HARNESS_URL}/tool-queue/events${qs}`;

@@ -111,11 +111,18 @@ export function ResearchPlanCard({
             </button>
             <button
               onClick={() => {
-                if (confirm(`Delete plan "${plan.topic}"?`)) onDelete(plan.Id);
+                // Plan is "active" (something might be processing it) when
+                // it's not in a terminal state. Warn the user that the
+                // backend will also cancel any tool_jobs that reference it.
+                const active = plan.status !== 'completed' && plan.status !== 'failed';
+                const msg = active
+                  ? `Delete plan "${plan.topic}"?\n\nThis will also cancel any in-flight research_agent jobs for this plan.`
+                  : `Delete plan "${plan.topic}"?`;
+                if (confirm(msg)) onDelete(plan.Id);
               }}
-              disabled={true}
-              title="not available"
-              className="px-3 py-1 rounded border border-border text-[10px] uppercase tracking-[0.14em] text-red-600 hover:bg-red-500/10 hover:border-red-500/40 disabled:opacity-40"
+              disabled={isBusy}
+              title="Delete this research plan and cancel any running research_agent jobs that reference it"
+              className="px-3 py-1 rounded border border-border text-[10px] uppercase tracking-[0.14em] text-red-600 hover:bg-red-500/10 hover:border-red-500/40 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Delete
             </button>

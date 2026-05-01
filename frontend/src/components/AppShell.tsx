@@ -21,6 +21,7 @@ const NAV: NavEntry[] = [
   { to: '/home', label: 'Home' },
   { to: '/chat', label: 'Chat' },
   { to: '/code', label: 'Code' },
+  { to: '/projects', label: 'Projects', matchPrefix: '/projects' },
   {
     label: 'Knowledge',
     items: [

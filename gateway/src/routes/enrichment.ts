@@ -284,6 +284,20 @@ enrichmentRoute.get('/sources/health', async (c) => {
   }
 });
 
+enrichmentRoute.delete('/research/plans/:plan_id', async (c) => {
+  const planId = c.req.param('plan_id');
+  const { orgId } = getAuthContext(c);
+  try {
+    const res = await harnessClient.delete(
+      `/enrichment/research/plans/${encodeURIComponent(planId)}?org_id=${encodeURIComponent(String(orgId))}`,
+      TIMEOUT,
+    );
+    return forwardResponse(res);
+  } catch (err) {
+    return mapHarnessError(err, 'enrichment');
+  }
+});
+
 enrichmentRoute.post('/scrape-targets/bump', async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const { orgId } = getAuthContext(c);

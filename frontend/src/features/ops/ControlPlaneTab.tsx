@@ -12,6 +12,17 @@ import {
 import { getQueueDashboard } from '../../api/queue/getQueueDashboard';
 import { retryQueueJob } from '../../api/queue/retryQueueJob';
 import { cancelQueueJob } from '../../api/queue/cancelQueueJob';
+import {
+  bulkAction,
+  pauseType,
+  listPausedTypes,
+  replayJob,
+  fetchJobDag,
+  clearQueue,
+  stopAllTypes,
+  type BulkActionResult,
+  type DagResponse,
+} from '../../api/queue/queueAdmin';
 import { defaultOrgId } from '../../api/home/config';
 import { http } from '../../lib/http';
 import type { QueueEvent } from '../../api/types/QueueEvent';
@@ -317,68 +328,278 @@ function PulseStrip({ data }: { data: AdminRuntimeResponse | null }) {
 function RunningNowPanel() {
   const [jobs, setJobs] = useState<QueueJob[] | null>(null);
   const [showQueued, setShowQueued] = useState(false);
+  const [filter, setFilter] = useState('');
+  const [groupBy, setGroupBy] = useState<'none' | 'type'>('type');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [pausedTypes, setPausedTypes] = useState<Set<string>>(new Set());
+  const [pulse, setPulse] = useState(0);
+  const [busyBulk, setBusyBulk] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    // 50 rows is enough for "running now + recently completed" — the
+    // running pool is rarely > 16. Keeps NocoDB read-cost half what
+    // limit=100 was. Server-side dashboard cache (1.5 s) further
+    // collapses concurrent polls from other panels.
     const load = () =>
-      getQueueDashboard({ org_id: defaultOrgId(), limit: 50 })
-        .then((r) => {
+      Promise.all([
+        getQueueDashboard({ org_id: defaultOrgId(), limit: 50 }),
+        listPausedTypes().catch(() => [] as string[]),
+      ])
+        .then(([r, paused]) => {
           if (cancelled) return;
           setJobs(r.recent_jobs ?? []);
+          setPausedTypes(new Set(paused));
         })
         .catch(() => {
           if (cancelled) return;
           setJobs([]);
         });
     void load();
-    const t = setInterval(load, 4000);
+    const t = setInterval(load, 6000);
     return () => {
       cancelled = true;
       clearInterval(t);
     };
-  }, []);
+  }, [pulse]);
 
   const running = (jobs ?? []).filter((j) => j.status === 'running');
   const queued = (jobs ?? [])
     .filter((j) => j.status === 'queued')
     .sort((a, b) => (b.priority ?? 3) - (a.priority ?? 3));
-  const visible = showQueued ? [...running, ...queued] : running;
+  let visible = showQueued ? [...running, ...queued] : running;
+  if (filter.trim()) {
+    const f = filter.trim().toLowerCase();
+    visible = visible.filter((j) => {
+      const blob = [
+        j.type, j.job_id, j.source, j.task ?? '', j.title ?? '', j.url ?? '',
+        j.progress ?? '', (j.tags ?? []).join(' '),
+      ].join(' ').toLowerCase();
+      return blob.includes(f);
+    });
+  }
+
+  const groups: Array<[string, QueueJob[]]> =
+    groupBy === 'type'
+      ? Array.from(
+          visible.reduce((m, j) => {
+            const k = j.type || 'unknown';
+            if (!m.has(k)) m.set(k, []);
+            m.get(k)!.push(j);
+            return m;
+          }, new Map<string, QueueJob[]>()),
+        ).sort((a, b) => b[1].length - a[1].length)
+      : [['all', visible]];
+
+  const toggleSelect = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const clearSel = () => setSelected(new Set());
+
+  const bulk = async (action: 'cancel' | 'retry') => {
+    if (selected.size === 0) return;
+    if (!confirm(`${action === 'cancel' ? 'Cancel' : 'Retry'} ${selected.size} job${selected.size === 1 ? '' : 's'}?`)) return;
+    setBusyBulk(true);
+    try {
+      await bulkAction({ job_ids: [...selected], action, reason: `bulk ${action} from Console` });
+      clearSel();
+      setPulse((n) => n + 1);
+    } finally {
+      setBusyBulk(false);
+    }
+  };
+
+  const togglePauseType = async (jobType: string) => {
+    const isPaused = pausedTypes.has(jobType);
+    await pauseType(jobType, !isPaused);
+    setPulse((n) => n + 1);
+  };
+
+  const [stopBusy, setStopBusy] = useState<'stop' | 'clear-q' | 'clear-all' | null>(null);
+
+  const stopAll = async () => {
+    if (!confirm('Pause every job type? Workers stop claiming new jobs; in-flight work continues.')) return;
+    setStopBusy('stop');
+    try {
+      const r = await stopAllTypes(true);
+      alert(`Paused ${r.count} job types. Resume per-type from the group headers, or run "Stop all" again to resume all.`);
+      setPulse((n) => n + 1);
+    } finally {
+      setStopBusy(null);
+    }
+  };
+
+  const clearQ = async () => {
+    if (!confirm(`Cancel ${queued.length} queued job${queued.length === 1 ? '' : 's'}? Running jobs keep going.`)) return;
+    setStopBusy('clear-q');
+    try {
+      const r = await clearQueue({ include_running: false });
+      alert(`Cancelled ${r.cancelled_queued} queued job${r.cancelled_queued === 1 ? '' : 's'}.`);
+      setPulse((n) => n + 1);
+    } finally {
+      setStopBusy(null);
+    }
+  };
+
+  const clearAll = async () => {
+    const total = running.length + queued.length;
+    if (
+      !confirm(
+        `Cancel ALL ${total} jobs (${running.length} running + ${queued.length} queued)?\n\n` +
+          `Running jobs are cancelled cooperatively — in-flight LLM calls finish, but no new phase work begins.`,
+      )
+    )
+      return;
+    setStopBusy('clear-all');
+    try {
+      const r = await clearQueue({ include_running: true, reason: 'clear all from console' });
+      alert(`Cancelled ${r.cancelled_queued} queued + ${r.cancelled_running} running.`);
+      setPulse((n) => n + 1);
+    } finally {
+      setStopBusy(null);
+    }
+  };
 
   return (
     <section>
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-2 gap-3 flex-wrap">
         <Eyebrow>
-          {showQueued ? `In flight & queued (${running.length} + ${queued.length})` : `Running now (${running.length})`}
+          {showQueued
+            ? `In flight & queued (${running.length} + ${queued.length})`
+            : `Running now (${running.length})`}
         </Eyebrow>
-        <button
-          onClick={() => setShowQueued((v) => !v)}
-          className="text-[10px] uppercase tracking-[0.18em] text-muted hover:text-fg"
-        >
-          {showQueued ? 'hide queued' : `show queued (${queued.length})`}
-        </button>
+        <div className="flex items-center gap-2">
+          <input
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="filter…"
+            className="bg-bg border border-border rounded-sm px-2 py-1 text-[11px] font-mono w-44 focus:outline-none focus:border-fg"
+          />
+          <button
+            onClick={() => setGroupBy((g) => (g === 'type' ? 'none' : 'type'))}
+            className="text-[10px] uppercase tracking-[0.18em] text-muted hover:text-fg border border-border rounded-sm px-2 py-1"
+          >
+            {groupBy === 'type' ? 'flat' : 'group'}
+          </button>
+          <button
+            onClick={() => setShowQueued((v) => !v)}
+            className="text-[10px] uppercase tracking-[0.18em] text-muted hover:text-fg"
+          >
+            {showQueued ? 'hide queued' : `+queued (${queued.length})`}
+          </button>
+          <span className="w-px h-4 bg-border" aria-hidden />
+          <button
+            onClick={() => void stopAll()}
+            disabled={stopBusy !== null}
+            className="px-2 py-1 text-[10px] uppercase tracking-[0.18em] border border-amber-300 text-amber-800 bg-amber-50/50 hover:bg-amber-50 rounded-sm disabled:opacity-50"
+            title="Pause every job type. Workers stop claiming new jobs; in-flight work continues."
+          >
+            {stopBusy === 'stop' ? '…' : 'Stop all'}
+          </button>
+          <button
+            onClick={() => void clearQ()}
+            disabled={stopBusy !== null || queued.length === 0}
+            className="px-2 py-1 text-[10px] uppercase tracking-[0.18em] border border-border hover:border-fg rounded-sm disabled:opacity-30"
+            title="Cancel every queued job. Running jobs are unaffected."
+          >
+            {stopBusy === 'clear-q' ? '…' : `Clear queued (${queued.length})`}
+          </button>
+          <button
+            onClick={() => void clearAll()}
+            disabled={stopBusy !== null || (running.length === 0 && queued.length === 0)}
+            className="px-2 py-1 text-[10px] uppercase tracking-[0.18em] border border-red-300 text-red-700 bg-red-50/40 hover:bg-red-50 rounded-sm disabled:opacity-30"
+            title="Cancel every queued + running job. In-flight LLM calls finish naturally."
+          >
+            {stopBusy === 'clear-all' ? '…' : 'Clear ALL'}
+          </button>
+        </div>
       </div>
+
+      {selected.size > 0 && (
+        <div className="mb-2 flex items-center gap-2 text-[11px] border border-border bg-panel/40 rounded-md px-3 py-1.5">
+          <span className="text-muted uppercase tracking-[0.16em]">{selected.size} selected</span>
+          <button
+            onClick={() => void bulk('cancel')}
+            disabled={busyBulk}
+            className="px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] border border-border rounded-sm text-red-700 hover:bg-red-50 disabled:opacity-50"
+          >
+            Cancel selected
+          </button>
+          <button
+            onClick={() => void bulk('retry')}
+            disabled={busyBulk}
+            className="px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] border border-border rounded-sm text-fg hover:border-fg disabled:opacity-50"
+          >
+            Retry selected
+          </button>
+          <button onClick={clearSel} className="ml-auto text-muted hover:text-fg">
+            Clear
+          </button>
+        </div>
+      )}
+
       {jobs == null ? (
         <div className="text-xs text-muted">Loading…</div>
       ) : visible.length === 0 ? (
         <div className="border border-border rounded-md bg-panel/30 px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-muted">
-          {showQueued
-            ? 'queue is empty'
-            : running.length === 0 && queued.length > 0
-              ? `nothing running · ${queued.length} queued`
-              : 'idle'}
+          {filter ? 'no jobs match filter' : showQueued ? 'queue is empty' : 'idle'}
         </div>
       ) : (
-        <ul className="border border-border rounded-md bg-bg divide-y divide-border/60 overflow-hidden">
-          {visible.map((j) => (
-            <RunningJobRow key={j.job_id} job={j} />
+        <div className="border border-border rounded-md bg-bg divide-y divide-border/60 overflow-hidden">
+          {groups.map(([typeKey, typeJobs]) => (
+            <div key={typeKey}>
+              {groupBy === 'type' && (
+                <div className="px-3 py-1.5 bg-panel/40 text-[10px] uppercase tracking-[0.18em] text-muted flex items-center gap-2">
+                  <span className="font-mono normal-case tracking-normal text-fg/85">{typeKey}</span>
+                  <span>{typeJobs.length}</span>
+                  <button
+                    onClick={() => void togglePauseType(typeKey)}
+                    className={[
+                      'ml-auto px-1.5 py-0.5 normal-case tracking-normal border rounded-sm',
+                      pausedTypes.has(typeKey)
+                        ? 'border-amber-400 text-amber-800 bg-amber-50'
+                        : 'border-border text-muted hover:text-fg hover:border-fg',
+                    ].join(' ')}
+                  >
+                    {pausedTypes.has(typeKey) ? 'resume type' : 'pause type'}
+                  </button>
+                </div>
+              )}
+              <ul className="divide-y divide-border/60">
+                {typeJobs.map((j) => (
+                  <RunningJobRow
+                    key={j.job_id}
+                    job={j}
+                    selected={selected.has(j.job_id)}
+                    onToggleSelect={() => toggleSelect(j.job_id)}
+                    onChange={() => setPulse((n) => n + 1)}
+                  />
+                ))}
+              </ul>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </section>
   );
 }
 
-function RunningJobRow({ job }: { job: QueueJob }) {
+function RunningJobRow({
+  job,
+  selected,
+  onToggleSelect,
+  onChange,
+}: {
+  job: QueueJob;
+  selected?: boolean;
+  onToggleSelect?: () => void;
+  onChange: () => void;
+}) {
   const isRunning = job.status === 'running';
   const ageSeconds = (() => {
     const ts = isRunning ? job.started_at : job.created_at || job.started_at;
@@ -387,33 +608,288 @@ function RunningJobRow({ job }: { job: QueueJob }) {
     if (Number.isNaN(t)) return null;
     return Math.max(0, Math.floor((Date.now() - t) / 1000));
   })();
-  const tone = isRunning ? 'bg-sky-500 animate-pulse' : 'bg-muted';
+  const sinceProgressSec = (() => {
+    if (!job.progress_at) return null;
+    const t = new Date(job.progress_at).getTime();
+    if (Number.isNaN(t)) return null;
+    return Math.max(0, Math.floor((Date.now() - t) / 1000));
+  })();
+  const looksStalled = isRunning && sinceProgressSec != null && sinceProgressSec > 600;
+  const tone = looksStalled
+    ? 'bg-amber-500 animate-pulse'
+    : isRunning
+      ? 'bg-sky-500 animate-pulse'
+      : job.status === 'failed'
+        ? 'bg-red-500'
+        : job.status === 'cancelled'
+          ? 'bg-amber-400'
+          : job.status === 'queued'
+            ? 'bg-violet-400'
+            : 'bg-muted';
   const summary = job.task || job.title || job.url || '';
+  const [busy, setBusy] = useState(false);
+  const [drawer, setDrawer] = useState<'detail' | 'dag' | null>(null);
+
+  const terminate = async () => {
+    if (!confirm(`Terminate ${job.type} (${job.job_id.slice(0, 8)})?`)) return;
+    setBusy(true);
+    try {
+      await adminApi.cancelToolJob(job.job_id, 'user terminated from Console');
+      onChange();
+    } catch (e) {
+      alert(`Cancel failed: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const replay = async () => {
+    if (!confirm(`Replay ${job.type}? Submits a new job with the same payload.`)) return;
+    setBusy(true);
+    try {
+      await replayJob(job.job_id);
+      onChange();
+    } catch (e) {
+      alert(`Replay failed: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const stepText =
+    job.progress_step && job.progress_total
+      ? `${job.progress_step}/${job.progress_total}`
+      : '';
+  const pct =
+    job.progress_step && job.progress_total
+      ? Math.min(100, Math.round((job.progress_step / job.progress_total) * 100))
+      : null;
 
   return (
-    <li className="px-3 py-2 flex items-baseline gap-3 text-xs">
-      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${tone}`} />
-      <span className="font-mono text-[11px] text-fg/85 shrink-0 w-44 truncate" title={job.type}>
-        {job.type}
-      </span>
-      <span className="font-mono text-[10px] text-muted shrink-0 w-16">
-        {job.job_id.slice(0, 8)}
-      </span>
-      <span className="font-mono text-[10px] text-muted shrink-0 w-14 text-right">
-        {ageSeconds != null ? formatAge(ageSeconds) : '—'}
-      </span>
-      {isRunning ? null : (
-        <span className="font-mono text-[10px] text-muted shrink-0 w-12 text-right">
-          p{job.priority ?? 3}
+    <li className="px-3 py-2 text-xs">
+      <div className="flex items-baseline gap-3">
+        {onToggleSelect && (
+          <input
+            type="checkbox"
+            checked={!!selected}
+            onChange={onToggleSelect}
+            className="mt-0.5"
+            aria-label="select"
+          />
+        )}
+        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${tone}`} />
+        <span className="font-mono text-[11px] text-fg/85 shrink-0 w-44 truncate" title={job.type}>
+          {job.type}
         </span>
+        <button
+          onClick={() => setDrawer((d) => (d === 'detail' ? null : 'detail'))}
+          className="font-mono text-[10px] text-muted hover:text-fg shrink-0 w-16 text-left underline decoration-dotted"
+          title="Show payload + result"
+        >
+          {job.job_id.slice(0, 8)}
+        </button>
+        <span
+          className={`font-mono text-[10px] shrink-0 w-14 text-right ${
+            job.over_median ? 'text-amber-700' : 'text-muted'
+          }`}
+          title={
+            job.median_duration_s
+              ? `median ${formatAge(Math.round(job.median_duration_s))}`
+              : 'no historical median yet'
+          }
+        >
+          {ageSeconds != null ? formatAge(ageSeconds) : '—'}
+        </span>
+        {job.eta_seconds != null && job.eta_seconds > 0 && (
+          <span
+            className="font-mono text-[10px] text-muted shrink-0 w-14 text-right"
+            title={`ETA based on rolling median (${
+              job.median_duration_s ? formatAge(Math.round(job.median_duration_s)) : '?'
+            })`}
+          >
+            ~{formatAge(job.eta_seconds)}
+          </span>
+        )}
+        {!isRunning && (
+          <span className="font-mono text-[10px] text-muted shrink-0 w-10 text-right">
+            p{job.priority ?? 3}
+          </span>
+        )}
+        <span className="text-[10px] uppercase tracking-[0.16em] text-muted shrink-0 w-24 truncate">
+          {job.source || (isInteractive(job.source) ? 'chat' : 'background')}
+        </span>
+        <span className="truncate text-fg/80 flex-1" title={summary}>
+          {summary}
+        </span>
+        <button
+          onClick={() => setDrawer((d) => (d === 'dag' ? null : 'dag'))}
+          className="px-1.5 py-0.5 text-[10px] uppercase tracking-[0.16em] border border-border rounded-sm text-muted hover:text-fg hover:border-fg shrink-0"
+          title="Dependency graph"
+        >
+          DAG
+        </button>
+        {isRunning && (
+          <button
+            onClick={() => void terminate()}
+            disabled={busy}
+            className="px-1.5 py-0.5 text-[10px] uppercase tracking-[0.16em] border border-border rounded-sm text-red-700 hover:bg-red-50 disabled:opacity-50 shrink-0"
+            title="Cooperative cancel — handler aborts at the next phase"
+          >
+            {busy ? '…' : 'Terminate'}
+          </button>
+        )}
+        {(job.status === 'failed' || job.status === 'cancelled') && (
+          <button
+            onClick={() => void replay()}
+            disabled={busy}
+            className="px-1.5 py-0.5 text-[10px] uppercase tracking-[0.16em] border border-border rounded-sm text-fg hover:border-fg disabled:opacity-50 shrink-0"
+            title="Submit a new job with the same payload"
+          >
+            {busy ? '…' : 'Replay'}
+          </button>
+        )}
+      </div>
+      {(job.progress || looksStalled) && (
+        <div className="ml-[3.25rem] mt-1 space-y-1">
+          <div className="flex items-baseline gap-2 text-[10px]">
+            {job.progress_kind && (
+              <span className="font-mono text-fg/70 uppercase tracking-[0.16em]">
+                {job.progress_kind}
+              </span>
+            )}
+            {stepText && <span className="font-mono text-muted">{stepText}</span>}
+            <span className={looksStalled ? 'text-amber-700' : 'text-muted'}>
+              {job.progress || '(no progress reports)'}
+            </span>
+            {sinceProgressSec != null && (
+              <span className="ml-auto font-mono text-muted shrink-0">
+                {looksStalled ? `stalled ${formatAge(sinceProgressSec)}` : `+${formatAge(sinceProgressSec)}`}
+              </span>
+            )}
+          </div>
+          {pct != null && (
+            <div className="h-1 bg-panel rounded-full overflow-hidden">
+              <div
+                className={looksStalled ? 'h-full bg-amber-500' : 'h-full bg-sky-500'}
+                style={{ width: `${pct}%`, transition: 'width 0.4s ease' }}
+              />
+            </div>
+          )}
+        </div>
       )}
-      <span className="text-[10px] uppercase tracking-[0.16em] text-muted shrink-0 w-24 truncate">
-        {job.source || (isInteractive(job.source) ? 'chat' : 'background')}
-      </span>
-      <span className="truncate text-fg/80 flex-1" title={summary}>
-        {summary}
-      </span>
+      {(job.tags && job.tags.length > 0) && (
+        <div className="ml-[3.25rem] mt-1 flex gap-1 flex-wrap">
+          {job.tags.map((t) => (
+            <span key={t} className="text-[9px] uppercase tracking-[0.16em] text-muted border border-border rounded-sm px-1 py-0.5">
+              {t}
+            </span>
+          ))}
+        </div>
+      )}
+      {drawer === 'detail' && (
+        <JobDetailDrawer job={job} onClose={() => setDrawer(null)} />
+      )}
+      {drawer === 'dag' && <JobDagDrawer jobId={job.job_id} onClose={() => setDrawer(null)} />}
     </li>
+  );
+}
+
+function JobDetailDrawer({ job, onClose }: { job: QueueJob; onClose: () => void }) {
+  return (
+    <div className="ml-[3.25rem] mt-2 border border-border rounded-md bg-panel/30 p-3 text-[11px] space-y-2">
+      <div className="flex items-baseline justify-between">
+        <Eyebrow>job detail</Eyebrow>
+        <button onClick={onClose} className="text-muted hover:text-fg text-base leading-none">
+          ×
+        </button>
+      </div>
+      <dl className="grid grid-cols-[7rem_1fr] gap-y-1 font-mono text-[10px]">
+        <dt className="text-muted">job_id</dt>
+        <dd className="break-all">{job.job_id}</dd>
+        <dt className="text-muted">status</dt>
+        <dd>{job.status}</dd>
+        <dt className="text-muted">type</dt>
+        <dd>{job.type}</dd>
+        <dt className="text-muted">source</dt>
+        <dd>{job.source}</dd>
+        {job.parent_job_id && (
+          <>
+            <dt className="text-muted">parent</dt>
+            <dd>{job.parent_job_id}</dd>
+          </>
+        )}
+        {job.depends_on && (
+          <>
+            <dt className="text-muted">depends_on</dt>
+            <dd>{job.depends_on}</dd>
+          </>
+        )}
+      </dl>
+      {job.payload && (
+        <div>
+          <Eyebrow className="mb-1">payload</Eyebrow>
+          <pre className="bg-bg border border-border rounded-sm p-2 font-mono text-[10px] max-h-48 overflow-auto whitespace-pre-wrap">
+            {JSON.stringify(job.payload, null, 2)}
+          </pre>
+        </div>
+      )}
+      {job.result && Object.keys(job.result).length > 0 && (
+        <div>
+          <Eyebrow className="mb-1">result</Eyebrow>
+          <pre className="bg-bg border border-border rounded-sm p-2 font-mono text-[10px] max-h-48 overflow-auto whitespace-pre-wrap">
+            {JSON.stringify(job.result, null, 2)}
+          </pre>
+        </div>
+      )}
+      {job.error && (
+        <div>
+          <Eyebrow className="mb-1">error</Eyebrow>
+          <pre className="bg-red-50 border border-red-200 rounded-sm p-2 text-[10px] max-h-32 overflow-auto whitespace-pre-wrap text-red-800">
+            {job.error}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function JobDagDrawer({ jobId, onClose }: { jobId: string; onClose: () => void }) {
+  const [dag, setDag] = useState<DagResponse | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => {
+    fetchJobDag(jobId, 3)
+      .then(setDag)
+      .catch((e) => setErr((e as Error).message));
+  }, [jobId]);
+  return (
+    <div className="ml-[3.25rem] mt-2 border border-border rounded-md bg-panel/30 p-3 text-[11px]">
+      <div className="flex items-baseline justify-between mb-2">
+        <Eyebrow>dependency graph</Eyebrow>
+        <button onClick={onClose} className="text-muted hover:text-fg text-base leading-none">
+          ×
+        </button>
+      </div>
+      {err && <div className="text-red-700">{err}</div>}
+      {!dag && !err && <div className="text-muted">Loading…</div>}
+      {dag && dag.nodes.length === 0 && <div className="text-muted">No dependencies.</div>}
+      {dag && dag.nodes.length > 0 && (
+        <ul className="space-y-1">
+          {dag.nodes.map((n) => (
+            <li
+              key={n.job_id}
+              className={`font-mono text-[10px] flex items-baseline gap-2 ${
+                n.job_id === jobId ? 'font-semibold text-fg' : 'text-fg/80'
+              }`}
+            >
+              <span className="text-muted shrink-0 w-12">{n.status}</span>
+              <span className="shrink-0 w-32 truncate">{n.type}</span>
+              <span className="text-muted shrink-0">{n.job_id.slice(0, 8)}</span>
+              {n.progress && <span className="text-muted truncate">{n.progress}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -435,8 +911,11 @@ function RecentFailuresPanel() {
 
   useEffect(() => {
     let cancelled = false;
+    // Failures change far less often than running state — poll on a
+    // gentler 30 s cadence (was 8 s) so the Console doesn't trigger four
+    // simultaneous heavy NocoDB reads every few seconds.
     const load = () =>
-      getQueueDashboard({ org_id: defaultOrgId(), limit: 100 })
+      getQueueDashboard({ org_id: defaultOrgId(), limit: 50 })
         .then((r) => {
           if (cancelled) return;
           const failed = (r.recent_jobs ?? [])
@@ -450,7 +929,7 @@ function RecentFailuresPanel() {
           setJobs([]);
         });
     void load();
-    const t = setInterval(load, 8000);
+    const t = setInterval(load, 30_000);
     return () => {
       cancelled = true;
       clearInterval(t);
@@ -540,6 +1019,28 @@ function SystemControls({
   onError: (msg: string) => void;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
+  const [chatActive, setChatActive] = useState<{
+    count: number;
+    oldest_turn_age_seconds: number;
+    is_stale: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const tick = () =>
+      adminApi
+        .chatActive()
+        .then((r) => {
+          if (!cancelled) setChatActive(r);
+        })
+        .catch(() => {});
+    void tick();
+    const id = setInterval(tick, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
 
   const dropCaches = async () => {
     setBusy('caches');
@@ -555,12 +1056,47 @@ function SystemControls({
     }
   };
 
+  const resetChatActive = async () => {
+    if (!confirm('Force chat-active counter to zero? Use only if no chat is actually streaming.')) return;
+    setBusy('chat');
+    try {
+      const r = await adminApi.chatActiveReset('manual reset from Console');
+      onFlash(`Chat-active reset: was ${r.previous_count}, now 0`);
+    } catch (e) {
+      onError(`Reset failed: ${(e as Error).message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   return (
     <section>
       <div className="flex items-center justify-between mb-2">
         <Eyebrow>System controls</Eyebrow>
       </div>
       <div className="border border-border rounded-md bg-bg divide-y divide-border/60">
+        <ControlRow
+          label="Chat-active gate"
+          desc={
+            chatActive
+              ? chatActive.count === 0
+                ? 'Idle — background workers running normally.'
+                : chatActive.is_stale
+                  ? `WEDGED: count=${chatActive.count}, oldest turn ${formatAge(chatActive.oldest_turn_age_seconds)} old. Background workers were blocked but the staleness escape kicked in. Reset to clear the counter.`
+                  : `Live chat: count=${chatActive.count}, oldest turn ${formatAge(chatActive.oldest_turn_age_seconds)}. Background workers paused; this is normal during chat.`
+              : 'loading…'
+          }
+          action={
+            <Btn
+              size="sm"
+              variant={chatActive?.is_stale ? 'primary' : 'ghost'}
+              onClick={() => void resetChatActive()}
+              disabled={busy === 'chat' || (chatActive?.count ?? 0) === 0}
+            >
+              {busy === 'chat' ? 'Resetting…' : 'Reset'}
+            </Btn>
+          }
+        />
         <ControlRow
           label="Drop chat caches"
           desc="Clears PA recall, digest preface, and graph entity-name caches. The next chat turn pays the full cold-load cost. Use after a manual NocoDB edit."

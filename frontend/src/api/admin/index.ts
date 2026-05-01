@@ -118,9 +118,27 @@ export interface SubsystemToggleResponse {
 
 const orgParam = () => ({ org_id: defaultOrgId() });
 
+export interface ChatActiveStatus {
+  count: number;
+  oldest_turn_age_seconds: number;
+  stale_threshold_seconds: number;
+  is_stale: boolean;
+  seconds_since_last_activity: number | null;
+}
+
 export const adminApi = {
   runtime: () =>
     http.get('api/admin/runtime', { searchParams: orgParam() }).json<AdminRuntimeResponse>(),
+  chatActive: () =>
+    http.get('api/admin/chat-active').json<ChatActiveStatus>(),
+  chatActiveReset: (reason = 'manual reset from UI') =>
+    http
+      .post('api/admin/chat-active/reset', { json: { reason } })
+      .json<{ reset: boolean; previous_count: number; reason: string }>(),
+  cancelToolJob: (jobId: string, reason = 'user terminated') =>
+    http
+      .post(`api/admin/tool-jobs/${encodeURIComponent(jobId)}/cancel`, { json: { reason } })
+      .json<{ cancelled: boolean; job_id: string; reason: string }>(),
   subsystems: () =>
     http.get('api/admin/subsystems').json<AdminSubsystemsResponse>(),
   config: () =>

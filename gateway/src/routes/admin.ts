@@ -36,6 +36,40 @@ adminRoute.get('/runtime', async (c) => {
   }
 });
 
+adminRoute.get('/chat-active', async (_c) => {
+  try {
+    const res = await harnessClient.get('/admin/chat-active', TIMEOUT);
+    return forwardResponse(res, TAG);
+  } catch (err) {
+    return mapHarnessError(err, TAG);
+  }
+});
+
+adminRoute.post('/chat-active/reset', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  try {
+    const res = await harnessClient.post('/admin/chat-active/reset', body, TIMEOUT);
+    return forwardResponse(res, TAG);
+  } catch (err) {
+    return mapHarnessError(err, TAG);
+  }
+});
+
+adminRoute.post('/tool-jobs/:job_id/cancel', async (c) => {
+  const id = c.req.param('job_id');
+  const body = await c.req.json().catch(() => ({}));
+  try {
+    const res = await harnessClient.post(
+      `/admin/tool-jobs/${encodeURIComponent(id)}/cancel`,
+      body,
+      TIMEOUT,
+    );
+    return forwardResponse(res, TAG);
+  } catch (err) {
+    return mapHarnessError(err, TAG);
+  }
+});
+
 adminRoute.get('/subsystems', async (c) => {
   try {
     const res = await harnessClient.get(withOrg(c, '/admin/subsystems'), TIMEOUT);

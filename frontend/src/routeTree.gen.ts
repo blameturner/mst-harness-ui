@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SimulationsRouteImport } from './routes/simulations'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as ResearchRouteImport } from './routes/research'
+import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as PaRouteImport } from './routes/pa'
 import { Route as OpsRouteImport } from './routes/ops'
 import { Route as MemoryRouteImport } from './routes/memory'
@@ -30,6 +31,7 @@ import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SimulationsSimIdRouteImport } from './routes/simulations.$simId'
 import { Route as ResearchIdRouteImport } from './routes/research_.$id'
+import { Route as ProjectsIdRouteImport } from './routes/projects.$id'
 import { Route as HomeConnectorsRouteImport } from './routes/home.connectors'
 import { Route as AgentsNewRouteImport } from './routes/agents.new'
 import { Route as AgentsIdRouteImport } from './routes/agents.$id'
@@ -50,6 +52,11 @@ const SetupRoute = SetupRouteImport.update({
 const ResearchRoute = ResearchRouteImport.update({
   id: '/research',
   path: '/research',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsRoute = ProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PaRoute = PaRouteImport.update({
@@ -142,6 +149,11 @@ const ResearchIdRoute = ResearchIdRouteImport.update({
   path: '/research/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProjectsIdRoute = ProjectsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ProjectsRoute,
+} as any)
 const HomeConnectorsRoute = HomeConnectorsRouteImport.update({
   id: '/connectors',
   path: '/connectors',
@@ -190,12 +202,14 @@ export interface FileRoutesByFullPath {
   '/memory': typeof MemoryRoute
   '/ops': typeof OpsRoute
   '/pa': typeof PaRoute
+  '/projects': typeof ProjectsRouteWithChildren
   '/research': typeof ResearchRoute
   '/setup': typeof SetupRoute
   '/simulations': typeof SimulationsRouteWithChildren
   '/agents/$id': typeof AgentsIdRouteWithChildren
   '/agents/new': typeof AgentsNewRoute
   '/home/connectors': typeof HomeConnectorsRoute
+  '/projects/$id': typeof ProjectsIdRoute
   '/research/$id': typeof ResearchIdRoute
   '/simulations/$simId': typeof SimulationsSimIdRoute
   '/agents/edit/$id': typeof AgentsEditIdRoute
@@ -219,12 +233,14 @@ export interface FileRoutesByTo {
   '/memory': typeof MemoryRoute
   '/ops': typeof OpsRoute
   '/pa': typeof PaRoute
+  '/projects': typeof ProjectsRouteWithChildren
   '/research': typeof ResearchRoute
   '/setup': typeof SetupRoute
   '/simulations': typeof SimulationsRouteWithChildren
   '/agents/$id': typeof AgentsIdRouteWithChildren
   '/agents/new': typeof AgentsNewRoute
   '/home/connectors': typeof HomeConnectorsRoute
+  '/projects/$id': typeof ProjectsIdRoute
   '/research/$id': typeof ResearchIdRoute
   '/simulations/$simId': typeof SimulationsSimIdRoute
   '/agents/edit/$id': typeof AgentsEditIdRoute
@@ -249,12 +265,14 @@ export interface FileRoutesById {
   '/memory': typeof MemoryRoute
   '/ops': typeof OpsRoute
   '/pa': typeof PaRoute
+  '/projects': typeof ProjectsRouteWithChildren
   '/research': typeof ResearchRoute
   '/setup': typeof SetupRoute
   '/simulations': typeof SimulationsRouteWithChildren
   '/agents/$id': typeof AgentsIdRouteWithChildren
   '/agents/new': typeof AgentsNewRoute
   '/home/connectors': typeof HomeConnectorsRoute
+  '/projects/$id': typeof ProjectsIdRoute
   '/research_/$id': typeof ResearchIdRoute
   '/simulations/$simId': typeof SimulationsSimIdRoute
   '/agents/edit/$id': typeof AgentsEditIdRoute
@@ -280,12 +298,14 @@ export interface FileRouteTypes {
     | '/memory'
     | '/ops'
     | '/pa'
+    | '/projects'
     | '/research'
     | '/setup'
     | '/simulations'
     | '/agents/$id'
     | '/agents/new'
     | '/home/connectors'
+    | '/projects/$id'
     | '/research/$id'
     | '/simulations/$simId'
     | '/agents/edit/$id'
@@ -309,12 +329,14 @@ export interface FileRouteTypes {
     | '/memory'
     | '/ops'
     | '/pa'
+    | '/projects'
     | '/research'
     | '/setup'
     | '/simulations'
     | '/agents/$id'
     | '/agents/new'
     | '/home/connectors'
+    | '/projects/$id'
     | '/research/$id'
     | '/simulations/$simId'
     | '/agents/edit/$id'
@@ -338,12 +360,14 @@ export interface FileRouteTypes {
     | '/memory'
     | '/ops'
     | '/pa'
+    | '/projects'
     | '/research'
     | '/setup'
     | '/simulations'
     | '/agents/$id'
     | '/agents/new'
     | '/home/connectors'
+    | '/projects/$id'
     | '/research_/$id'
     | '/simulations/$simId'
     | '/agents/edit/$id'
@@ -368,6 +392,7 @@ export interface RootRouteChildren {
   MemoryRoute: typeof MemoryRoute
   OpsRoute: typeof OpsRoute
   PaRoute: typeof PaRoute
+  ProjectsRoute: typeof ProjectsRouteWithChildren
   ResearchRoute: typeof ResearchRoute
   SetupRoute: typeof SetupRoute
   SimulationsRoute: typeof SimulationsRouteWithChildren
@@ -396,6 +421,13 @@ declare module '@tanstack/react-router' {
       path: '/research'
       fullPath: '/research'
       preLoaderRoute: typeof ResearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects': {
+      id: '/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof ProjectsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pa': {
@@ -524,6 +556,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResearchIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/projects/$id': {
+      id: '/projects/$id'
+      path: '/$id'
+      fullPath: '/projects/$id'
+      preLoaderRoute: typeof ProjectsIdRouteImport
+      parentRoute: typeof ProjectsRoute
+    }
     '/home/connectors': {
       id: '/home/connectors'
       path: '/connectors'
@@ -606,6 +645,18 @@ const HomeRouteChildren: HomeRouteChildren = {
 
 const HomeRouteWithChildren = HomeRoute._addFileChildren(HomeRouteChildren)
 
+interface ProjectsRouteChildren {
+  ProjectsIdRoute: typeof ProjectsIdRoute
+}
+
+const ProjectsRouteChildren: ProjectsRouteChildren = {
+  ProjectsIdRoute: ProjectsIdRoute,
+}
+
+const ProjectsRouteWithChildren = ProjectsRoute._addFileChildren(
+  ProjectsRouteChildren,
+)
+
 interface SimulationsRouteChildren {
   SimulationsSimIdRoute: typeof SimulationsSimIdRoute
 }
@@ -635,6 +686,7 @@ const rootRouteChildren: RootRouteChildren = {
   MemoryRoute: MemoryRoute,
   OpsRoute: OpsRoute,
   PaRoute: PaRoute,
+  ProjectsRoute: ProjectsRouteWithChildren,
   ResearchRoute: ResearchRoute,
   SetupRoute: SetupRoute,
   SimulationsRoute: SimulationsRouteWithChildren,

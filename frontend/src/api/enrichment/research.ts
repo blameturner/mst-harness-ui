@@ -78,11 +78,16 @@ export function nextResearchAgent(payload?: AgentRunRequest) {
   return http.post('api/enrichment/research/agent/next', { json: payload ?? {} });
 }
 
-export function deleteResearchPlan(_planId: number): Promise<void> {
-  // No backend endpoint; callers rendered as disabled. Kept for signature stability.
-  // eslint-disable-next-line no-console
-  console.warn('[research] deleteResearchPlan: no backend endpoint; no-op');
-  return Promise.resolve();
+export interface DeleteResearchPlanResponse {
+  status: string;
+  plan_id: number;
+  cancelled_jobs: string[];
+}
+
+export function deleteResearchPlan(planId: number): Promise<DeleteResearchPlanResponse> {
+  return http
+    .delete(`api/enrichment/research/plans/${encodeURIComponent(planId)}`)
+    .json<DeleteResearchPlanResponse>();
 }
 
 export function updateResearchPlanQueries(_planId: number, _queries: string[]): Promise<void> {
